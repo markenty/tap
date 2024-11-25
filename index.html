@@ -22,7 +22,7 @@
       width: 100%;
       display: flex;
       flex-direction: column;
-      justify-content: space-evenly;
+      justify-content: space-between;
       height: 100%;
     }
     #top-bar {
@@ -46,8 +46,8 @@
       margin-bottom: 5px;
     }
     #timer {
-      font-size: 40px;
-      margin-top: 160px;
+      font-size: 20px;
+      margin-top: 60px;
     }
     #leaderboard {
       margin-top: 20px;
@@ -66,7 +66,7 @@
       align-items: center;
       justify-content: flex-end;
       width: 100%;
-      padding-bottom: 4px;
+      padding-bottom: 20px;
     }
     #tap-button {
       background: linear-gradient(145deg, #e64a19, #ff5722);
@@ -96,7 +96,7 @@
       cursor: pointer;
     }
     #reset-button {
-      margin-bottom: 0px; /* Add vertical spacing */
+      margin-bottom: 10px; /* Add vertical spacing */
     }
     #reset-button:hover,
     #clear-leaderboard-button:hover {
@@ -136,10 +136,9 @@
       <button id="tap-button">Tap Me!</button>
     </div>
 
-    <!-- Reset and Clear Leaderboard Buttons -->   
-<button id="clear-leaderboard-button">Clear Leaderboard</button>
+    <!-- Reset and Clear Leaderboard Buttons -->
     <button id="reset-button">Reset Game</button>
- 
+    <button id="clear-leaderboard-button">Clear Leaderboard</button>
   </div>
 
   <script>
@@ -204,9 +203,9 @@
       starCount += multiplier;
 
       // Update DOM
-      starCountElem.textContent = ⭐ ${starCount};
-      multiplierElem.textContent = ${multiplier}x;
-      tapSpeedElem.textContent = ${Math.round(tapSpeed)} ms;
+      starCountElem.textContent = `⭐ ${starCount}`;
+      multiplierElem.textContent = `${multiplier}x`;
+      tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
     }
 
     tapButton.addEventListener("click", handleTap);
@@ -218,7 +217,7 @@
     // Timer countdown
     let timerInterval = setInterval(() => {
       timer--;
-      timerElem.textContent = Time Left: ${timer}s;
+      timerElem.textContent = `Time Left: ${timer}s`;
       if (timer <= 0) {
         clearInterval(timerInterval);
         handleGameOver();
@@ -227,7 +226,7 @@
 
     // Handle game over
     function handleGameOver() {
-      alert(Game Over! You collected ${starCount} stars.);
+      alert(`Game Over! You collected ${starCount} stars.`);
 
       const initials = prompt("Enter your initials (3 characters):").toUpperCase();
       if (initials && initials.length === 3) {
@@ -247,14 +246,14 @@
       multiplier = 1;
       tapSpeed = 0;
       timer = 30;
-      starCountElem.textContent = ⭐ ${starCount};
-      multiplierElem.textContent = ${multiplier}x;
+      starCountElem.textContent = `⭐ ${starCount}`;
+      multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = "0 ms";
-      timerElem.textContent = Time Left: ${timer}s;
+      timerElem.textContent = `Time Left: ${timer}s`;
 
       timerInterval = setInterval(() => {
         timer--;
-        timerElem.textContent = Time Left: ${timer}s;
+        timerElem.textContent = `Time Left: ${timer}s`;
         if (timer <= 0) {
           clearInterval(timerInterval);
           handleGameOver();
@@ -267,7 +266,7 @@
       leaderboardList.innerHTML = "";
       leaderboard.slice(0, 5).forEach(({ initials, score }, index) => {
         const li = document.createElement("li");
-        li.textContent = #${index + 1}: ${initials} - ${score} stars;
+        li.textContent = `#${index + 1}: ${initials} - ${score} stars`;
         leaderboardList.appendChild(li);
       });
     }
