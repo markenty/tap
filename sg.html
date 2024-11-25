@@ -67,10 +67,10 @@
   <h1>DHD Clicker Game</h1>
   <p class="status">Energy: <span id="energy">0</span></p>
   <p class="chevrons">Chevrons Locked: <span id="chevrons">0</span>/7</p>
-  
-  <button onclick="generateEnergy()">Tap DHD</button>
-  <button onclick="purchaseAutomation()">Buy Automation (50 Energy)</button>
-  <p>Automation Level: <span id="automation">0</span></p>
+  <p>Time to next energy: <span id="timer">120</span> seconds</p>
+
+  <button id="tap-dhd" ontouchstart="reduceTimer()" onmousedown="reduceTimer()">Tap DHD</button>
+  <button onclick="unlockChevron()">Unlock Chevron</button>
   <p id="message"></p>
 
   <svg id="stargate" width="200" height="200" viewBox="0 0 200 200">
@@ -84,65 +84,61 @@
     // Game Variables
     let energy = 0;
     let chevronsLocked = 0;
-    const maxChevrons = 7;
-    let energyPerClick = 1;
-    let idleEnergyRate = 0;
-    let automationLevel = 0;
+    let maxChevrons = 7;
+    let energyPerInterval = 5;
+    let timer = 120; // 2 minutes
+    let baseTimerSpeed = 1; // Normal speed
+    let currentTimerSpeed = baseTimerSpeed;
+    let chevronEnergyCost = 50;
 
-    // Update the status display
+    // Timer update
+    setInterval(() => {
+      timer -= currentTimerSpeed;
+      if (timer <= 0) {
+        timer = 120; // Reset timer
+        energy += energyPerInterval; // Gain energy
+        document.getElementById("message").textContent = "Gained 5 energy!";
+      }
+      updateDisplay();
+    }, 1000);
+
+    // Update display
     function updateDisplay() {
       document.getElementById("energy").textContent = energy;
       document.getElementById("chevrons").textContent = chevronsLocked;
-      document.getElementById("automation").textContent = automationLevel;
+      document.getElementById("timer").textContent = Math.max(0, timer);
 
-      // Update the SVG visualization
       const svgText = document.getElementById("svg-text");
       svgText.textContent = `Chevron: ${chevronsLocked}`;
 
       if (chevronsLocked === maxChevrons) {
         document.getElementById("message").textContent = "Stargate Dialed! You Win!";
-        svgText.textContent = "Dial Complete!";
-      } else {
-        document.getElementById("message").textContent = "";
       }
     }
 
-    // Generate energy when tapping
-    function generateEnergy() {
-      energy += energyPerClick;
-      lockChevron();
-      updateDisplay();
+    // Reduce timer when tapping
+    function reduceTimer() {
+      currentTimerSpeed = 5; // Faster countdown
+      setTimeout(() => {
+        currentTimerSpeed = baseTimerSpeed; // Reset to normal speed if not tapping
+      }, 2000); // Give 2 seconds grace period
     }
 
-    // Lock a chevron if enough energy
-    function lockChevron() {
-      if (energy >= 10 && chevronsLocked < maxChevrons) {
-        energy -= 10;
+    // Unlock a chevron
+    function unlockChevron() {
+      if (energy >= chevronEnergyCost) {
+        energy -= chevronEnergyCost;
         chevronsLocked++;
+        chevronEnergyCost += 50; // Increase cost for the next chevron
         updateDisplay();
-        if (chevronsLocked === maxChevrons) {
-          document.getElementById("message").textContent = "Stargate Dialed! You Win!";
-        }
-      }
-    }
-
-    // Purchase automation
-    function purchaseAutomation() {
-      if (energy >= 50) {
-        energy -= 50;
-        automationLevel++;
-        idleEnergyRate++;
-        updateDisplay();
+        document.getElementById("message").textContent = `Chevron ${chevronsLocked} unlocked!`;
       } else {
-        document.getElementById("message").textContent = "Not enough energy for automation!";
+        document.getElementById("message").textContent = "Not enough energy!";
       }
     }
 
-    // Idle energy generation
-    setInterval(() => {
-      energy += idleEnergyRate;
-      updateDisplay();
-    }, 1000);
+    // Initial display update
+    updateDisplay();
   </script>
 
 </body>
