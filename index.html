@@ -41,14 +41,8 @@
       font-size: 14px;
       margin-bottom: 5px;
     }
-    #controls {
-      margin-top: 10px;
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
     #main-section {
-      margin-top: 20px;
+      margin-top: 100px;
     }
     #tap-button {
       background: #ff5722;
@@ -85,9 +79,20 @@
       border-radius: 5px;
       font-size: 16px;
       cursor: pointer;
+      margin-top: 10px;
     }
     .control-button:hover {
       background: #d32f2f;
+    }
+    @media (max-width: 600px) {
+      #tap-button {
+        padding: 15px 30px;
+        font-size: 20px;
+      }
+      .control-button {
+        padding: 8px 15px;
+        font-size: 14px;
+      }
     }
   </style>
 </head>
@@ -109,19 +114,19 @@
       </div>
     </div>
 
-    <!-- Controls -->
-    <div id="controls">
-      <button id="reset-button" class="control-button">Reset Game</button>
-      <button id="clear-leaderboard-button" class="control-button">Clear Leaderboard</button>
-      <button id="toggle-leaderboard-button" class="control-button">View Leaderboard</button>
-    </div>
-
     <!-- Timer -->
     <div id="timer">Time Left: 30s</div>
 
     <!-- Main game section -->
     <div id="main-section">
       <button id="tap-button">Tap Me!</button>
+    </div>
+
+    <!-- Control Buttons -->
+    <div>
+      <button id="reset-button" class="control-button">Reset Game</button>
+      <button id="clear-leaderboard-button" class="control-button">Clear Leaderboard</button>
+      <button id="toggle-leaderboard-button" class="control-button">View Leaderboard</button>
     </div>
 
     <!-- Leaderboard -->
@@ -152,14 +157,9 @@
     const leaderboardList = document.getElementById("leaderboard-list");
 
     const multiplierThresholds = [
-      { threshold: 20, multiplier: 240 },
-      { threshold: 50, multiplier: 120 },
-      { threshold: 100, multiplier: 60 },
-      { threshold: 200, multiplier: 30 },
-      { threshold: 300, multiplier: 15 },
-      { threshold: 500, multiplier: 8 },
-      { threshold: 700, multiplier: 4 },
-      { threshold: 1000, multiplier: 2 },
+      { threshold: 300, multiplier: 8 },
+      { threshold: 500, multiplier: 4 },
+      { threshold: 700, multiplier: 2 },
     ];
 
     function calculateMultiplier(speed) {
@@ -261,7 +261,7 @@
     toggleLeaderboardButton.addEventListener("click", toggleLeaderboard);
 
     updateLeaderboard();
-    resetGame(); // Initialize game
+    resetGame();
   </script>
 </body>
 </html>
