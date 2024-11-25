@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>DHD Clicker Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #39CCCC;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      text-align: center;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      height: 85%;
+    }
+    #top-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0, 255, 255, 0.3);
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .label {
+      font-size: 16px;
+      color: #80E2FF;
+      margin-bottom: 5px;
+    }
+    #chevrons {
+      margin-top: 20px;
+      color: #80E2FF;
+    }
+    h3 {
+      margin: 10px 0;
+      color: #FF851B;
+    }
+    #items {
+      margin-top: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+      border: 1px solid #39CCCC;
+      border-radius: 5px;
+      padding: 10px;
+      color: #FF851B;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    #items ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+    #bottom-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+      padding-bottom: 20px;
+    }
+    #tap-button {
+      background: radial-gradient(circle, #FF5722, #E64A19);
+      color: white;
+      border: 2px solid #FF851B;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(255, 133, 27, 0.8);
+      transition: transform 0.1s, box-shadow 0.2s ease-in-out;
+      touch-action: manipulation;
+    }
+    #tap-button:active {
+      transform: scale(0.9);
+      box-shadow: 0 0 30px rgba(255, 133, 27, 1);
+    }
+    #lock-chevron-button, #reset-button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 18px;
+      border: none;
+      background: linear-gradient(90deg, #2196F3, #00BCD4);
+      color: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 188, 212, 0.8);
+      transition: transform 0.2s, box-shadow 0.2s ease-in-out;
+    }
+    #reset-button {
+      background: linear-gradient(90deg, #FF3D00, #D50000);
+      box-shadow: 0 0 15px rgba(255, 61, 0, 0.8);
+    }
+    #lock-chevron-button:active, #reset-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 0 25px rgba(0, 188, 212, 1);
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="top-bar">
+      <div class="stat">
+        <span class="label">Energy:</span>
+        <span id="energy-count">⚡ 0</span>
+      </div>
+      <div class="stat">
+        <span class="label">Multiplier:</span>
+        <span id="multiplier">1x</span>
+      </div>
+      <div class="stat">
+        <span class="label">Worlds Visited:</span>
+        <span id="worlds-visited">0</span>
+      </div>
+    </div>
+
+    <div id="chevrons">
+      <h3>Chevrons Locked: <span id="chevrons-locked">0</span>/7</h3>
+      <p>Energy Needed for Next Chevron: <span id="energy-required">50</span></p>
+      <p id="gate-message"></p>
+      <select id="chevron-selector">
+        <option value="1" disabled>Chevron 1</option>
+        <option value="2" disabled>Chevron 2</option>
+        <option value="3" disabled>Chevron 3</option>
+        <option value="4" disabled>Chevron 4</option>
+        <option value="5" disabled>Chevron 5</option>
+        <option value="6" disabled>Chevron 6</option>
+        <option value="7" disabled>Chevron 7</option>
+      </select>
+      <button id="lock-chevron-button" onclick="lockSelectedChevron()">Lock Selected Chevron</button>
+    </div>
+
+    <div id="items">
+      <h3>Discovered Items</h3>
+      <ul id="item-list"></ul>
+    </div>
+
+    <div id="bottom-section">
+      <button id="tap-button">Tap Me!</button>
+      <button id="reset-button" onclick="resetGame()">Reset Game</button>
+    </div>
+  </div>
+
+  <script>
+    let energyCount = 0;
+    let chevronsLocked = 0;
+    let worldsVisited = 0;
+    let baseChevronCost = 50;
+    let chevronCost = baseChevronCost;
+
+    const energyCountElem = document.getElementById("energy-count");
+    const chevronsLockedElem = document.getElementById("chevrons-locked");
+    const energyRequiredElem = document.getElementById("energy-required");
+    const gateMessageElem = document.getElementById("gate-message");
+    const chevronSelector = document.getElementById("chevron-selector");
+
+    function updateChevronSelector() {
+      for (let i = 0; i < chevronSelector.options.length; i++) {
+        chevronSelector.options[i].disabled = i !== chevronsLocked;
+      }
+    }
+
+    function lockSelectedChevron() {
+      if (energyCount >= chevronCost) {
+        energyCount -= chevronCost;
+        chevronsLocked++;
+        chevronCost += baseChevronCost;
+
+        if (chevronsLocked === 7) {
+          worldsVisited++;
+          chevronsLocked = 0;
+          chevronCost = baseChevronCost + (worldsVisited * 50);
+          gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
+        } else {
+          gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
+        }
+
+        updateChevronSelector();
+        updateDisplay();
+      } else {
+        gateMessageElem.textContent = "Not enough energy to lock a chevron!";
+      }
+    }
+
+    function updateDisplay() {
+      energyCountElem.textContent = `⚡ ${energyCount}`;
+      chevronsLockedElem.textContent = chevronsLocked;
+      energyRequiredElem.textContent = chevronCost;
+    }
+
+    updateChevronSelector();
+    updateDisplay();
+  </script>
+</body>
+</html>
