@@ -54,6 +54,7 @@
       cursor: pointer;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
       transition: transform 0.1s;
+      touch-action: manipulation;
     }
     #tap-button:active {
       transform: scale(0.9);
@@ -128,6 +129,7 @@
     let tapSpeed = 0;
     let timer = 30; // Game timer in seconds
     let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    const clickSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
 
     // DOM elements
     const starCountElem = document.getElementById("star-count");
@@ -156,7 +158,9 @@
     }
 
     // Handle tap button click
-    tapButton.addEventListener("click", () => {
+    function handleTap() {
+      clickSound.play(); // Play click sound
+
       const now = performance.now();
 
       // Calculate tap speed
@@ -173,6 +177,12 @@
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
+    }
+
+    tapButton.addEventListener("click", handleTap);
+    tapButton.addEventListener("touchstart", (e) => {
+      e.preventDefault(); // Prevent default behavior on touch devices
+      handleTap();
     });
 
     // Timer countdown
