@@ -5,7 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tap Accumulator Game</title>
   <style>
-    /* Your existing CSS */
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a73e8, #4caf50);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      text-align: center;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      height: 100%;
+    }
+    #top-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .label {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    #timer {
+      font-size: 40px;
+      margin-top: 160px;
+    }
+    #leaderboard {
+      margin-top: 20px;
+      color: white;
+    }
+    #leaderboard h3 {
+      margin: 10px 0;
+    }
+    #leaderboard ul {
+      padding: 0;
+      list-style-type: none;
+    }
+    #bottom-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+      padding-bottom: 4px;
+    }
+    #tap-button {
+      background: linear-gradient(145deg, #e64a19, #ff5722);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.2);
+      transition: transform 0.1s;
+      touch-action: manipulation;
+    }
+    #tap-button:active {
+      transform: scale(0.9);
+      box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), -4px -4px 8px rgba(255, 255, 255, 0.2);
+    }
+    #reset-button,
+    #clear-leaderboard-button {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #reset-button {
+      margin-bottom: 0px; /* Add vertical spacing */
+    }
+    #reset-button:hover,
+    #clear-leaderboard-button:hover {
+      background: #d32f2f;
+    }
   </style>
 </head>
 <body>
@@ -41,8 +137,9 @@
     </div>
 
     <!-- Reset and Clear Leaderboard Buttons -->   
-    <button id="clear-leaderboard-button">Clear Leaderboard</button>
+<button id="clear-leaderboard-button">Clear Leaderboard</button>
     <button id="reset-button">Reset Game</button>
+ 
   </div>
 
   <script>
@@ -93,11 +190,6 @@
     // Handle tap button click
     function handleTap() {
       playTapSound(); // Play sound for every tap
-      
-      // Add haptic feedback
-      if (navigator.vibrate) {
-        navigator.vibrate(50); // Vibrate for 50ms
-      }
 
       const now = performance.now();
 
@@ -112,24 +204,21 @@
       starCount += multiplier;
 
       // Update DOM
-      starCountElem.textContent = `⭐ ${starCount}`;
-      multiplierElem.textContent = `${multiplier}x`;
-      tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
+      starCountElem.textContent = ⭐ ${starCount};
+      multiplierElem.textContent = ${multiplier}x;
+      tapSpeedElem.textContent = ${Math.round(tapSpeed)} ms;
     }
 
     tapButton.addEventListener("click", handleTap);
     tapButton.addEventListener("touchstart", (e) => {
       e.preventDefault(); // Prevent default behavior on touch devices
-      if (navigator.vibrate) {
-        navigator.vibrate(50); // Vibrate for 50ms
-      }
       handleTap();
     });
 
     // Timer countdown
     let timerInterval = setInterval(() => {
       timer--;
-      timerElem.textContent = `Time Left: ${timer}s`;
+      timerElem.textContent = Time Left: ${timer}s;
       if (timer <= 0) {
         clearInterval(timerInterval);
         handleGameOver();
@@ -138,7 +227,7 @@
 
     // Handle game over
     function handleGameOver() {
-      alert(`Game Over! You collected ${starCount} stars.`);
+      alert(Game Over! You collected ${starCount} stars.);
 
       const initials = prompt("Enter your initials (3 characters):").toUpperCase();
       if (initials && initials.length === 3) {
@@ -158,14 +247,14 @@
       multiplier = 1;
       tapSpeed = 0;
       timer = 30;
-      starCountElem.textContent = `⭐ ${starCount}`;
-      multiplierElem.textContent = `${multiplier}x`;
+      starCountElem.textContent = ⭐ ${starCount};
+      multiplierElem.textContent = ${multiplier}x;
       tapSpeedElem.textContent = "0 ms";
-      timerElem.textContent = `Time Left: ${timer}s`;
+      timerElem.textContent = Time Left: ${timer}s;
 
       timerInterval = setInterval(() => {
         timer--;
-        timerElem.textContent = `Time Left: ${timer}s`;
+        timerElem.textContent = Time Left: ${timer}s;
         if (timer <= 0) {
           clearInterval(timerInterval);
           handleGameOver();
@@ -178,7 +267,7 @@
       leaderboardList.innerHTML = "";
       leaderboard.slice(0, 5).forEach(({ initials, score }, index) => {
         const li = document.createElement("li");
-        li.textContent = `#${index + 1}: ${initials} - ${score} stars`;
+        li.textContent = #${index + 1}: ${initials} - ${score} stars;
         leaderboardList.appendChild(li);
       });
     }
