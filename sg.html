@@ -85,6 +85,10 @@
       <span id="energy">0</span>
     </div>
     <div class="stat">
+      <span class="label">Time to Bank Energy</span>
+      <span id="timer">120</span>s
+    </div>
+    <div class="stat">
       <span class="label">Worlds Visited</span>
       <span id="worlds-visited">0</span>
     </div>
@@ -92,37 +96,108 @@
 
   <h1>DHD Clicker Game</h1>
   <button class="dhd-button" ontouchstart="handleTap()" onmousedown="handleTap()">Tap DHD</button>
-  <button onclick="resetEnergy()">Reset Energy</button>
+  <button onclick="unlockChevron()">Unlock Chevron</button>
   <p id="message"></p>
 
+  <svg id="stargate" width="200" height="200" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="80" stroke="#FF851B" stroke-width="5" fill="none" />
+    <text id="svg-text" x="50%" y="50%" fill="#39CCCC" font-size="16" font-family="Arial" text-anchor="middle" dominant-baseline="middle">
+      Chevron: 0
+    </text>
+  </svg>
+
   <script>
-    // Persistent Energy Counter
+    // Persistent Variables
     let energy = parseInt(localStorage.getItem("energy")) || 0;
     let worldsVisited = parseInt(localStorage.getItem("worldsVisited")) || 0;
+    let chevronsLocked = 0;
+    let chevronEnergyCost = 50;
 
-    // Increment energy on tap
+    // Timer Variables
+    let timer = 120; // 2 minutes
+    let tapEnergy = 0;
+
+    // Tap Variables
+    let lastTapTime = 0;
+    let tapMultiplier = 1;
+
+    // Multiplier thresholds
+    const multiplierThresholds = [
+      { threshold: 200, multiplier: 5 },
+      { threshold: 300, multiplier: 3 },
+      { threshold: 500, multiplier: 2 },
+    ];
+
+    // Timer update
+    setInterval(() => {
+      timer--;
+      if (timer <= 0) {
+        bankEnergy();
+        timer = 120; // Reset timer
+      }
+      updateDisplay();
+    }, 1000);
+
+    // Bank Energy
+    function bankEnergy() {
+      energy += tapEnergy;
+      tapEnergy = 0;
+      localStorage.setItem("energy", energy);
+      document.getElementById("message").textContent = "Energy banked!";
+      updateDisplay();
+    }
+
+    // Handle Tap
     function handleTap() {
-      energy++;
-      localStorage.setItem("energy", energy);
+      const now = performance.now();
+      let tapSpeed = now - lastTapTime;
+
+      if (lastTapTime > 0) {
+        tapMultiplier = 1; // Default multiplier
+        for (const threshold of multiplierThresholds) {
+          if (tapSpeed <= threshold.threshold) {
+            tapMultiplier = threshold.multiplier;
+            break;
+          }
+        }
+      }
+      lastTapTime = now;
+
+      tapEnergy += tapMultiplier;
       updateDisplay();
     }
 
-    // Reset energy
-    function resetEnergy() {
-      energy = 0;
-      worldsVisited = 0;
-      localStorage.setItem("energy", energy);
-      localStorage.setItem("worldsVisited", worldsVisited);
-      updateDisplay();
+    // Unlock Chevron
+    function unlockChevron() {
+      if (energy >= chevronEnergyCost) {
+        energy -= chevronEnergyCost;
+        chevronsLocked++;
+        chevronEnergyCost += 50; // Increase next chevron cost
+
+        if (chevronsLocked === 7) {
+          worldsVisited++;
+          chevronsLocked = 0; // Reset chevrons
+          localStorage.setItem("worldsVisited", worldsVisited);
+          document.getElementById("message").textContent = `World ${worldsVisited} visited!`;
+        }
+        localStorage.setItem("energy", energy);
+        updateDisplay();
+      } else {
+        document.getElementById("message").textContent = "Not enough energy!";
+      }
     }
 
-    // Update display
+    // Update Display
     function updateDisplay() {
       document.getElementById("energy").textContent = energy;
+      document.getElementById("timer").textContent = timer;
       document.getElementById("worlds-visited").textContent = worldsVisited;
+
+      const svgText = document.getElementById("svg-text");
+      svgText.textContent = `Chevron: ${chevronsLocked}`;
     }
 
-    // Initial display update
+    // Initial Display
     updateDisplay();
   </script>
 
