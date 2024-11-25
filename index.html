@@ -148,6 +148,8 @@
 
     // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
+      { threshold: 100, multiplier: 32 },
+      { threshold: 200, multiplier: 16 },
       { threshold: 300, multiplier: 8 },
       { threshold: 500, multiplier: 4 },
       { threshold: 700, multiplier: 2 },
@@ -169,17 +171,9 @@
       tapAudio.play();
     }
 
-    // Trigger haptic feedback
-    function triggerHapticFeedback() {
-      if (navigator.vibrate) {
-        navigator.vibrate(50); // Vibrate for 50ms
-      }
-    }
-
     // Handle tap button click
     function handleTap() {
       playTapSound(); // Play sound for every tap
-      triggerHapticFeedback(); // Trigger haptic feedback
 
       const now = performance.now();
 
