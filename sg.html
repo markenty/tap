@@ -7,9 +7,9 @@
   <style>
     body {
       margin: 0;
-      font-family: 'Orbitron', sans-serif; /* Futuristic font */
+      font-family: 'Orbitron', sans-serif;
       background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Sci-fi gradient */
-      color: #39CCCC; /* Neon teal */
+      color: #39CCCC;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -29,12 +29,12 @@
       display: flex;
       justify-content: space-around;
       align-items: center;
-      background-color: rgba(0, 0, 0, 0.8); /* Translucent background */
+      background-color: rgba(0, 0, 0, 0.8);
       padding: 10px;
       position: fixed;
       top: 0;
       width: 100%;
-      box-shadow: 0 4px 8px rgba(0, 255, 255, 0.3); /* Neon glow */
+      box-shadow: 0 4px 8px rgba(0, 255, 255, 0.3);
     }
     .stat {
       display: flex;
@@ -43,16 +43,16 @@
     }
     .label {
       font-size: 16px;
-      color: #80E2FF; /* Neon blue */
+      color: #80E2FF;
       margin-bottom: 5px;
     }
     #chevrons {
       margin-top: 20px;
-      color: #80E2FF; /* Bright blue */
+      color: #80E2FF;
     }
     h3 {
       margin: 10px 0;
-      color: #FF851B; /* Neon orange */
+      color: #FF851B;
     }
     #bottom-section {
       display: flex;
@@ -63,41 +63,46 @@
       padding-bottom: 20px;
     }
     #tap-button {
-      background: radial-gradient(circle, #FF5722, #E64A19); /* Glowing orange button */
+      background: radial-gradient(circle, #FF5722, #E64A19);
       color: white;
-      border: 2px solid #FF851B; /* Neon border */
+      border: 2px solid #FF851B;
       border-radius: 50%;
       width: 120px;
       height: 120px;
       font-size: 24px;
       cursor: pointer;
-      box-shadow: 0 0 20px rgba(255, 133, 27, 0.8); /* Neon glow */
+      box-shadow: 0 0 20px rgba(255, 133, 27, 0.8);
       transition: transform 0.1s, box-shadow 0.2s ease-in-out;
       touch-action: manipulation;
     }
     #tap-button:active {
       transform: scale(0.9);
-      box-shadow: 0 0 30px rgba(255, 133, 27, 1); /* Intensified glow */
+      box-shadow: 0 0 30px rgba(255, 133, 27, 1);
     }
-    #lock-chevron-button, #reset-button {
+    #lock-chevron-button, #reset-button, .power-up {
       margin-top: 10px;
       padding: 10px 20px;
       font-size: 18px;
       border: none;
-      background: linear-gradient(90deg, #2196F3, #00BCD4); /* Neon blue button */
+      background: linear-gradient(90deg, #2196F3, #00BCD4);
       color: #fff;
       border-radius: 5px;
       cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 188, 212, 0.8); /* Neon glow */
+      box-shadow: 0 0 15px rgba(0, 188, 212, 0.8);
       transition: transform 0.2s, box-shadow 0.2s ease-in-out;
     }
     #reset-button {
-      background: linear-gradient(90deg, #FF3D00, #D50000); /* Neon red button */
+      background: linear-gradient(90deg, #FF3D00, #D50000);
       box-shadow: 0 0 15px rgba(255, 61, 0, 0.8);
     }
-    #lock-chevron-button:active, #reset-button:active {
+    #lock-chevron-button:active, #reset-button:active, .power-up:active {
       transform: scale(0.95);
-      box-shadow: 0 0 25px rgba(0, 188, 212, 1); /* Intensified glow */
+      box-shadow: 0 0 25px rgba(0, 188, 212, 1);
+    }
+    #power-ups {
+      display: none;
+      margin-top: 20px;
+      color: #FF851B;
     }
   </style>
 </head>
@@ -124,6 +129,13 @@
       <p id="gate-message"></p>
     </div>
 
+    <div id="power-ups">
+      <h3>Power-Ups Available</h3>
+      <button class="power-up" onclick="purchasePowerUp('Teal\'c Staff Weapon', 200, 5)">Teal'c Staff Weapon (+5x Multiplier)</button>
+      <button class="power-up" onclick="purchasePowerUp('Daniel\'s Journal', 500, 10)">Daniel's Journal (+10x Multiplier)</button>
+      <button class="power-up" onclick="purchasePowerUp('Carter\'s Energy Matrix', 1000, 20)">Carter's Energy Matrix (+20x Multiplier)</button>
+    </div>
+
     <div id="bottom-section">
       <button id="tap-button">Tap Me!</button>
       <button id="lock-chevron-button" onclick="lockChevron()">Lock Chevron</button>
@@ -132,75 +144,41 @@
   </div>
 
   <script>
-    // Initialize stats
     let energyCount = 0;
     let multiplier = 1;
     let chevronsLocked = 0;
     let worldsVisited = 0;
-    let lastTapTime = 0;
-    let baseChevronCost = 50; // Base cost for chevrons
-    let chevronCost = baseChevronCost; // Current cost for chevron (affected by worlds visited)
+    let baseChevronCost = 50;
+    let chevronCost = baseChevronCost;
 
-    // Multiplier thresholds in milliseconds
-    const multiplierThresholds = [
-      { threshold: 100, multiplier: 32 },
-      { threshold: 200, multiplier: 16 },
-      { threshold: 300, multiplier: 8 },
-      { threshold: 500, multiplier: 4 },
-      { threshold: 700, multiplier: 2 },
-    ];
-
-    // DOM elements
     const energyCountElem = document.getElementById("energy-count");
     const multiplierElem = document.getElementById("multiplier");
     const worldsVisitedElem = document.getElementById("worlds-visited");
     const chevronsLockedElem = document.getElementById("chevrons-locked");
     const energyRequiredElem = document.getElementById("energy-required");
     const gateMessageElem = document.getElementById("gate-message");
+    const powerUpsElem = document.getElementById("power-ups");
 
-    // Update multiplier based on tap speed
-    function calculateMultiplier(speed) {
-      for (const threshold of multiplierThresholds) {
-        if (speed <= threshold.threshold) {
-          return threshold.multiplier;
-        }
-      }
-      return 1; // Default multiplier
-    }
-
-    // Handle tap button click
     function handleTap() {
-      const now = performance.now();
-
-      // Calculate tap speed
-      if (lastTapTime > 0) {
-        const tapSpeed = now - lastTapTime;
-        multiplier = calculateMultiplier(tapSpeed);
-      }
-      lastTapTime = now;
-
-      // Update energy count
       energyCount += multiplier;
-
-      // Update DOM
-      energyCountElem.textContent = `⚡ ${energyCount}`;
-      multiplierElem.textContent = `${multiplier}x`;
+      updateDisplay();
     }
 
-    document.getElementById("tap-button").addEventListener("click", handleTap);
-
-    // Lock a chevron
     function lockChevron() {
       if (energyCount >= chevronCost) {
         energyCount -= chevronCost;
         chevronsLocked++;
-        chevronCost += baseChevronCost + (worldsVisited * 50); // Increase cost per world
+        chevronCost += baseChevronCost + (worldsVisited * 50);
 
         if (chevronsLocked === 7) {
           worldsVisited++;
-          chevronsLocked = 0; // Reset chevrons
-          chevronCost = baseChevronCost + (worldsVisited * 50); // Recalculate base cost for next world
+          chevronsLocked = 0;
+          chevronCost = baseChevronCost + (worldsVisited * 50);
           gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
+
+          if (worldsVisited >= 3) {
+            powerUpsElem.style.display = "block";
+          }
         } else {
           gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
         }
@@ -211,26 +189,42 @@
       }
     }
 
-    // Reset game
+    function purchasePowerUp(name, cost, boost) {
+      if (energyCount >= cost) {
+        energyCount -= cost;
+        multiplier += boost;
+        gateMessageElem.textContent = `${name} purchased! Multiplier increased by ${boost}x.`;
+        updateDisplay();
+      } else {
+        gateMessageElem.textContent = `Not enough energy for ${name}!`;
+      }
+    }
+
     function resetGame() {
       energyCount = 0;
+      multiplier = 1;
       chevronsLocked = 0;
       worldsVisited = 0;
       chevronCost = baseChevronCost;
+      powerUpsElem.style.display = "none";
       updateDisplay();
       gateMessageElem.textContent = "Game reset!";
     }
 
-    // Update display
     function updateDisplay() {
       energyCountElem.textContent = `⚡ ${energyCount}`;
+      multiplierElem.textContent = `${multiplier}x`;
       worldsVisitedElem.textContent = worldsVisited;
-      chevronsLockedElem.textContent = chevronsLocked;
+      chevronsLockedElem.textContent = chevronsLocked;  
       energyRequiredElem.textContent = chevronCost;
     }
 
     // Initial display update
     updateDisplay();
+
+    // Add event listener for tap button
+    document.getElementById("tap-button").addEventListener("click", handleTap);
   </script>
 </body>
 </html>
+      
