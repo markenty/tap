@@ -41,8 +41,14 @@
       font-size: 14px;
       margin-bottom: 5px;
     }
+    #controls {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
     #main-section {
-      margin-top: 100px;
+      margin-top: 20px;
     }
     #tap-button {
       background: #ff5722;
@@ -62,6 +68,7 @@
     #leaderboard {
       margin-top: 20px;
       color: white;
+      display: none; /* Hidden by default */
     }
     #leaderboard h3 {
       margin: 10px 0;
@@ -70,8 +77,7 @@
       font-size: 20px;
       margin: 20px 0;
     }
-    #reset-button,
-    #clear-leaderboard-button {
+    .control-button {
       background: #f44336;
       color: white;
       border: none;
@@ -79,10 +85,8 @@
       border-radius: 5px;
       font-size: 16px;
       cursor: pointer;
-      margin-top: 10px;
     }
-    #reset-button:hover,
-    #clear-leaderboard-button:hover {
+    .control-button:hover {
       background: #d32f2f;
     }
   </style>
@@ -105,6 +109,13 @@
       </div>
     </div>
 
+    <!-- Controls -->
+    <div id="controls">
+      <button id="reset-button" class="control-button">Reset Game</button>
+      <button id="clear-leaderboard-button" class="control-button">Clear Leaderboard</button>
+      <button id="toggle-leaderboard-button" class="control-button">View Leaderboard</button>
+    </div>
+
     <!-- Timer -->
     <div id="timer">Time Left: 30s</div>
 
@@ -112,12 +123,6 @@
     <div id="main-section">
       <button id="tap-button">Tap Me!</button>
     </div>
-
-    <!-- Reset Button -->
-    <button id="reset-button">Reset Game</button>
-
-    <!-- Clear Leaderboard Button -->
-    <button id="clear-leaderboard-button">Clear Leaderboard</button>
 
     <!-- Leaderboard -->
     <div id="leaderboard">
@@ -145,12 +150,18 @@
     const leaderboardList = document.getElementById("leaderboard-list");
     const resetButton = document.getElementById("reset-button");
     const clearLeaderboardButton = document.getElementById("clear-leaderboard-button");
+    const toggleLeaderboardButton = document.getElementById("toggle-leaderboard-button");
+    const leaderboardContainer = document.getElementById("leaderboard");
 
     // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
-      { threshold: 300, multiplier: 8 },
-      { threshold: 500, multiplier: 4 },
-      { threshold: 700, multiplier: 2 },
+      { threshold: 50, multiplier: 120 },
+      { threshold: 100, multiplier: 60 },
+      { threshold: 200, multiplier: 30 },
+      { threshold: 300, multiplier: 15 },
+      { threshold: 500, multiplier: 8 },
+      { threshold: 700, multiplier: 4 },
+      { threshold: 1000, multiplier: 2 },
     ];
 
     // Update multiplier based on tap speed
@@ -169,17 +180,9 @@
       tapAudio.play();
     }
 
-    // Trigger haptic feedback
-    function triggerHapticFeedback() {
-      if (navigator.vibrate) {
-        navigator.vibrate(50); // Vibrate for 50ms
-      }
-    }
-
     // Handle tap button click
     function handleTap() {
-      playTapSound(); // Play sound for every tap
-      triggerHapticFeedback(); // Trigger haptic feedback
+      playTapSound();
 
       const now = performance.now();
 
@@ -272,8 +275,16 @@
       }
     });
 
-    // Reset button functionality
-    resetButton.addEventListener("click", resetGame);
+    // Toggle leaderboard visibility
+    toggleLeaderboardButton.addEventListener("click", () => {
+      if (leaderboardContainer.style.display === "none") {
+        leaderboardContainer.style.display = "block";
+        toggleLeaderboardButton.textContent = "Hide Leaderboard";
+      } else {
+        leaderboardContainer.style.display = "none";
+        toggleLeaderboardButton.textContent = "View Leaderboard";
+      }
+    });
 
     // Initial leaderboard update
     updateLeaderboard();
