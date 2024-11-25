@@ -134,7 +134,7 @@
     let tapSpeed = 0;
     let timer = 30; // Game timer in seconds
     let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-    const clickSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+    const audioSrc = "https://actions.google.com/sounds/v1/cartoon/pop.ogg";
 
     // DOM elements
     const starCountElem = document.getElementById("star-count");
@@ -163,9 +163,15 @@
       return 1; // Default multiplier
     }
 
+    // Play tap sound with overlapping
+    function playTapSound() {
+      const tapAudio = new Audio(audioSrc);
+      tapAudio.play();
+    }
+
     // Handle tap button click
     function handleTap() {
-      clickSound.play(); // Play click sound
+      playTapSound(); // Play sound for every tap
 
       const now = performance.now();
 
