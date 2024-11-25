@@ -56,8 +56,8 @@
     }
     #items {
       margin-top: 10px;
-      max-height: 150px; /* Limit height for scrolling */
-      overflow-y: auto; /* Enable scrolling */
+      max-height: 150px;
+      overflow-y: auto;
       background-color: rgba(0, 0, 0, 0.5);
       border: 1px solid #39CCCC;
       border-radius: 5px;
@@ -154,11 +154,22 @@
 
   <script>
     let energyCount = 0;
-    let multiplier = 1;
     let chevronsLocked = 0;
     let worldsVisited = 0;
     let baseChevronCost = 50;
     let chevronCost = baseChevronCost;
+    let lastTapTime = 0;
+    let baseMultiplier = 1; // Multiplier from tap speed
+    let itemMultiplier = 1; // Multiplier from items
+
+    const multiplierThresholds = [
+      { threshold: 100, multiplier: 32 },
+      { threshold: 200, multiplier: 16 },
+      { threshold: 300, multiplier: 8 },
+      { threshold: 500, multiplier: 4 },
+      { threshold: 700, multiplier: 2 },
+    ];
+
     const items = [
       { name: "Zat Gun", bonus: 2 },
       { name: "Naquadah Generator", bonus: 5 },
@@ -176,8 +187,29 @@
     const gateMessageElem = document.getElementById("gate-message");
     const itemListElem = document.getElementById("item-list");
 
+    function calculateBaseMultiplier(speed) {
+      for (const threshold of multiplierThresholds) {
+        if (speed <= threshold.threshold) {
+          return threshold.multiplier;
+        }
+      }
+      return 1; // Default multiplier
+    }
+
     function handleTap() {
-      energyCount += multiplier;
+      const now = performance.now();
+      if (lastTapTime > 0) {
+        const tapSpeed = now - lastTapTime;
+        baseMultiplier = calculateBaseMultiplier(tapSpeed);
+      }
+      lastTapTime = now;
+
+      // Total multiplier = baseMultiplier * itemMultiplier
+      const totalMultiplier = baseMultiplier * itemMultiplier;
+
+      // Increment energy based on totalMultiplier
+      energyCount += totalMultiplier;
+
       updateDisplay();
     }
 
@@ -191,8 +223,8 @@
           worldsVisited++;
           chevronsLocked = 0;
           chevronCost = baseChevronCost + (worldsVisited * 50);
-          gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
-          discoverItem();
+                    gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
+          discoverItem(); // Discover an item when visiting a new world
         } else {
           gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
         }
@@ -206,8 +238,9 @@
     function discoverItem() {
       const newItem = items[Math.floor(Math.random() * items.length)];
       collectedItems.push(newItem);
-      multiplier += newItem.bonus;
+      itemMultiplier += newItem.bonus; // Increase item multiplier
 
+      // Add item to the list display
       const listItem = document.createElement("li");
       listItem.textContent = `${newItem.name} (+${newItem.bonus}x Multiplier)`;
       itemListElem.appendChild(listItem);
@@ -217,19 +250,20 @@
 
     function resetGame() {
       energyCount = 0;
-      multiplier = 1;
       chevronsLocked = 0;
       worldsVisited = 0;
       chevronCost = baseChevronCost;
+      baseMultiplier = 1;
+      itemMultiplier = 1;
       collectedItems = [];
-      itemListElem.innerHTML = "";
+      itemListElem.innerHTML = ""; // Clear item list
       updateDisplay();
       gateMessageElem.textContent = "Game reset!";
     }
 
     function updateDisplay() {
-      energyCountElem.textContent = `⚡ ${energyCount}`;
-            multiplierElem.textContent = `${multiplier}x`;
+      energyCountElem.textContent = `⚡ ${Math.floor(energyCount)}`;
+      multiplierElem.textContent = `${Math.floor(baseMultiplier * itemMultiplier)}x`;
       worldsVisitedElem.textContent = worldsVisited;
       chevronsLockedElem.textContent = chevronsLocked;
       energyRequiredElem.textContent = chevronCost;
