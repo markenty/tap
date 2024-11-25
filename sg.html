@@ -115,6 +115,7 @@
 
     <div id="chevrons">
       <h3>Chevrons Locked: <span id="chevrons-locked">0</span>/7</h3>
+      <p>Energy Needed for Next Chevron: <span id="energy-required">50</span></p>
       <p id="gate-message"></p>
     </div>
 
@@ -132,7 +133,8 @@
     let chevronsLocked = 0;
     let worldsVisited = 0;
     let lastTapTime = 0;
-    let chevronCost = 50; // Initial cost to lock a chevron
+    let baseChevronCost = 50; // Base cost for chevrons
+    let chevronCost = baseChevronCost; // Current cost for chevron (affected by worlds visited)
 
     // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
@@ -148,6 +150,7 @@
     const multiplierElem = document.getElementById("multiplier");
     const worldsVisitedElem = document.getElementById("worlds-visited");
     const chevronsLockedElem = document.getElementById("chevrons-locked");
+    const energyRequiredElem = document.getElementById("energy-required");
     const gateMessageElem = document.getElementById("gate-message");
 
     // Update multiplier based on tap speed
@@ -186,12 +189,12 @@
       if (energyCount >= chevronCost) {
         energyCount -= chevronCost;
         chevronsLocked++;
-        chevronCost += 50; // Increase the cost for the next chevron
+        chevronCost += baseChevronCost + (worldsVisited * 50); // Increase cost per world
 
         if (chevronsLocked === 7) {
           worldsVisited++;
-          chevronsLocked = 0;
-          chevronCost = 50;
+          chevronsLocked = 0; // Reset chevrons
+          chevronCost = baseChevronCost + (worldsVisited * 50); // Recalculate base cost for next world
           gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
         } else {
           gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
@@ -208,7 +211,7 @@
       energyCount = 0;
       chevronsLocked = 0;
       worldsVisited = 0;
-      chevronCost = 50;
+      chevronCost = baseChevronCost;
       updateDisplay();
       gateMessageElem.textContent = "Game reset!";
     }
@@ -218,6 +221,7 @@
       energyCountElem.textContent = `⚡ ${energyCount}`;
       worldsVisitedElem.textContent = worldsVisited;
       chevronsLockedElem.textContent = chevronsLocked;
+      energyRequiredElem.textContent = chevronCost;
     }
 
     // Initial display update
