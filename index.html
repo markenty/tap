@@ -193,18 +193,22 @@
       tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
     }
 
+    function endGame() {
+      alert(`Time's up! You collected ${starCount} stars.`);
+
+      const initials = prompt("Enter your initials (3 characters):").toUpperCase();
+      if (initials && initials.length === 3) {
+        leaderboard.push({ initials, score: starCount });
+        leaderboard.sort((a, b) => b.score - a.score);
+        leaderboard = leaderboard.slice(0, 10); // Keep only the top 10 scores
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      }
+
+      resetGame();
+    }
+
     function resetGame() {
       clearInterval(timerInterval);
-
-      if (starCount > 0) {
-        const initials = prompt("Enter your initials (3 characters):").toUpperCase();
-        if (initials && initials.length === 3) {
-          leaderboard.push({ initials, score: starCount });
-          leaderboard.sort((a, b) => b.score - a.score);
-          leaderboard = leaderboard.slice(0, 10); // Keep only the top 10 scores
-          localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
-        }
-      }
 
       starCount = 0;
       multiplier = 1;
@@ -223,7 +227,7 @@
         timerElem.textContent = `Time Left: ${timer}s`;
         if (timer <= 0) {
           clearInterval(timerInterval);
-          alert(`Time's up! Your score was ${starCount}.`);
+          endGame();
         }
       }, 1000);
     }
