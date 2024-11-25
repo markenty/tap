@@ -85,116 +85,41 @@
       <span id="energy">0</span>
     </div>
     <div class="stat">
-      <span class="label">Time to Bank Energy</span>
-      <span id="timer">120</span>s
-    </div>
-    <div class="stat">
-      <span class="label">Multiplier</span>
-      <span id="multiplier">1x</span>
+      <span class="label">Worlds Visited</span>
+      <span id="worlds-visited">0</span>
     </div>
   </div>
 
   <h1>DHD Clicker Game</h1>
   <button class="dhd-button" ontouchstart="handleTap()" onmousedown="handleTap()">Tap DHD</button>
-  <button onclick="unlockChevron()">Unlock Chevron</button>
+  <button onclick="resetEnergy()">Reset Energy</button>
   <p id="message"></p>
 
-  <svg id="stargate" width="200" height="200" viewBox="0 0 200 200">
-    <circle cx="100" cy="100" r="80" stroke="#FF851B" stroke-width="5" fill="none" />
-    <text id="svg-text" x="50%" y="50%" fill="#39CCCC" font-size="16" font-family="Arial" text-anchor="middle" dominant-baseline="middle">
-      Chevron: 0
-    </text>
-  </svg>
-
   <script>
-    // Game Variables
-    let energy = 0;
-    let chevronsLocked = 0;
-    let maxChevrons = 7;
-    let timer = 120; // 2 minutes
-    let baseTimerSpeed = 1; // Normal speed
-    let chevronEnergyCost = 50;
-    let worldsVisited = 0;
+    // Persistent Energy Counter
+    let energy = parseInt(localStorage.getItem("energy")) || 0;
+    let worldsVisited = parseInt(localStorage.getItem("worldsVisited")) || 0;
 
-    // Tap Variables
-    let tapEnergy = 0;
-    let tapMultiplier = 1;
-    let lastTapTime = 0;
-
-    // Multiplier thresholds (tap speed in milliseconds)
-    const multiplierThresholds = [
-      { threshold: 200, multiplier: 5 },
-      { threshold: 300, multiplier: 3 },
-      { threshold: 500, multiplier: 2 },
-    ];
-
-    // Timer update
-    setInterval(() => {
-      timer -= baseTimerSpeed;
-      if (timer <= 0) {
-        bankEnergy(); // Bank energy when timer runs out
-        timer = 120; // Reset timer
-      }
+    // Increment energy on tap
+    function handleTap() {
+      energy++;
+      localStorage.setItem("energy", energy);
       updateDisplay();
-    }, 1000);
-
-    // Bank energy
-    function bankEnergy() {
-      energy += tapEnergy;
-      tapEnergy = 0; // Reset tap energy
-      document.getElementById("message").textContent = "Energy banked!";
     }
 
-    // Handle tapping the DHD
-    function handleTap() {
-      const now = performance.now();
-      let tapSpeed = now - lastTapTime;
-
-      if (lastTapTime > 0) {
-        // Determine multiplier based on tap speed
-        tapMultiplier = 1; // Default multiplier
-        for (const threshold of multiplierThresholds) {
-          if (tapSpeed <= threshold.threshold) {
-            tapMultiplier = threshold.multiplier;
-            break;
-          }
-        }
-      }
-
-      lastTapTime = now;
-
-      // Increase tap energy with multiplier
-      tapEnergy += tapMultiplier;
-
-      // Update stats
-      document.getElementById("multiplier").textContent = `${tapMultiplier}x`;
+    // Reset energy
+    function resetEnergy() {
+      energy = 0;
+      worldsVisited = 0;
+      localStorage.setItem("energy", energy);
+      localStorage.setItem("worldsVisited", worldsVisited);
       updateDisplay();
     }
 
     // Update display
     function updateDisplay() {
       document.getElementById("energy").textContent = energy;
-      document.getElementById("timer").textContent = Math.max(0, timer);
-      const svgText = document.getElementById("svg-text");
-      svgText.textContent = `Chevron: ${chevronsLocked}`;
-    }
-
-    // Unlock a chevron
-    function unlockChevron() {
-      if (energy >= chevronEnergyCost) {
-        energy -= chevronEnergyCost;
-        chevronsLocked++;
-        chevronEnergyCost += 50; // Increase cost for the next chevron
-
-        if (chevronsLocked === maxChevrons) {
-          worldsVisited++; // Increment worlds visited when the gate is dialed
-          chevronsLocked = 0; // Reset chevrons for the next gate
-          document.getElementById("message").textContent = `World ${worldsVisited} visited!`;
-        }
-        updateDisplay();
-      } else {
-        document.getElementById("message").textContent = "Not enough energy!";
-      }
+      document.getElementById("worlds-visited").textContent = worldsVisited;
     }
 
     // Initial display update
