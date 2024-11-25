@@ -70,7 +70,8 @@
       font-size: 20px;
       margin: 20px 0;
     }
-    #reset-button {
+    #reset-button,
+    #clear-leaderboard-button {
       background: #f44336;
       color: white;
       border: none;
@@ -80,7 +81,8 @@
       cursor: pointer;
       margin-top: 10px;
     }
-    #reset-button:hover {
+    #reset-button:hover,
+    #clear-leaderboard-button:hover {
       background: #d32f2f;
     }
   </style>
@@ -114,6 +116,9 @@
     <!-- Reset Button -->
     <button id="reset-button">Reset Game</button>
 
+    <!-- Clear Leaderboard Button -->
+    <button id="clear-leaderboard-button">Clear Leaderboard</button>
+
     <!-- Leaderboard -->
     <div id="leaderboard">
       <h3>Leaderboard</h3>
@@ -139,6 +144,7 @@
     const timerElem = document.getElementById("timer");
     const leaderboardList = document.getElementById("leaderboard-list");
     const resetButton = document.getElementById("reset-button");
+    const clearLeaderboardButton = document.getElementById("clear-leaderboard-button");
 
     // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
@@ -241,6 +247,16 @@
         leaderboardList.appendChild(li);
       });
     }
+
+    // Clear leaderboard functionality
+    clearLeaderboardButton.addEventListener("click", () => {
+      const confirmClear = confirm("Are you sure you want to clear the leaderboard?");
+      if (confirmClear) {
+        leaderboard = [];
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        updateLeaderboard();
+      }
+    });
 
     // Reset button functionality
     resetButton.addEventListener("click", resetGame);
