@@ -169,9 +169,17 @@
       tapAudio.play();
     }
 
+    // Trigger haptic feedback
+    function triggerHapticFeedback() {
+      if (navigator.vibrate) {
+        navigator.vibrate(50); // Vibrate for 50ms
+      }
+    }
+
     // Handle tap button click
     function handleTap() {
       playTapSound(); // Play sound for every tap
+      triggerHapticFeedback(); // Trigger haptic feedback
 
       const now = performance.now();
 
