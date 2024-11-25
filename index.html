@@ -112,6 +112,8 @@
     <!-- Controls -->
     <div id="controls">
       <button id="reset-button" class="control-button">Reset Game</button>
+      <button id="clear-leaderboard-button" class="control-button">Clear Leaderboard</button>
+      <button id="toggle-leaderboard-button" class="control-button">View Leaderboard</button>
     </div>
 
     <!-- Timer -->
@@ -121,26 +123,34 @@
     <div id="main-section">
       <button id="tap-button">Tap Me!</button>
     </div>
+
+    <!-- Leaderboard -->
+    <div id="leaderboard">
+      <h3>Leaderboard</h3>
+      <ul id="leaderboard-list"></ul>
+    </div>
   </div>
 
   <script>
-    // Initialize game state variables
     let starCount = 0;
     let multiplier = 1;
     let lastTapTime = 0;
     let tapSpeed = 0;
     let timer = 30;
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
     let timerInterval = null;
 
-    // DOM elements
     const starCountElem = document.getElementById("star-count");
     const multiplierElem = document.getElementById("multiplier");
     const tapSpeedElem = document.getElementById("tap-speed");
     const timerElem = document.getElementById("timer");
     const tapButton = document.getElementById("tap-button");
     const resetButton = document.getElementById("reset-button");
+    const clearLeaderboardButton = document.getElementById("clear-leaderboard-button");
+    const toggleLeaderboardButton = document.getElementById("toggle-leaderboard-button");
+    const leaderboardContainer = document.getElementById("leaderboard");
+    const leaderboardList = document.getElementById("leaderboard-list");
 
-    // Multiplier thresholds
     const multiplierThresholds = [
       { threshold: 20, multiplier: 240 },
       { threshold: 50, multiplier: 120 },
@@ -152,7 +162,6 @@
       { threshold: 1000, multiplier: 2 },
     ];
 
-    // Function to calculate multiplier based on tap speed
     function calculateMultiplier(speed) {
       for (const threshold of multiplierThresholds) {
         if (speed <= threshold.threshold) {
@@ -162,13 +171,11 @@
       return 1;
     }
 
-    // Function to play tap sound
     function playTapSound() {
       const tapAudio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
       tapAudio.play();
     }
 
-    // Function to handle tap button click
     function handleTap() {
       playTapSound();
       const now = performance.now();
@@ -181,46 +188,79 @@
 
       starCount += multiplier;
 
-      // Update DOM elements
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
     }
 
-    // Function to reset the game
     function resetGame() {
-      // Stop any existing timer
       clearInterval(timerInterval);
 
-      // Reset game variables
+      if (starCount > 0) {
+        const initials = prompt("Enter your initials (3 characters):").toUpperCase();
+        if (initials && initials.length === 3) {
+          leaderboard.push({ initials, score: starCount });
+          leaderboard.sort((a, b) => b.score - a.score);
+          localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        }
+      }
+
       starCount = 0;
       multiplier = 1;
       tapSpeed = 0;
       timer = 30;
 
-      // Update DOM elements
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = "0 ms";
       timerElem.textContent = `Time Left: ${timer}s`;
 
-      // Start a new timer
+      updateLeaderboard();
+
       timerInterval = setInterval(() => {
         timer--;
         timerElem.textContent = `Time Left: ${timer}s`;
         if (timer <= 0) {
           clearInterval(timerInterval);
-          alert(`Game Over! You collected ${starCount} stars.`);
+          alert(`Time's up! Your score was ${starCount}.`);
         }
       }, 1000);
     }
 
-    // Event listeners
+    function updateLeaderboard() {
+      leaderboardList.innerHTML = "";
+      leaderboard.slice(0, 5).forEach(({ initials, score }, index) => {
+        const li = document.createElement("li");
+        li.textContent = `#${index + 1}: ${initials} - ${score} stars`;
+        leaderboardList.appendChild(li);
+      });
+    }
+
+    function clearLeaderboard() {
+      if (confirm("Are you sure you want to clear the leaderboard?")) {
+        leaderboard = [];
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        updateLeaderboard();
+      }
+    }
+
+    function toggleLeaderboard() {
+      if (leaderboardContainer.style.display === "none") {
+        leaderboardContainer.style.display = "block";
+        toggleLeaderboardButton.textContent = "Hide Leaderboard";
+      } else {
+        leaderboardContainer.style.display = "none";
+        toggleLeaderboardButton.textContent = "View Leaderboard";
+      }
+    }
+
     tapButton.addEventListener("click", handleTap);
     resetButton.addEventListener("click", resetGame);
+    clearLeaderboardButton.addEventListener("click", clearLeaderboard);
+    toggleLeaderboardButton.addEventListener("click", toggleLeaderboard);
 
-    // Initialize the game on page load
-    resetGame();
+    updateLeaderboard();
+    resetGame(); // Initialize game
   </script>
 </body>
 </html>
