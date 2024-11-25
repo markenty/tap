@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tap Accumulator Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a73e8, #4caf50);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      text-align: center;
+      width: 100%;
+    }
+    #top-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .label {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    #main-section {
+      margin-top: 100px;
+    }
+    #tap-button {
+      background: #ff5722;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      padding: 20px 40px;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s;
+    }
+    #tap-button:active {
+      transform: scale(0.9);
+    }
+    #leaderboard {
+      margin-top: 20px;
+      color: white;
+    }
+    #leaderboard h3 {
+      margin: 10px 0;
+    }
+    #timer {
+      font-size: 20px;
+      margin: 20px 0;
+    }
+    .power-up {
+      margin: 10px;
+      padding: 10px;
+      background: yellow;
+      color: black;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <!-- Top bar for stats -->
+    <div id="top-bar">
+      <div class="stat">
+        <span class="label">Stars:</span>
+        <span id="star-count">0</span>
+      </div>
+      <div class="stat">
+        <span class="label">Multiplier:</span>
+        <span id="multiplier">1x</span>
+      </div>
+      <div class="stat">
+        <span class="label">Tap Speed:</span>
+        <span id="tap-speed">0 ms</span>
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div id="timer">Time Left: 30s</div>
+
+    <!-- Main game section -->
+    <div id="main-section">
+      <button id="tap-button">Tap Me!</button>
+    </div>
+
+    <!-- Power-ups -->
+    <div id="power-ups">
+      <button class="power-up" id="double-stars">Double Stars</button>
+      <button class="power-up" id="auto-tap">Auto-Tapper</button>
+    </div>
+
+    <!-- Leaderboard -->
+    <div id="leaderboard">
+      <h3>Leaderboard</h3>
+      <ul id="leaderboard-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    // Initialize stats
+    let starCount = 0;
+    let multiplier = 1;
+    let lastTapTime = 0;
+    let tapSpeed = 0;
+    let timer = 30; // Game timer in seconds
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+    // DOM elements
+    const starCountElem = document.getElementById("star-count");
+    const multiplierElem = document.getElementById("multiplier");
+    const tapSpeedElem = document.getElementById("tap-speed");
+    const tapButton = document.getElementById("tap-button");
+    const timerElem = document.getElementById("timer");
+    const leaderboardList = document.getElementById("leaderboard-list");
+
+    // Multiplier thresholds in milliseconds
+    const multiplierThresholds = [
+      { threshold: 300, multiplier: 8 },
+      { threshold: 500, multiplier: 4 },
+      { threshold: 700, multiplier: 2 },
+    ];
+
+    // Power-up state
+    let doubleStarsActive = false;
+    let autoTapInterval = null;
+
+    // Update multiplier based on tap speed
+    function calculateMultiplier(speed) {
+      for (const threshold of multiplierThresholds) {
+        if (speed <= threshold.threshold) {
+          return threshold.multiplier;
+        }
+      }
+      return 1; // Default multiplier
+    }
+
+    // Handle tap button click
+    tapButton.addEventListener("click", () => {
+      const now = performance.now();
+
+      // Calculate tap speed
+      if (lastTapTime > 0) {
+        tapSpeed = now - lastTapTime;
+        multiplier = calculateMultiplier(tapSpeed);
+      }
+      lastTapTime = now;
+
+      // Update star count
+      const actualMultiplier = doubleStarsActive ? multiplier * 2 : multiplier;
+      starCount += actualMultiplier;
+
+      // Update DOM
+      starCountElem.textContent = starCount;
+      multiplierElem.textContent = `${multiplier}x`;
+      tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
+    });
+
+    // Power-ups
+    document.getElementById("double-stars").addEventListener("click", () => {
+      doubleStarsActive = true;
+      setTimeout(() => {
+        doubleStarsActive = false;
+      }, 10000); // Active for 10 seconds
+    });
+
+    document.getElementById("auto-tap").addEventListener("click", () => {
+      if (autoTapInterval) return; // Prevent multiple auto-tappers
+      autoTapInterval = setInterval(() => tapButton.click(), 100); // Auto-tap every 100ms
+      setTimeout(() => {
+        clearInterval(autoTapInterval);
+        autoTapInterval = null;
+      }, 10000); // Active for 10 seconds
+    });
+
+    // Timer countdown
+    const timerInterval = setInterval(() => {
+      timer--;
+      timerElem.textContent = `Time Left: ${timer}s`;
+      if (timer <= 0) {
+        clearInterval(timerInterval);
+        clearInterval(autoTapInterval);
+        alert(`Game Over! You collected ${starCount} stars.`);
+
+        // Save score to leaderboard
+        leaderboard.push(starCount);
+        leaderboard.sort((a, b) => b - a); // Sort descending
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        updateLeaderboard();
+
+        // Reset game
+        starCount = 0;
+        multiplier = 1;
+        tapSpeed = 0;
+        timer = 30;
+        starCountElem.textContent = starCount;
+        multiplierElem.textContent = `${multiplier}x`;
+        tapSpeedElem.textContent = "0 ms";
+        timerElem.textContent = `Time Left: ${timer}s`;
+      }
+    }, 1000);
+
+    // Update leaderboard
+    function updateLeaderboard() {
+      leaderboardList.innerHTML = "";
+      leaderboard.slice(0, 5).forEach((score, index) => {
+        const li = document.createElement("li");
+        li.textContent = `#${index + 1}: ${score} stars`;
+        leaderboardList.appendChild(li);
+      });
+    }
+
+    // Initial leaderboard update
+    updateLeaderboard();
+  </script>
+</body>
+</html>
