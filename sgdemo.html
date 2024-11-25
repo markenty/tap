@@ -8,7 +8,7 @@
     body {
       margin: 0;
       font-family: 'Orbitron', sans-serif;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Sci-fi gradient */
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
       color: #39CCCC;
       display: flex;
       flex-direction: column;
@@ -54,6 +54,22 @@
       margin: 10px 0;
       color: #FF851B;
     }
+    #items {
+      margin-top: 10px;
+      max-height: 150px; /* Limit height for scrolling */
+      overflow-y: auto; /* Enable scrolling */
+      background-color: rgba(0, 0, 0, 0.5);
+      border: 1px solid #39CCCC;
+      border-radius: 5px;
+      padding: 10px;
+      color: #FF851B;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    #items ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
     #bottom-section {
       display: flex;
       flex-direction: column;
@@ -98,10 +114,6 @@
     #lock-chevron-button:active, #reset-button:active {
       transform: scale(0.95);
       box-shadow: 0 0 25px rgba(0, 188, 212, 1);
-    }
-    #items {
-      margin-top: 20px;
-      color: #FF851B;
     }
   </style>
 </head>
@@ -180,11 +192,11 @@
           chevronsLocked = 0;
           chevronCost = baseChevronCost + (worldsVisited * 50);
           gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
+          discoverItem();
         } else {
           gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
         }
 
-        discoverItem();
         updateDisplay();
       } else {
         gateMessageElem.textContent = "Not enough energy to lock a chevron!";
@@ -217,7 +229,7 @@
 
     function updateDisplay() {
       energyCountElem.textContent = `⚡ ${energyCount}`;
-      multiplierElem.textContent = `${multiplier}x`;
+            multiplierElem.textContent = `${multiplier}x`;
       worldsVisitedElem.textContent = worldsVisited;
       chevronsLockedElem.textContent = chevronsLocked;
       energyRequiredElem.textContent = chevronCost;
