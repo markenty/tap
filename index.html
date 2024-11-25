@@ -20,6 +20,10 @@
     #game-container {
       text-align: center;
       width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
     }
     #top-bar {
       display: flex;
@@ -41,11 +45,28 @@
       font-size: 14px;
       margin-bottom: 5px;
     }
-    #main-section {
-      flex-grow: 1;
+    #timer {
+      font-size: 20px;
+      margin-top: 60px;
+    }
+    #leaderboard {
+      margin-top: 20px;
+      color: white;
+    }
+    #leaderboard h3 {
+      margin: 10px 0;
+    }
+    #leaderboard ul {
+      padding: 0;
+      list-style-type: none;
+    }
+    #bottom-section {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+      padding-bottom: 20px;
     }
     #tap-button {
       background: linear-gradient(145deg, #e64a19, #ff5722);
@@ -64,17 +85,6 @@
       transform: scale(0.9);
       box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), -4px -4px 8px rgba(255, 255, 255, 0.2);
     }
-    #leaderboard {
-      margin-top: 20px;
-      color: white;
-    }
-    #leaderboard h3 {
-      margin: 10px 0;
-    }
-    #timer {
-      font-size: 20px;
-      margin-top: 60px;
-    }
     #reset-button,
     #clear-leaderboard-button {
       background: #f44336;
@@ -89,13 +99,6 @@
     #reset-button:hover,
     #clear-leaderboard-button:hover {
       background: #d32f2f;
-    }
-    #bottom-section {
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
     }
   </style>
 </head>
@@ -120,25 +123,20 @@
     <!-- Timer -->
     <div id="timer">Time Left: 30s</div>
 
-    <!-- Main game section -->
-    <div id="main-section"></div>
-
-    <!-- Tap Button -->
-    <div id="bottom-section">
-      <button id="tap-button">Tap Me!</button>
-    </div>
-
-    <!-- Reset Button -->
-    <button id="reset-button">Reset Game</button>
-
-    <!-- Clear Leaderboard Button -->
-    <button id="clear-leaderboard-button">Clear Leaderboard</button>
-
     <!-- Leaderboard -->
     <div id="leaderboard">
       <h3>Leaderboard</h3>
       <ul id="leaderboard-list"></ul>
     </div>
+
+    <!-- Bottom Section with Tap Button -->
+    <div id="bottom-section">
+      <button id="tap-button">Tap Me!</button>
+    </div>
+
+    <!-- Reset and Clear Leaderboard Buttons -->
+    <button id="reset-button">Reset Game</button>
+    <button id="clear-leaderboard-button">Clear Leaderboard</button>
   </div>
 
   <script>
