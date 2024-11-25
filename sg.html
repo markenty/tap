@@ -85,17 +85,17 @@
       <span id="energy">0</span>
     </div>
     <div class="stat">
-      <span class="label">Time to Next Energy</span>
+      <span class="label">Time to Bank Energy</span>
       <span id="timer">120</span>s
     </div>
     <div class="stat">
-      <span class="label">Worlds Visited</span>
-      <span id="worlds-visited">0</span>
+      <span class="label">Multiplier</span>
+      <span id="multiplier">1x</span>
     </div>
   </div>
 
   <h1>DHD Clicker Game</h1>
-  <button class="dhd-button" ontouchstart="reduceTimer()" onmousedown="reduceTimer()">Tap DHD</button>
+  <button class="dhd-button" ontouchstart="handleTap()" onmousedown="handleTap()">Tap DHD</button>
   <button onclick="unlockChevron()">Unlock Chevron</button>
   <p id="message"></p>
 
@@ -110,48 +110,73 @@
     // Game Variables
     let energy = 0;
     let chevronsLocked = 0;
-    const maxChevrons = 7;
-    let energyPerInterval = 5;
+    let maxChevrons = 7;
     let timer = 120; // 2 minutes
     let baseTimerSpeed = 1; // Normal speed
-    let currentTimerSpeed = baseTimerSpeed;
     let chevronEnergyCost = 50;
     let worldsVisited = 0;
 
+    // Tap Variables
+    let tapEnergy = 0;
+    let tapMultiplier = 1;
+    let lastTapTime = 0;
+
+    // Multiplier thresholds (tap speed in milliseconds)
+    const multiplierThresholds = [
+      { threshold: 200, multiplier: 5 },
+      { threshold: 300, multiplier: 3 },
+      { threshold: 500, multiplier: 2 },
+    ];
+
     // Timer update
     setInterval(() => {
-      timer -= currentTimerSpeed;
+      timer -= baseTimerSpeed;
       if (timer <= 0) {
+        bankEnergy(); // Bank energy when timer runs out
         timer = 120; // Reset timer
-        energy += energyPerInterval; // Gain energy
-        document.getElementById("message").textContent = "Gained 5 energy!";
       }
       updateDisplay();
     }, 1000);
+
+    // Bank energy
+    function bankEnergy() {
+      energy += tapEnergy;
+      tapEnergy = 0; // Reset tap energy
+      document.getElementById("message").textContent = "Energy banked!";
+    }
+
+    // Handle tapping the DHD
+    function handleTap() {
+      const now = performance.now();
+      let tapSpeed = now - lastTapTime;
+
+      if (lastTapTime > 0) {
+        // Determine multiplier based on tap speed
+        tapMultiplier = 1; // Default multiplier
+        for (const threshold of multiplierThresholds) {
+          if (tapSpeed <= threshold.threshold) {
+            tapMultiplier = threshold.multiplier;
+            break;
+          }
+        }
+      }
+
+      lastTapTime = now;
+
+      // Increase tap energy with multiplier
+      tapEnergy += tapMultiplier;
+
+      // Update stats
+      document.getElementById("multiplier").textContent = `${tapMultiplier}x`;
+      updateDisplay();
+    }
 
     // Update display
     function updateDisplay() {
       document.getElementById("energy").textContent = energy;
       document.getElementById("timer").textContent = Math.max(0, timer);
-      document.getElementById("worlds-visited").textContent = worldsVisited;
-
       const svgText = document.getElementById("svg-text");
       svgText.textContent = `Chevron: ${chevronsLocked}`;
-
-      if (chevronsLocked === maxChevrons) {
-        document.getElementById("message").textContent = "Stargate Dialed! You Win!";
-      }
-    }
-
-    // Reduce timer when tapping
-    function reduceTimer() {
-      currentTimerSpeed = 5; // Faster countdown
-      if (navigator.vibrate) {
-        navigator.vibrate(50); // Haptic feedback
-      }
-      setTimeout(() => {
-        currentTimerSpeed = baseTimerSpeed; // Reset to normal speed if not tapping
-      }, 2000); // Give 2 seconds grace period
     }
 
     // Unlock a chevron
