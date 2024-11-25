@@ -155,9 +155,13 @@
 
     // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
-      { threshold: 300, multiplier: 8 },
-      { threshold: 500, multiplier: 4 },
-      { threshold: 700, multiplier: 2 },
+      { threshold: 50, multiplier: 120 },
+      { threshold: 100, multiplier: 60 },
+      { threshold: 200, multiplier: 30 },
+      { threshold: 300, multiplier: 15 },
+      { threshold: 500, multiplier: 8 },
+      { threshold: 700, multiplier: 4 },
+      { threshold: 1000, multiplier: 2 },
     ];
 
     // Update multiplier based on tap speed
@@ -239,4 +243,51 @@
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = "0 ms";
- 
+      timerElem.textContent = `Time Left: ${timer}s`;
+
+      timerInterval = setInterval(() => {
+        timer--;
+        timerElem.textContent = `Time Left: ${timer}s`;
+        if (timer <= 0) {
+          clearInterval(timerInterval);
+          handleGameOver();
+        }
+      }, 1000);
+    }
+
+    // Update leaderboard
+    function updateLeaderboard() {
+      leaderboardList.innerHTML = "";
+      leaderboard.slice(0, 5).forEach(({ initials, score }, index) => {
+        const li = document.createElement("li");
+        li.textContent = `#${index + 1}: ${initials} - ${score} stars`;
+        leaderboardList.appendChild(li);
+      });
+    }
+
+    // Clear leaderboard functionality
+    clearLeaderboardButton.addEventListener("click", () => {
+      const confirmClear = confirm("Are you sure you want to clear the leaderboard?");
+      if (confirmClear) {
+        leaderboard = [];
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        updateLeaderboard();
+      }
+    });
+
+    // Toggle leaderboard visibility
+    toggleLeaderboardButton.addEventListener("click", () => {
+      if (leaderboardContainer.style.display === "none") {
+        leaderboardContainer.style.display = "block";
+        toggleLeaderboardButton.textContent = "Hide Leaderboard";
+      } else {
+        leaderboardContainer.style.display = "none";
+        toggleLeaderboardButton.textContent = "View Leaderboard";
+      }
+    });
+
+    // Initial leaderboard update
+    updateLeaderboard();
+  </script>
+</body>
+</html>
