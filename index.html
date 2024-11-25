@@ -62,7 +62,6 @@
     #leaderboard {
       margin-top: 20px;
       color: white;
-      display: none; /* Hidden by default */
     }
     #leaderboard h3 {
       margin: 10px 0;
@@ -71,7 +70,8 @@
       font-size: 20px;
       margin: 20px 0;
     }
-    .control-button {
+    #reset-button,
+    #clear-leaderboard-button {
       background: #f44336;
       color: white;
       border: none;
@@ -81,18 +81,9 @@
       cursor: pointer;
       margin-top: 10px;
     }
-    .control-button:hover {
+    #reset-button:hover,
+    #clear-leaderboard-button:hover {
       background: #d32f2f;
-    }
-    @media (max-width: 600px) {
-      #tap-button {
-        padding: 15px 30px;
-        font-size: 20px;
-      }
-      .control-button {
-        padding: 8px 15px;
-        font-size: 14px;
-      }
     }
   </style>
 </head>
@@ -122,12 +113,11 @@
       <button id="tap-button">Tap Me!</button>
     </div>
 
-    <!-- Control Buttons -->
-    <div>
-      <button id="reset-button" class="control-button">Reset Game</button>
-      <button id="clear-leaderboard-button" class="control-button">Clear Leaderboard</button>
-      <button id="toggle-leaderboard-button" class="control-button">View Leaderboard</button>
-    </div>
+    <!-- Reset Button -->
+    <button id="reset-button">Reset Game</button>
+
+    <!-- Clear Leaderboard Button -->
+    <button id="clear-leaderboard-button">Clear Leaderboard</button>
 
     <!-- Leaderboard -->
     <div id="leaderboard">
@@ -137,135 +127,156 @@
   </div>
 
   <script>
+    // Initialize stats
     let starCount = 0;
     let multiplier = 1;
     let lastTapTime = 0;
     let tapSpeed = 0;
-    let timer = 30;
+    let timer = 30; // Game timer in seconds
     let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-    let timerInterval = null;
+    const audioSrc = "https://actions.google.com/sounds/v1/cartoon/pop.ogg";
 
+    // DOM elements
     const starCountElem = document.getElementById("star-count");
     const multiplierElem = document.getElementById("multiplier");
     const tapSpeedElem = document.getElementById("tap-speed");
-    const timerElem = document.getElementById("timer");
     const tapButton = document.getElementById("tap-button");
+    const timerElem = document.getElementById("timer");
+    const leaderboardList = document.getElementById("leaderboard-list");
     const resetButton = document.getElementById("reset-button");
     const clearLeaderboardButton = document.getElementById("clear-leaderboard-button");
-    const toggleLeaderboardButton = document.getElementById("toggle-leaderboard-button");
-    const leaderboardContainer = document.getElementById("leaderboard");
-    const leaderboardList = document.getElementById("leaderboard-list");
 
+    // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
       { threshold: 300, multiplier: 8 },
       { threshold: 500, multiplier: 4 },
       { threshold: 700, multiplier: 2 },
     ];
 
+    // Update multiplier based on tap speed
     function calculateMultiplier(speed) {
       for (const threshold of multiplierThresholds) {
         if (speed <= threshold.threshold) {
           return threshold.multiplier;
         }
       }
-      return 1;
+      return 1; // Default multiplier
     }
 
+    // Play tap sound with overlapping
     function playTapSound() {
-      const tapAudio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+      const tapAudio = new Audio(audioSrc);
       tapAudio.play();
     }
 
+    // Trigger haptic feedback
+    function triggerHapticFeedback() {
+      if (navigator.vibrate) {
+        navigator.vibrate(50); // Vibrate for 50ms
+      }
+    }
+
+    // Handle tap button click
     function handleTap() {
-      playTapSound();
+      playTapSound(); // Play sound for every tap
+      triggerHapticFeedback(); // Trigger haptic feedback
+
       const now = performance.now();
 
+      // Calculate tap speed
       if (lastTapTime > 0) {
         tapSpeed = now - lastTapTime;
         multiplier = calculateMultiplier(tapSpeed);
       }
       lastTapTime = now;
 
+      // Update star count
       starCount += multiplier;
 
+      // Update DOM
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
     }
 
-    function endGame() {
-      alert(`Time's up! You collected ${starCount} stars.`);
+    tapButton.addEventListener("click", handleTap);
+    tapButton.addEventListener("touchstart", (e) => {
+      e.preventDefault(); // Prevent default behavior on touch devices
+      handleTap();
+    });
+
+    // Timer countdown
+    let timerInterval = setInterval(() => {
+      timer--;
+      timerElem.textContent = `Time Left: ${timer}s`;
+      if (timer <= 0) {
+        clearInterval(timerInterval);
+        handleGameOver();
+      }
+    }, 1000);
+
+    // Handle game over
+    function handleGameOver() {
+      alert(`Game Over! You collected ${starCount} stars.`);
 
       const initials = prompt("Enter your initials (3 characters):").toUpperCase();
       if (initials && initials.length === 3) {
         leaderboard.push({ initials, score: starCount });
-        leaderboard.sort((a, b) => b.score - a.score);
-        leaderboard = leaderboard.slice(0, 10); // Keep only the top 10 scores
+        leaderboard.sort((a, b) => b.score - a.score); // Sort descending
         localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        updateLeaderboard();
       }
 
       resetGame();
     }
 
+    // Reset game state
     function resetGame() {
       clearInterval(timerInterval);
-
       starCount = 0;
       multiplier = 1;
       tapSpeed = 0;
       timer = 30;
-
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = "0 ms";
       timerElem.textContent = `Time Left: ${timer}s`;
-
-      updateLeaderboard();
 
       timerInterval = setInterval(() => {
         timer--;
         timerElem.textContent = `Time Left: ${timer}s`;
         if (timer <= 0) {
           clearInterval(timerInterval);
-          endGame();
+          handleGameOver();
         }
       }, 1000);
     }
 
+    // Update leaderboard
     function updateLeaderboard() {
       leaderboardList.innerHTML = "";
-      leaderboard.forEach(({ initials, score }, index) => {
+      leaderboard.slice(0, 5).forEach(({ initials, score }, index) => {
         const li = document.createElement("li");
         li.textContent = `#${index + 1}: ${initials} - ${score} stars`;
         leaderboardList.appendChild(li);
       });
     }
 
-    function clearLeaderboard() {
-      if (confirm("Are you sure you want to clear the leaderboard?")) {
+    // Clear leaderboard functionality
+    clearLeaderboardButton.addEventListener("click", () => {
+      const confirmClear = confirm("Are you sure you want to clear the leaderboard?");
+      if (confirmClear) {
         leaderboard = [];
         localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
         updateLeaderboard();
       }
-    }
+    });
 
-    function toggleLeaderboard() {
-      if (leaderboardContainer.style.display === "none") {
-        leaderboardContainer.style.display = "block";
-        toggleLeaderboardButton.textContent = "Hide Leaderboard";
-      } else {
-        leaderboardContainer.style.display = "none";
-        toggleLeaderboardButton.textContent = "View Leaderboard";
-      }
-    }
-
-    tapButton.addEventListener("click", handleTap);
+    // Reset button functionality
     resetButton.addEventListener("click", resetGame);
-    clearLeaderboardButton.addEventListener("click", clearLeaderboard);
-    toggleLeaderboardButton.addEventListener("click", toggleLeaderboard);
 
+    // Initial leaderboard update
     updateLeaderboard();
-    resetGame();
   </script>
 </body>
 </html>
