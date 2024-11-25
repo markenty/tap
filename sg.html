@@ -24,18 +24,21 @@
       color: #FF851B; /* Stargate chevron orange */
     }
     .dhd-button {
-      width: 80px;
-      height: 80px;
-      background-color: #FF4136; /* Red DHD button */
+      background: linear-gradient(145deg, #e64a19, #ff5722); /* Red gradient */
+      color: white;
       border: none;
       border-radius: 50%;
-      margin: 20px 0;
+      width: 120px;
+      height: 120px;
+      font-size: 24px;
       cursor: pointer;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-      transition: transform 0.1s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.2);
+      transition: transform 0.1s;
+      touch-action: manipulation;
     }
     .dhd-button:active {
-      transform: scale(0.95);
+      transform: scale(0.9);
+      box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), -4px -4px 8px rgba(255, 255, 255, 0.2);
     }
     .status {
       margin: 20px 0;
@@ -65,7 +68,7 @@
   <p class="chevrons">Chevrons Locked: <span id="chevrons">0</span>/7</p>
   <p>Time to next energy: <span id="timer">120</span> seconds</p>
 
-  <button class="dhd-button" ontouchstart="reduceTimer()" onmousedown="reduceTimer()"> </button>
+  <button class="dhd-button" ontouchstart="reduceTimer()" onmousedown="reduceTimer()">Tap DHD</button>
   <button onclick="unlockChevron()">Unlock Chevron</button>
   <p id="message"></p>
 
