@@ -201,6 +201,7 @@
         if (initials && initials.length === 3) {
           leaderboard.push({ initials, score: starCount });
           leaderboard.sort((a, b) => b.score - a.score);
+          leaderboard = leaderboard.slice(0, 10); // Keep only the top 10 scores
           localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
         }
       }
@@ -229,7 +230,7 @@
 
     function updateLeaderboard() {
       leaderboardList.innerHTML = "";
-      leaderboard.slice(0, 5).forEach(({ initials, score }, index) => {
+      leaderboard.forEach(({ initials, score }, index) => {
         const li = document.createElement("li");
         li.textContent = `#${index + 1}: ${initials} - ${score} stars`;
         leaderboardList.appendChild(li);
@@ -263,4 +264,4 @@
     resetGame(); // Initialize game
   </script>
 </body>
-</html
+</html>
