@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DHD Clicker Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    h1 {
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    .status {
+      margin: 20px 0;
+      font-size: 18px;
+    }
+    .chevrons {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>DHD Clicker Game</h1>
+  <p class="status">Energy: <span id="energy">0</span></p>
+  <p class="chevrons">Chevrons Locked: <span id="chevrons">0</span>/7</p>
+  
+  <button onclick="generateEnergy()">Tap DHD</button>
+  <button onclick="purchaseAutomation()">Buy Automation (50 Energy)</button>
+  <p>Automation Level: <span id="automation">0</span></p>
+
+  <p id="message"></p>
+
+  <script>
+    // Game Variables
+    let energy = 0;
+    let chevronsLocked = 0;
+    const maxChevrons = 7;
+    let energyPerClick = 1;
+    let idleEnergyRate = 0;
+    let automationLevel = 0;
+
+    // Update the status display
+    function updateDisplay() {
+      document.getElementById("energy").textContent = energy;
+      document.getElementById("chevrons").textContent = chevronsLocked;
+      document.getElementById("automation").textContent = automationLevel;
+
+      if (chevronsLocked === maxChevrons) {
+        document.getElementById("message").textContent = "Stargate Dialed! You Win!";
+      } else {
+        document.getElementById("message").textContent = "";
+      }
+    }
+
+    // Generate energy when tapping
+    function generateEnergy() {
+      energy += energyPerClick;
+      lockChevron();
+      updateDisplay();
+    }
+
+    // Lock a chevron if enough energy
+    function lockChevron() {
+      if (energy >= 10 && chevronsLocked < maxChevrons) {
+        energy -= 10;
+        chevronsLocked++;
+        updateDisplay();
+        if (chevronsLocked === maxChevrons) {
+          document.getElementById("message").textContent = "Stargate Dialed! You Win!";
+        }
+      }
+    }
+
+    // Purchase automation
+    function purchaseAutomation() {
+      if (energy >= 50) {
+        energy -= 50;
+        automationLevel++;
+        idleEnergyRate++;
+        updateDisplay();
+      } else {
+        document.getElementById("message").textContent = "Not enough energy for automation!";
+      }
+    }
+
+    // Idle energy generation
+    setInterval(() => {
+      energy += idleEnergyRate;
+      updateDisplay();
+    }, 1000);
+  </script>
+
+</body>
+</html>
