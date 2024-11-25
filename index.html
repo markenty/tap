@@ -112,8 +112,6 @@
     <!-- Controls -->
     <div id="controls">
       <button id="reset-button" class="control-button">Reset Game</button>
-      <button id="clear-leaderboard-button" class="control-button">Clear Leaderboard</button>
-      <button id="toggle-leaderboard-button" class="control-button">View Leaderboard</button>
     </div>
 
     <!-- Timer -->
@@ -123,29 +121,23 @@
     <div id="main-section">
       <button id="tap-button">Tap Me!</button>
     </div>
-
-    <!-- Leaderboard -->
-    <div id="leaderboard">
-      <h3>Leaderboard</h3>
-      <ul id="leaderboard-list"></ul>
-    </div>
   </div>
 
   <script>
+    // Initialize game state variables
     let starCount = 0;
     let multiplier = 1;
     let lastTapTime = 0;
     let tapSpeed = 0;
     let timer = 30;
-    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-    const audioSrc = "https://actions.google.com/sounds/v1/cartoon/pop.ogg";
-    let timerInterval;
+    let timerInterval = null;
 
+    // DOM elements
     const starCountElem = document.getElementById("star-count");
     const multiplierElem = document.getElementById("multiplier");
     const tapSpeedElem = document.getElementById("tap-speed");
-    const tapButton = document.getElementById("tap-button");
     const timerElem = document.getElementById("timer");
+    const tapButton = document.getElementById("tap-button");
     const resetButton = document.getElementById("reset-button");
 
     // Multiplier thresholds
@@ -160,6 +152,7 @@
       { threshold: 1000, multiplier: 2 },
     ];
 
+    // Function to calculate multiplier based on tap speed
     function calculateMultiplier(speed) {
       for (const threshold of multiplierThresholds) {
         if (speed <= threshold.threshold) {
@@ -169,11 +162,13 @@
       return 1;
     }
 
+    // Function to play tap sound
     function playTapSound() {
-      const tapAudio = new Audio(audioSrc);
+      const tapAudio = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
       tapAudio.play();
     }
 
+    // Function to handle tap button click
     function handleTap() {
       playTapSound();
       const now = performance.now();
@@ -185,22 +180,31 @@
       lastTapTime = now;
 
       starCount += multiplier;
+
+      // Update DOM elements
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = `${Math.round(tapSpeed)} ms`;
     }
 
+    // Function to reset the game
     function resetGame() {
+      // Stop any existing timer
       clearInterval(timerInterval);
+
+      // Reset game variables
       starCount = 0;
       multiplier = 1;
       tapSpeed = 0;
       timer = 30;
+
+      // Update DOM elements
       starCountElem.textContent = `⭐ ${starCount}`;
       multiplierElem.textContent = `${multiplier}x`;
       tapSpeedElem.textContent = "0 ms";
       timerElem.textContent = `Time Left: ${timer}s`;
 
+      // Start a new timer
       timerInterval = setInterval(() => {
         timer--;
         timerElem.textContent = `Time Left: ${timer}s`;
@@ -211,10 +215,12 @@
       }, 1000);
     }
 
+    // Event listeners
     tapButton.addEventListener("click", handleTap);
     resetButton.addEventListener("click", resetGame);
 
-    resetGame(); // Start the game on load
+    // Initialize the game on page load
+    resetGame();
   </script>
 </body>
 </html>
