@@ -6,18 +6,24 @@
   <title>DHD Clicker Game</title>
   <style>
     body {
-      font-family: 'Arial', sans-serif;
-      text-align: center;
-      background-color: #001f3f; /* Deep space blue */
-      color: #39CCCC; /* Stargate teal */
       margin: 0;
-      padding: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a73e8, #4caf50);
+      color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
       height: 100vh;
       overflow: hidden;
+    }
+    #game-container {
+      text-align: center;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      height: 85%;
     }
     #top-bar {
       display: flex;
@@ -39,12 +45,27 @@
       font-size: 14px;
       margin-bottom: 5px;
     }
-    h1 {
-      margin: 20px 0;
-      color: #FF851B; /* Stargate chevron orange */
+    #chevrons {
+      margin-top: 20px;
+      color: white;
     }
-    .dhd-button {
-      background: linear-gradient(145deg, #e64a19, #ff5722); /* Red gradient */
+    #chevrons h3 {
+      margin: 10px 0;
+    }
+    #chevrons ul {
+      padding: 0;
+      list-style-type: none;
+    }
+    #bottom-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+      padding-bottom: 20px;
+    }
+    #tap-button {
+      background: linear-gradient(145deg, #e64a19, #ff5722);
       color: white;
       border: none;
       border-radius: 50%;
@@ -56,150 +77,151 @@
       transition: transform 0.1s;
       touch-action: manipulation;
     }
-    .dhd-button:active {
+    #tap-button:active {
       transform: scale(0.9);
       box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), -4px -4px 8px rgba(255, 255, 255, 0.2);
     }
-    .status {
-      margin: 20px 0;
-      font-size: 18px;
+    #reset-button {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
     }
-    svg {
-      margin-top: 20px;
-    }
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 20px;
-      }
-      .status {
-        font-size: 16px;
-      }
+    #reset-button:hover {
+      background: #d32f2f;
     }
   </style>
 </head>
 <body>
+  <div id="game-container">
+    <div id="top-bar">
+      <div class="stat">
+        <span class="label">Energy:</span>
+        <span id="energy-count">⚡ 0</span>
+      </div>
+      <div class="stat">
+        <span class="label">Multiplier:</span>
+        <span id="multiplier">1x</span>
+      </div>
+      <div class="stat">
+        <span class="label">Worlds Visited:</span>
+        <span id="worlds-visited">0</span>
+      </div>
+    </div>
 
-  <div id="top-bar">
-    <div class="stat">
-      <span class="label">Energy</span>
-      <span id="energy">0</span>
+    <div id="chevrons">
+      <h3>Chevrons Locked: <span id="chevrons-locked">0</span>/7</h3>
+      <p id="gate-message"></p>
     </div>
-    <div class="stat">
-      <span class="label">Time to Bank Energy</span>
-      <span id="timer">120</span>s
-    </div>
-    <div class="stat">
-      <span class="label">Worlds Visited</span>
-      <span id="worlds-visited">0</span>
+
+    <div id="bottom-section">
+      <button id="tap-button">Tap Me!</button>
+      <button id="lock-chevron-button" onclick="lockChevron()">Lock Chevron</button>
+      <button id="reset-button" onclick="resetGame()">Reset Game</button>
     </div>
   </div>
 
-  <h1>DHD Clicker Game</h1>
-  <button class="dhd-button" ontouchstart="handleTap()" onmousedown="handleTap()">Tap DHD</button>
-  <button onclick="unlockChevron()">Unlock Chevron</button>
-  <p id="message"></p>
-
-  <svg id="stargate" width="200" height="200" viewBox="0 0 200 200">
-    <circle cx="100" cy="100" r="80" stroke="#FF851B" stroke-width="5" fill="none" />
-    <text id="svg-text" x="50%" y="50%" fill="#39CCCC" font-size="16" font-family="Arial" text-anchor="middle" dominant-baseline="middle">
-      Chevron: 0
-    </text>
-  </svg>
-
   <script>
-    // Persistent Variables
-    let energy = parseInt(localStorage.getItem("energy")) || 0;
-    let worldsVisited = parseInt(localStorage.getItem("worldsVisited")) || 0;
+    // Initialize stats
+    let energyCount = 0;
+    let multiplier = 1;
     let chevronsLocked = 0;
-    let chevronEnergyCost = 50;
-
-    // Timer Variables
-    let timer = 120; // 2 minutes
-    let tapEnergy = 0;
-
-    // Tap Variables
+    let worldsVisited = 0;
     let lastTapTime = 0;
-    let tapMultiplier = 1;
+    let chevronCost = 50; // Initial cost to lock a chevron
 
-    // Multiplier thresholds
+    // Multiplier thresholds in milliseconds
     const multiplierThresholds = [
-      { threshold: 200, multiplier: 5 },
-      { threshold: 300, multiplier: 3 },
-      { threshold: 500, multiplier: 2 },
+      { threshold: 100, multiplier: 32 },
+      { threshold: 200, multiplier: 16 },
+      { threshold: 300, multiplier: 8 },
+      { threshold: 500, multiplier: 4 },
+      { threshold: 700, multiplier: 2 },
     ];
 
-    // Timer update
-    setInterval(() => {
-      timer--;
-      if (timer <= 0) {
-        bankEnergy();
-        timer = 120; // Reset timer
-      }
-      updateDisplay();
-    }, 1000);
+    // DOM elements
+    const energyCountElem = document.getElementById("energy-count");
+    const multiplierElem = document.getElementById("multiplier");
+    const worldsVisitedElem = document.getElementById("worlds-visited");
+    const chevronsLockedElem = document.getElementById("chevrons-locked");
+    const gateMessageElem = document.getElementById("gate-message");
 
-    // Bank Energy
-    function bankEnergy() {
-      energy += tapEnergy;
-      tapEnergy = 0;
-      localStorage.setItem("energy", energy);
-      document.getElementById("message").textContent = "Energy banked!";
-      updateDisplay();
+    // Update multiplier based on tap speed
+    function calculateMultiplier(speed) {
+      for (const threshold of multiplierThresholds) {
+        if (speed <= threshold.threshold) {
+          return threshold.multiplier;
+        }
+      }
+      return 1; // Default multiplier
     }
 
-    // Handle Tap
+    // Handle tap button click
     function handleTap() {
       const now = performance.now();
-      let tapSpeed = now - lastTapTime;
 
+      // Calculate tap speed
       if (lastTapTime > 0) {
-        tapMultiplier = 1; // Default multiplier
-        for (const threshold of multiplierThresholds) {
-          if (tapSpeed <= threshold.threshold) {
-            tapMultiplier = threshold.multiplier;
-            break;
-          }
-        }
+        const tapSpeed = now - lastTapTime;
+        multiplier = calculateMultiplier(tapSpeed);
       }
       lastTapTime = now;
 
-      tapEnergy += tapMultiplier;
-      updateDisplay();
+      // Update energy count
+      energyCount += multiplier;
+
+      // Update DOM
+      energyCountElem.textContent = `⚡ ${energyCount}`;
+      multiplierElem.textContent = `${multiplier}x`;
     }
 
-    // Unlock Chevron
-    function unlockChevron() {
-      if (energy >= chevronEnergyCost) {
-        energy -= chevronEnergyCost;
+    document.getElementById("tap-button").addEventListener("click", handleTap);
+
+    // Lock a chevron
+    function lockChevron() {
+      if (energyCount >= chevronCost) {
+        energyCount -= chevronCost;
         chevronsLocked++;
-        chevronEnergyCost += 50; // Increase next chevron cost
+        chevronCost += 50; // Increase the cost for the next chevron
 
         if (chevronsLocked === 7) {
           worldsVisited++;
-          chevronsLocked = 0; // Reset chevrons
-          localStorage.setItem("worldsVisited", worldsVisited);
-          document.getElementById("message").textContent = `World ${worldsVisited} visited!`;
+          chevronsLocked = 0;
+          chevronCost = 50;
+          gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
+        } else {
+          gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
         }
-        localStorage.setItem("energy", energy);
+
         updateDisplay();
       } else {
-        document.getElementById("message").textContent = "Not enough energy!";
+        gateMessageElem.textContent = "Not enough energy to lock a chevron!";
       }
     }
 
-    // Update Display
-    function updateDisplay() {
-      document.getElementById("energy").textContent = energy;
-      document.getElementById("timer").textContent = timer;
-      document.getElementById("worlds-visited").textContent = worldsVisited;
-
-      const svgText = document.getElementById("svg-text");
-      svgText.textContent = `Chevron: ${chevronsLocked}`;
+    // Reset game
+    function resetGame() {
+      energyCount = 0;
+      chevronsLocked = 0;
+      worldsVisited = 0;
+      chevronCost = 50;
+      updateDisplay();
+      gateMessageElem.textContent = "Game reset!";
     }
 
-    // Initial Display
+    // Update display
+    function updateDisplay() {
+      energyCountElem.textContent = `⚡ ${energyCount}`;
+      worldsVisitedElem.textContent = worldsVisited;
+      chevronsLockedElem.textContent = chevronsLocked;
+    }
+
+    // Initial display update
     updateDisplay();
   </script>
-
 </body>
 </html>
