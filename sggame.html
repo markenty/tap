@@ -1,168 +1,168 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>DHD Clicker Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <style>
     body {
-      margin: 0;
+      background: linear-gradient(to bottom, #1a2a3a, #1c3c5c, #204e78);
+      color: #ffffff;
       font-family: 'Orbitron', sans-serif;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      color: #39CCCC;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      margin: 0;
       overflow: hidden;
     }
-    #game-container {
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    .game-header {
       text-align: center;
-      width: 100%;
+      margin-bottom: 30px;
+      color: #39cccc;
+      text-shadow: 0 2px 5px rgba(0, 255, 255, 0.5);
+    }
+    .game-section {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    #chevron-visualizer {
       display: flex;
-      flex-direction: column;
-      justify-content: space-evenly;
-      height: 85%;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
-    #top-bar {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      background-color: rgba(0, 0, 0, 0.8);
-      padding: 10px;
-      position: fixed;
-      top: 0;
-      width: 100%;
-      box-shadow: 0 4px 8px rgba(0, 255, 255, 0.3);
-    }
-    .stat {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .label {
-      font-size: 16px;
-      color: #80E2FF;
-      margin-bottom: 5px;
-    }
-    #chevrons {
-      margin-top: 20px;
-      color: #80E2FF;
-    }
-    h3 {
-      margin: 10px 0;
-      color: #FF851B;
-    }
-    #items {
-      margin-top: 10px;
-      max-height: 150px;
-      overflow-y: auto;
-      background-color: rgba(0, 0, 0, 0.5);
-      border: 1px solid #39CCCC;
-      border-radius: 5px;
-      padding: 10px;
-      color: #FF851B;
-      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-    }
-    #items ul {
-      list-style-type: none;
-      padding: 0;
-      margin: 0;
-    }
-    #bottom-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      width: 100%;
-      padding-bottom: 20px;
-    }
-    #tap-button {
-      background: radial-gradient(circle, #FF5722, #E64A19);
-      color: white;
-      border: 2px solid #FF851B;
-      border-radius: 50%;
-      width: 120px;
-      height: 120px;
-      font-size: 24px;
-      cursor: pointer;
-      box-shadow: 0 0 20px rgba(255, 133, 27, 0.8);
-      transition: transform 0.1s, box-shadow 0.2s ease-in-out;
-      touch-action: manipulation;
-    }
-    #tap-button:active {
-      transform: scale(0.9);
-      box-shadow: 0 0 30px rgba(255, 133, 27, 1);
-    }
-    #reset-button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 18px;
-      border: none;
-      background: linear-gradient(90deg, #FF3D00, #D50000);
+    .chevron {
+      width: 50px;
+      height: 50px;
+      background-color: #333;
       color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+    }
+    .chevron[data-locked="true"] {
+      background-color: #ff5722;
+    }
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
       border-radius: 5px;
+      color: #fff;
       cursor: pointer;
-      box-shadow: 0 0 15px rgba(255, 61, 0, 0.8);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
       transition: transform 0.2s;
     }
-    #chevron-selector {
-      margin-top: 10px;
-      padding: 10px;
-      border: none;
-      background: linear-gradient(90deg, #2196F3, #00BCD4);
-      color: #fff;
-      border-radius: 5px;
-      cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 188, 212, 0.8);
-      font-size: 18px;
+    .btn:hover {
+      transform: scale(1.05);
+    }
+    .btn-primary {
+      background-color: #2196f3;
+    }
+    .btn-danger {
+      background-color: #f44336;
     }
   </style>
+  <title>Unified Stargate Game</title>
 </head>
+
+
 <body>
-  <div id="game-container">
-    <div id="top-bar">
-      <div class="stat">
-        <span class="label">Energy:</span>
-        <span id="energy-count">⚡ 0</span>
+  <div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
+    <h1 class="game-header text-center">SG3.5</h1>
+    <div class="game-section w-100 p-3">
+      <div class="row text-center">
+        <div class="col-12">
+          <h2>Energy: <span id="energy-count">⚡ 0</span></h2>
+          <h3>Multiplier: <span id="multiplier">1x</span></h3>
+          <h3>Chevron Progress: <span id="chevrons-locked">0</span>/7</h3>
+          <h3>Worlds Visited: <span id="worlds-visited">0</span></h3>
+          <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
+        </div>
       </div>
-      <div class="stat">
-        <span class="label">Multiplier:</span>
-        <span id="multiplier">1x</span>
+      <div id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>
+     <div id="gate-animation" class="mt-4">
+        <div class="wormhole"></div>
+      <div class="action-buttons text-center mt-4">
+
+
+        <button id="tap-button" class="btn btn-primary mx-2">⚡</button>
+        <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button>
+        <button id="reset-button" class="btn btn-danger mx-2">Reset</button>
+      </div> <div id="messages" class="text-warning text-center my-3"></div>
+      <div id="item-list" class="mt-3">
+        <h4 class="text-center">Discovered Items:</h4>
+        <ul id="items" class="list-unstyled text-center"></ul>
       </div>
-      <div class="stat">
-        <span class="label">Worlds Visited:</span>
-        <span id="worlds-visited">0</span>
+      
       </div>
-    </div>
-
-    <div id="chevrons">
-      <h3>Chevrons Locked: <span id="chevrons-locked">0</span>/7</h3>
-      <p>Energy Needed for Next Chevron: <span id="energy-required">50</span></p>
-      <p id="gate-message"></p>
-      <select id="chevron-selector">
-        <option value="1" disabled>Chevron 1</option>
-        <option value="2" disabled>Chevron 2</option>
-        <option value="3" disabled>Chevron 3</option>
-        <option value="4" disabled>Chevron 4</option>
-        <option value="5" disabled>Chevron 5</option>
-        <option value="6" disabled>Chevron 6</option>
-        <option value="7" disabled>Chevron 7</option>
-      </select>
-      <button id="lock-chevron-button" onclick="lockSelectedChevron()">Lock Chevron</button>
-    </div>
-
-    <div id="items">
-      <h3>Discovered Items</h3>
-      <ul id="item-list"></ul>
-    </div>
-
-    <div id="bottom-section">
-      <button id="tap-button">Tap Me!</button>
-      <button id="reset-button" onclick="resetGame()">Reset Game</button>
     </div>
   </div>
+
+  <style>
+    body {
+      background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+      color: #ffffff;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .wormhole {
+      display: none;
+      width: 200px;
+      height: 200px;
+      margin: auto;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(57, 204, 204, 1), transparent);
+      animation: kawoosh 2s ease-out forwards;
+    }
+    @keyframes kawoosh {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0;
+      }
+    }
+    .game-header {
+      text-shadow: 0 2px 5px rgba(57, 204, 204, 0.8);
+    }
+    .chevron {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #333;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 10px;
+      transition: background-color 0.3s ease;
+    }
+    .chevron[data-locked="true"] {
+      background-color: #ff5722;
+    }
+  </style>
 
   <script>
     let energyCount = 0;
@@ -171,41 +171,60 @@
     let baseChevronCost = 50;
     let chevronCost = baseChevronCost;
     let lastTapTime = 0;
-    let baseMultiplier = 1; // Multiplier from tap speed
-    let itemMultiplier = 1; // Multiplier from items
-
-    const multiplierThresholds = [
-      { threshold: 100, multiplier: 32 },
-      { threshold: 200, multiplier: 16 },
-      { threshold: 300, multiplier: 8 },
-      { threshold: 500, multiplier: 4 },
-      { threshold: 700, multiplier: 2 },
-    ];
+    let baseMultiplier = 1;
+    let itemMultiplier = 1;
 
     const items = [
-      { name: "Zat Gun", bonus: 2 },
-      { name: "Naquadah Generator", bonus: 5 },
-      { name: "Ancient Tablet", bonus: 10 },
-      { name: "Atlantis ZPM", bonus: 50 },
-      { name: "Stargate Control Crystal", bonus: 15 },
-      { name: "Wraith Dagger", bonus: 3 },
-    ];
+  { name: "Zat Gun", bonus: 2 },
+  { name: "Naquadah Generator", bonus: 5 },
+  { name: "Ancient Tablet", bonus: 10 },
+  { name: "Goa'uld Healing Device", bonus: 8 },
+  { name: "Stargate Dialing Crystal", bonus: 15 },
+  { name: "Replicator Fragment", bonus: 12 },
+  { name: "Ori Staff Weapon", bonus: 7 },
+  { name: "Tau'ri Data Recorder", bonus: 6 },
+  { name: "Tok'ra Memory Device", bonus: 4 },
+  { name: "Asgard Core Crystal", bonus: 20 },
+  { name: "Wraith Dagger", bonus: 3 },
+  { name: "Unas Necklace", bonus: 5 },
+  { name: "Anubis Cloaking Device", bonus: 25 },
+  { name: "Furling Artifact", bonus: 30 },
+  { name: "Ancient Drone Weapon", bonus: 18 },
+  { name: "Atlantis ZPM (Zero Point Module)", bonus: 50 },
+  { name: "SG-1 Patch", bonus: 2 },
+  { name: "Daedalus Control Panel", bonus: 10 },
+  { name: "Puddle Jumper Schematic", bonus: 12 },
+  { name: "DHD Control Key", bonus: 7 },
+  { name: "Ori Book of Origin", bonus: 25 },
+  { name: "Jaffa Staff Fragment", bonus: 5 },
+  { name: "Ascension Device", bonus: 35 },
+  { name: "Ba'al's Time Travel Remote", bonus: 15 },
+  { name: "Ancient Hologram Projector", bonus: 10 },
+  { name: "SGC Gate Shield", bonus: 20 },
+  { name: "Nox Healing Stone", bonus: 28 },
+  { name: "Wraith Stunner", bonus: 8 },
+  { name: "Genii Vault Key", bonus: 6 },
+  { name: "Supergate Fragment", bonus: 18 },
+  { name: "Dakara Weapon Control Module", bonus: 22 },
+  { name: "Tok'ra Crystal Shard", bonus: 16 },
+  { name: "Wraith Regeneration Pod", bonus: 24 },
+  { name: "Tollan Phase Shift Device", bonus: 20 },
+  { name: "Ori Plasma Beam", bonus: 30 },
+  { name: "Asgard Transport Beam Emitter", bonus: 15 },
+  { name: "Ancient Knowledge Cube", bonus: 12 },
+  { name: "Jaffa Symbol Pendant", bonus: 7 },
+  { name: "Atlantis Data Crystal", bonus: 18 },
+  { name: "Stasis Pod Key", bonus: 10 },
+  { name: "Lucian Alliance Tracker", bonus: 8 },
+  { name: "Apophis Insignia Ring", bonus: 5 },
+  { name: "Tollan Personal Shield", bonus: 25 },
+];
     let collectedItems = [];
 
-    const energyCountElem = document.getElementById("energy-count");
-    const chevronsLockedElem = document.getElementById("chevrons-locked");
-    const energyRequiredElem = document.getElementById("energy-required");
-    const gateMessageElem = document.getElementById("gate-message");
-    const chevronSelector = document.getElementById("chevron-selector");
-    const itemListElem = document.getElementById("item-list");
-
     function calculateBaseMultiplier(speed) {
-      for (const threshold of multiplierThresholds) {
-        if (speed <= threshold.threshold) {
-          return threshold.multiplier;
-        }
-      }
-      return 1; // Default multiplier
+      if (speed < 300) return 5;
+      if (speed < 600) return 3;
+      return 1;
     }
 
     function handleTap() {
@@ -215,63 +234,80 @@
         baseMultiplier = calculateBaseMultiplier(tapSpeed);
       }
       lastTapTime = now;
-
-      // Total multiplier = baseMultiplier * itemMultiplier
-      const totalMultiplier = baseMultiplier * itemMultiplier;
-
-      // Increment energy based on totalMultiplier
-      energyCount += totalMultiplier;
-
+      energyCount += baseMultiplier * itemMultiplier;
       updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
     }
 
-    function lockSelectedChevron() {
-      const selectedChevron = parseInt(chevronSelector.value);
-      if (!selectedChevron || chevronsLocked + 1 !== selectedChevron) {
-        gateMessageElem.textContent = "Please lock chevrons in order!";
-        return;
-      }
-
+    function lockChevron() {
       if (energyCount >= chevronCost) {
         energyCount -= chevronCost;
         chevronsLocked++;
-        chevronCost += baseChevronCost;
+        chevronCost += baseChevronCost + (worldsVisited * 50);
 
         if (chevronsLocked === 7) {
-                    worldsVisited++;
+          worldsVisited++;
           chevronsLocked = 0;
           chevronCost = baseChevronCost + (worldsVisited * 50);
-          gateMessageElem.textContent = `Gate dialed! World ${worldsVisited} visited!`;
-          discoverItem(); // Discover a new item when a world is visited
+          discoverItem();
+          triggerGateAnimation();
+          displayMessage(`Gate dialed! World ${worldsVisited} visited!`);
         } else {
-          gateMessageElem.textContent = `Chevron ${chevronsLocked} locked!`;
+          displayMessage(`Chevron ${chevronsLocked} locked!`);
         }
 
-        updateChevronSelector();
         updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+        updateChevrons();
       } else {
-        gateMessageElem.textContent = "Not enough energy to lock a chevron!";
+        displayMessage("Not enough energy to lock a chevron!");
       }
     }
 
     function discoverItem() {
       const newItem = items[Math.floor(Math.random() * items.length)];
       collectedItems.push(newItem);
-      itemMultiplier += newItem.bonus; // Increase the item multiplier
+      itemMultiplier += newItem.bonus;
 
-      // Add item to the discovered items list
       const listItem = document.createElement("li");
       listItem.textContent = `${newItem.name} (+${newItem.bonus}x Multiplier)`;
-      itemListElem.appendChild(listItem);
+      document.getElementById("items").appendChild(listItem);
 
-      gateMessageElem.textContent = `Discovered: ${newItem.name}! Multiplier increased by ${newItem.bonus}x.`;
+      displayMessage(`Discovered: ${newItem.name}! Multiplier increased by ${newItem.bonus}x.`);
     }
 
-    function updateChevronSelector() {
-      for (let i = 0; i < chevronSelector.options.length; i++) {
-        chevronSelector.options[i].disabled = i !== chevronsLocked;
-      }
-      chevronSelector.value = chevronsLocked + 1; // Automatically select the next chevron
+    function triggerGateAnimation() {
+      const wormhole = document.querySelector(".wormhole");
+      wormhole.style.display = "block";
+      wormhole.addEventListener("animationend", () => {
+        wormhole.style.display = "none";
+      }, { once: true });
     }
 
     function resetGame() {
@@ -282,22 +318,74 @@
       baseMultiplier = 1;
       itemMultiplier = 1;
       collectedItems = [];
-      itemListElem.innerHTML = ""; // Clear the discovered items list
-      updateChevronSelector();
+      document.getElementById("items").innerHTML = "";
       updateDisplay();
-      gateMessageElem.textContent = "Game reset!";
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+      displayMessage("Game reset!");
+    }
+
+    function updateChevrons() {
+      const chevronVisualizer = document.getElementById("chevron-visualizer");
+      chevronVisualizer.innerHTML = "";
+      for (let i = 0; i < 7; i++) {
+        const chevron = document.createElement("div");
+        chevron.className = "chevron";
+        chevron.dataset.locked = i < chevronsLocked ? "true" : "false";
+        chevron.textContent = i + 1;
+        chevronVisualizer.appendChild(chevron);
+      }
     }
 
     function updateDisplay() {
-      energyCountElem.textContent = `⚡ ${Math.floor(energyCount)}`;
-      chevronsLockedElem.textContent = chevronsLocked;
-      energyRequiredElem.textContent = chevronCost;
+      document.getElementById("energy-count").textContent = `⚡ ${Math.floor(energyCount)}`;
+      document.getElementById("multiplier").textContent = `${Math.floor(baseMultiplier * itemMultiplier)}x`;
+      document.getElementById("chevrons-locked").textContent = chevronsLocked;
+      document.getElementById("worlds-visited").textContent = worldsVisited;
+      document.getElementById("energy-required").textContent = chevronCost;
     }
 
-    // Initialize the game
-    updateChevronSelector();
-    updateDisplay();
+    function displayMessage(message) {
+      const messageDiv = document.getElementById("messages");
+      messageDiv.textContent = message;
+      setTimeout(() => {
+        messageDiv.textContent = "";
+      }, 3000);
+    }
+
     document.getElementById("tap-button").addEventListener("click", handleTap);
+    document.getElementById("lock-chevron-button").addEventListener("click", lockChevron);
+    document.getElementById("reset-button").addEventListener("click", () => {
+      window.location.reload(); // Reload the entire window to reset the game.
+    });
+updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
   </script>
 </body>
+
 </html>
