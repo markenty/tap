@@ -96,6 +96,20 @@ centeringdiv
         align-items: center;
         }
 
+
+        body {
+    touch-action: manipulation;
+    font-size: 16px; /* Ensure a minimum font size of 16px to prevent zooming */
+}
+
+button, input, select, textarea {
+    font-size: 16px; /* Match this for interactive elements */
+}
+
+        input, textarea {
+    font-size: 16px;
+}
+
     </style>
 </head>
 <body>
@@ -1332,6 +1346,16 @@ updateDisplay();
                 document.exitFullscreen();
             }
         });
+
+        document.addEventListener('touchstart', function(event) {
+    if (event.touches.length > 1) {
+        event.preventDefault(); // Prevent pinch-to-zoom
+    }
+}, { passive: false });
+
+document.addEventListener('gesturestart', function(event) {
+    event.preventDefault(); // Disable gesture-based zoom
+});
     </script>
     </body>
     
