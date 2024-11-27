@@ -1407,45 +1407,7 @@ document.addEventListener('gesturestart', (event) => {
         </script>
 
     <style>
-        /* Disable text selection for the entire body */
-body, button, input, textarea, canvas {
-    -webkit-user-select: none; /* Safari/Chrome */
-    -ms-user-select: none; /* IE10+ */
-    user-select: none; /* Standard */
-    -webkit-touch-callout: none; /* Disable callout menu */
-}
 
-/* Prevent long press context menu */
-body {
-    touch-action: manipulation; /* Only allow actions necessary for interaction */
-}
-
-/* Optional: Disable text selection on other elements */
-h1, h2, h3, h4, h5, h6, p, span, div {
-    -webkit-user-select: none;
-    user-select: none;
-}
-
-/* Disable zooming for better game responsiveness */
-html {
-    touch-action: manipulation;
-    -webkit-text-size-adjust: 100%; /* Prevents font resizing */
-}
-
-   /* Disable text selection for mobile */
-@media (hover: none) and (pointer: coarse) {
-    body, button, input, textarea, canvas {
-        -webkit-user-select: none; /* Safari/Chrome */
-        -ms-user-select: none; /* IE10+ */
-        user-select: none; /* Standard */
-        -webkit-touch-callout: none; /* Disable callout menu */
-    }
-
-    /* Prevent long press context menu */
-    body {
-        touch-action: manipulation; /* Only allow touch manipulation */
-    }
-}     
 </style>
 <script>// Prevent unwanted long-press or pinch-zoom actions only on mobile
 if ('ontouchstart' in window) {
