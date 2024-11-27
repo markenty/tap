@@ -1368,10 +1368,36 @@ textarea {
     resize: none;
 }
 </style>
-<textarea readonly>Static text here...</textarea>
+
 <script>
 document.querySelectorAll('textarea').forEach(textarea => {
     textarea.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+});
+
+    
+</script>
+
+    <style>
+/* Disable text selection and tap highlight */
+body, #game-container, canvas {
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+</style>
+
+<script>
+// Disable multi-touch and long-press context menu
+document.addEventListener("touchstart", function(e) {
+    if (e.touches.length > 1) {
+        e.preventDefault(); // Prevent multi-touch gestures
+    }
+}, { passive: false });
+
+document.addEventListener("contextmenu", function(e) {
+    e.preventDefault(); // Disable long-press context menu
 });
 </script>
     </body>
