@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Combined Stargate and Shooter Game with Tap and Shoot Simulation</title>
     <style>
         body {
@@ -105,7 +105,7 @@ centeringdiv
         <div id="shooter-game">
             
   <canvas id="gameCanvas" width="400" height="600"></canvas> <div id="gate-animation" class="mt-4">
-  <div id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>   
+  <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>   
         <div class="wormhole"></div> 
       </div>
 
@@ -515,8 +515,8 @@ centeringdiv
 
 
     .chevron {
-      width: 60px;
-      height: 60px;
+      width: 25px;
+      height: 25px;
       border-radius: 50%;
       background: #333;
       color: #fff;
