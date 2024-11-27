@@ -1407,8 +1407,12 @@ document.addEventListener('gesturestart', (event) => {
         </script>
 
     <style>
-
-</style>
+canvas {
+    -webkit-user-select: none; /* Prevent text selection */
+    user-select: none; /* Standard */
+    -webkit-touch-callout: none; /* Disable callout menu */
+    touch-action: manipulation; /* Allow basic gestures but disable zooming and panning */
+}</style>
 <script>// Prevent unwanted long-press or pinch-zoom actions only on mobile
 if ('ontouchstart' in window) {
     // Disable context menu for touch devices
@@ -1427,7 +1431,26 @@ if ('ontouchstart' in window) {
     document.addEventListener('gesturestart', (event) => {
         event.preventDefault();
     });
-}</script>
+}
+
+const canvas = document.getElementById("gameCanvas");
+
+// Prevent right-click context menu
+canvas.addEventListener("contextmenu", (event) => {
+    event.preventDefault(); // Disable right-click menu only on the canvas
+});
+
+// Prevent pinch-zoom and multi-touch gestures
+canvas.addEventListener("touchstart", (event) => {
+    if (event.touches.length > 1) {
+        event.preventDefault(); // Disable multi-touch gestures
+    }
+}, { passive: false });
+
+// Prevent gesture zoom
+canvas.addEventListener("gesturestart", (event) => {
+    event.preventDefault(); // Disable gesture-based zoom
+});</script>
     </body>
     
 </html>
