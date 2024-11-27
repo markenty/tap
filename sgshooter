@@ -1,0 +1,1348 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Stargate and Shooter Game with Tap and Shoot Simulation</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background: #333;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 20px;
+            width: 100%;
+        }
+        @media (min-width: 768px) {
+            #game-container {
+                flex-direction: row;
+                justify-content: space-around;
+            }
+        }
+        #stargate-game, #shooter-game {
+            flex: 1;
+            margin: 10px;
+            padding: 10px;
+            background: #444;
+            border: 1px solid #555;
+            border-radius: 10px;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background: #000;
+            max-width: 100%;
+            height: auto;
+        }
+    button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    button:hover {
+        transform: scale(1.1);
+    }
+
+    #tap-button {
+        background-color: #00bcd4;
+        color: #fff;
+    }
+
+    #lock-chevron-button {
+        background-color: #4caf50;
+        color: #fff;
+    }
+
+    #reset-button {
+        background-color: #f44336;
+        color: #fff;
+    }
+
+    #unpackButton {
+        background-color: #673ab7;
+        color: #fff;
+    }
+
+    #resetButton {
+        background-color: #9e9e9e;
+        color: #fff;
+    }
+
+    #fullscreen-button {
+        background-color: #ff9800;
+        color: #fff;
+    }
+centeringdiv
+        {
+            display: flex;
+        justify-content: center;
+        align-items: center;
+        }
+
+    </style>
+</head>
+<body>
+ 
+    <div id="game-container">
+     
+        <div id="shooter-game">
+            
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+              <div id="gate-animation" class="mt-4">
+        <div class="wormhole"></div> 
+      </div>
+
+<div style="position: fixed; bottom: 10px; left: 10px; z-index: 1000;">
+    
+<button id="unpackButton">Start Game</button><button id="resetButton" style="display: none;">Reset Game</button></div>
+            <div class="centeringdiv" style="position: fixed; top: 10px; left: 10px; z-index: 1000;">
+
+        
+        <button id="reset-button" class="btn btn-danger mx-2">Reset All</button>
+ 
+
+<p><div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
+    <div class="game-section w-100 p-3">
+      <div class="row text-center">
+        <div class="col-12">
+          <h2>Energy: <span id="energy-count">⚡ 0</span></h2>
+          <h3>Multiplier: <span id="multiplier">1x</span></h3>
+          <h3>Chevron Progress: <span id="chevrons-locked">0</span>/7</h3>
+          <h3>Worlds Visited: <span id="worlds-visited">0</span></h3>
+         
+      
+      </div>
+    </div>
+  </div>
+   </div></p>
+</div>
+  
+<div id="messages" class="text-warning text-center my-3"></div>
+      <div class="action-buttons text-center mt-4">
+ <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
+        </div>
+        
+  <div id="stargate-game">
+       <center> <button id="tap-button" class="btn btn-primary mx-2">⚡</button><button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button></center>
+      <div id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>
+ 
+
+       <div id="item-list" class="mt-3">
+        <h4 class="text-center">Discovered Items:</h4>
+        
+<ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 200px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
+
+      </div>
+      
+            </div>
+            
+            </div> 
+      
+ 
+  <script>
+    const layers = [
+      btoa("Reveal Shooter"),
+      btoa("Add Enemies and Power-ups"),
+      btoa("Enable Levels and Gameplay!")
+    ];
+
+    let currentLayer = 0;
+    let shooter, enemies = [], bullets = [], powerups = [], boss = null, bossActive = false;
+    let gameActive = false;
+    let score = 0;
+    let hp = 100;
+    let level = 1;
+    let powerupType = null;
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const unpackButton = document.getElementById("unpackButton");
+    const resetButton = document.getElementById("resetButton");
+
+    canvas.addEventListener("touchstart", handleTouchStart);
+    canvas.addEventListener("touchmove", handleTouchMove);
+    canvas.addEventListener("touchend", handleTouchEnd);
+
+    function unpackLayer() {
+      if (currentLayer < layers.length) {
+        const decompressed = atob(layers[currentLayer]);
+        if (decompressed === "Reveal Shooter") {
+          initializeShooter();
+        } else if (decompressed === "Add Enemies and Power-ups") {
+          addEnemyAndPowerupMechanics();
+        } else if (decompressed === "Enable Levels and Gameplay!") {
+          startGame();
+        }
+        currentLayer++;
+      } else {
+        alert("Game Fully Unpacked!");
+      }
+    }
+
+    function initializeShooter() {
+      shooter = {
+        x: canvas.width / 2 - 25,
+        y: canvas.height - 50,
+        width: 50,
+        height: 10
+      };
+      drawShooter();
+    }
+
+    function drawShooter() {
+      ctx.fillStyle = "#0f0";
+      ctx.fillRect(shooter.x, shooter.y, shooter.width, shooter.height);
+    }
+
+    function addEnemyAndPowerupMechanics() {
+      setInterval(() => {
+        if (gameActive) {
+          const enemy = {
+            x: Math.random() * (canvas.width - 30),
+            y: 0,
+            width: 30,
+            height: 30,
+            speed: 1 + level * 0.5 + Math.random(),
+            type: Math.random() > 0.5 ? "circle" : "square"
+          };
+          enemies.push(enemy);
+
+          if (Math.random() < 0.1) {
+            const powerup = {
+              x: Math.random() * (canvas.width - 20),
+              y: 0,
+              size: 20,
+              speed: 2,
+              emoji: Math.random() > 0.5 ? "💥" : "❤️"
+            };
+            powerups.push(powerup);
+          }
+        }
+      }, 1000);
+    }
+
+    function startGame() {
+      gameActive = true;
+      gameLoop();
+      unpackButton.style.display = "none";
+      resetButton.style.display = "block";
+    }
+
+    function resetGame() {
+      gameActive = false;
+      powerupType = null; // Reset weapon modifier on game reset.
+      console.log("Game reset: Power-up type cleared.");
+      currentLayer = 0;
+      enemies = [];
+      bullets = [];
+      powerups = [];
+      score = 0;
+      hp = 100;
+      level = 1;
+      powerupType = null;
+      initializeShooter();
+      unpackButton.style.display = "block";
+      resetButton.style.display = "none";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawHp() {
+      ctx.fillStyle = "#ff0000";
+      ctx.fillRect(20, 20, (hp / 100) * 200, 20);
+      ctx.strokeStyle = "#fff";
+      ctx.strokeRect(20, 20, 200, 20);
+      ctx.font = "16px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`HP: ${hp}%`, 240, 35);
+    }
+
+    function spawnBoss() {
+      boss = {
+        x: canvas.width / 2 - 75,
+        y: 30,
+        width: 150,
+        height: 150,
+        hp: 150,
+        speed: 1.5,
+        color: "#FF4500",
+        glow: true,
+        oscillate: true
+      };
+      bossActive = true;
+    }
+
+    function drawBoss() {
+      if (boss) {
+        ctx.fillStyle = "#800080";
+        ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+        drawHpBar(boss.x, boss.y - 20, boss.hp, 100, boss.width);
+
+        // Simulate movement
+        boss.y += boss.speed * Math.sin(Date.now() / 1000);
+      }
+    }
+
+    function handleBossDamage() {
+      bullets.forEach((bullet, bIndex) => {
+        if (
+          boss &&
+          bullet.x < boss.x + boss.width &&
+          bullet.x + bullet.width > boss.x &&
+          bullet.y < boss.y + boss.height &&
+          bullet.y + bullet.height > boss.y
+        ) {
+          boss.hp -= 10;
+          bullets.splice(bIndex, 1);
+          if (boss.hp <= 0) {
+            boss = null;
+            bossActive = false;
+            level++;
+            alert("Boss Defeated! Proceeding to the next level.");
+          }
+        }
+      });
+    }
+
+    function gameLoop() {
+      drawBoss();
+      handleBossDamage();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawShooter();
+      drawHp();
+
+      ctx.font = "20px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`Level: ${level}`, 20, 70);
+      ctx.fillText(`Score: ${score}`, 20, 100);
+
+      if (score > level * 20) level++;
+
+      enemies.forEach((enemy, index) => {
+        enemy.y += enemy.speed;
+        if (enemy.type === "circle") {
+          ctx.beginPath();
+          ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2, 0, Math.PI * 2);
+          ctx.fillStyle = "#f00";
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#f00";
+          ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        }
+
+        if (
+          enemy.x < shooter.x + shooter.width &&
+          enemy.x + enemy.width > shooter.x &&
+          enemy.y + enemy.height > shooter.y
+        ) {
+          enemies.splice(index, 1);
+          hp -= 10;
+          if (hp <= 0) {
+            gameActive = false;
+            alert(`Game Over! Final Score: ${score}`);
+          }
+        }
+
+        
+    if (enemy.y > canvas.height) enemies.splice(index, 1);
+    // Add an energy power-up when an enemy dies
+    if (!enemies.includes(enemy)) {
+        const powerup = {
+            x: Math.random() * (canvas.width - 20),
+            y: 0,
+            size: 20,
+            speed: 2,
+            emoji: "⚡" // Energy power-up symbol
+        };
+        powerups.push(powerup);
+    }
+    
+      });
+
+      ctx.fillStyle = "#fff";
+      bullets.forEach((bullet, bIndex) => {
+        bullet.y -= bullet.speed;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        if (bullet.y < 0) bullets.splice(bIndex, 1);
+
+        enemies.forEach((enemy, eIndex) => {
+          if (
+            bullet.x < enemy.x + enemy.width &&
+            bullet.x + bullet.width > enemy.x &&
+            bullet.y < enemy.y + enemy.height &&
+            bullet.y + bullet.height > enemy.y
+          ) {
+            enemies.splice(eIndex, 1);
+            bullets.splice(bIndex, 1);
+            score++;
+          }
+        });
+      });
+
+      powerups.forEach((powerup, index) => {
+        powerup.y += powerup.speed;
+        ctx.font = "20px Arial";
+        ctx.fillText(powerup.emoji, powerup.x, powerup.y);
+
+        if (
+          powerup.x < shooter.x + shooter.width &&
+          powerup.x + powerup.size > shooter.x &&
+          powerup.y + powerup.size > shooter.y
+        ) {
+          
+    
+    if (powerup.emoji === "⚡") {
+        if (window.handleTap) {
+            // Simulate a tap for energy gain in Stargate game
+            window.handleTap();
+        }
+        powerups.splice(index, 1);
+    } else if (powerup.emoji === "💥") {
+    
+        if (window.sharedEnergyCount) {
+            const energyGain = Math.floor(Math.random() * 5) + 1; // Random energy gain between 1 and 5
+            window.energyCount += energyGain;
+        }
+        powerups.splice(index, 1);
+    } else if (powerup.emoji === "💥") {
+    
+            powerupType = "double";
+          } else if (powerup.emoji === "❤️") {
+            hp = Math.min(100, hp + 20);
+          }
+          powerups.splice(index, 1);
+        }
+
+        if (powerup.y > canvas.height) powerups.splice(index, 1);
+      });
+
+      if (gameActive) requestAnimationFrame(gameLoop);
+    }
+
+    function shootBullet() {
+      const bullet = {
+        x: shooter.x + shooter.width / 2 - 5,
+        y: shooter.y - 20,
+        width: 10,
+        height: 20,
+        speed: 8
+      };
+      
+    bullets.push(bullet);
+    if (window.handleTap) {
+        // Simulate a tap for energy gain in Stargate game when shooting
+        window.handleTap();
+    }
+    
+
+      if (powerupType === "double") {
+        bullets.push({
+          x: shooter.x + shooter.width / 2 + 15,
+          y: shooter.y - 20,
+          width: 10,
+          height: 20,
+          speed: 8
+        });
+      }
+    }
+
+    let touchStartX = 0;
+    function handleTouchStart(e) {
+      touchStartX = e.touches[0].clientX;
+    }
+
+    function handleTouchMove(e) {
+      const touchX = e.touches[0].clientX;
+      const deltaX = touchX - touchStartX;
+      shooter.x = Math.max(0, Math.min(canvas.width - shooter.width, shooter.x + deltaX));
+      touchStartX = touchX;
+    }
+
+    function handleTouchEnd(e) {
+      shootBullet();
+    }
+
+    unpackButton.addEventListener("click", unpackLayer);
+    resetButton.addEventListener("click", resetGame);
+  </script>
+ 
+    </div>
+  <style>
+    body {
+      background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+      color: #ffffff;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .wormhole {
+      display: none;
+      width: 200px;
+      height: 200px;
+      margin: auto;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(57, 204, 204, 1), transparent);
+      animation: kawoosh 2s ease-out forwards;
+    }
+    @keyframes kawoosh {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0;
+      }
+    }
+    .game-header {
+      text-shadow: 0 2px 5px rgba(57, 204, 204, 0.8);
+    }
+    
+#chevron-visualizer {
+    display: flex;
+    justify-content: center;
+    flex-direction: row; /* Ensure chevrons are laid out horizontally */
+    gap: 10px; /* Add some spacing between chevrons */
+}
+
+
+    .chevron {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #333;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 10px;
+      transition: background-color 0.3s ease;
+    }
+    .chevron[data-locked="true"] {
+      background-color: #ff5722;
+    }
+  </style>
+
+  <script>
+    let energyCount = 0;
+    let chevronsLocked = 0;
+    let worldsVisited = 0;
+    let baseChevronCost = 50;
+    let chevronCost = baseChevronCost;
+    let lastTapTime = 0;
+    let baseMultiplier = 1;
+    let itemMultiplier = 1;
+
+    const items = [
+  { name: "Zat Gun", bonus: 2 },
+  { name: "Naquadah Generator", bonus: 5 },
+  { name: "Ancient Tablet", bonus: 10 },
+  { name: "Goa'uld Healing Device", bonus: 8 },
+  { name: "Stargate Dialing Crystal", bonus: 15 },
+  { name: "Replicator Fragment", bonus: 12 },
+  { name: "Ori Staff Weapon", bonus: 7 },
+  { name: "Tau'ri Data Recorder", bonus: 6 },
+  { name: "Tok'ra Memory Device", bonus: 4 },
+  { name: "Asgard Core Crystal", bonus: 20 },
+  { name: "Wraith Dagger", bonus: 3 },
+  { name: "Unas Necklace", bonus: 5 },
+  { name: "Anubis Cloaking Device", bonus: 25 },
+  { name: "Furling Artifact", bonus: 30 },
+  { name: "Ancient Drone Weapon", bonus: 18 },
+  { name: "Atlantis ZPM (Zero Point Module)", bonus: 50 },
+  { name: "SG-1 Patch", bonus: 2 },
+  { name: "Daedalus Control Panel", bonus: 10 },
+  { name: "Puddle Jumper Schematic", bonus: 12 },
+  { name: "DHD Control Key", bonus: 7 },
+  { name: "Ori Book of Origin", bonus: 25 },
+  { name: "Jaffa Staff Fragment", bonus: 5 },
+  { name: "Ascension Device", bonus: 35 },
+  { name: "Ba'al's Time Travel Remote", bonus: 15 },
+  { name: "Ancient Hologram Projector", bonus: 10 },
+  { name: "SGC Gate Shield", bonus: 20 },
+  { name: "Nox Healing Stone", bonus: 28 },
+  { name: "Wraith Stunner", bonus: 8 },
+  { name: "Genii Vault Key", bonus: 6 },
+  { name: "Supergate Fragment", bonus: 18 },
+  { name: "Dakara Weapon Control Module", bonus: 22 },
+  { name: "Tok'ra Crystal Shard", bonus: 16 },
+  { name: "Wraith Regeneration Pod", bonus: 24 },
+  { name: "Tollan Phase Shift Device", bonus: 20 },
+  { name: "Ori Plasma Beam", bonus: 30 },
+  { name: "Asgard Transport Beam Emitter", bonus: 15 },
+  { name: "Ancient Knowledge Cube", bonus: 12 },
+  { name: "Jaffa Symbol Pendant", bonus: 7 },
+  { name: "Atlantis Data Crystal", bonus: 18 },
+  { name: "Stasis Pod Key", bonus: 10 },
+  { name: "Lucian Alliance Tracker", bonus: 8 },
+  { name: "Apophis Insignia Ring", bonus: 5 },
+  { name: "Tollan Personal Shield", bonus: 25 },
+];
+    let collectedItems = [];
+
+    function calculateBaseMultiplier(speed) {
+      if (speed < 300) return 5;
+      if (speed < 600) return 3;
+      return 1;
+    }
+
+    function handleTap() {
+      const now = performance.now();
+      if (lastTapTime > 0) {
+        const tapSpeed = now - lastTapTime;
+        baseMultiplier = calculateBaseMultiplier(tapSpeed);
+      }
+      lastTapTime = now;
+      energyCount += baseMultiplier * itemMultiplier;
+      updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+    }
+
+    function lockChevron() {
+      if (energyCount >= chevronCost) {
+        energyCount -= chevronCost;
+        chevronsLocked++;
+        chevronCost += baseChevronCost + (worldsVisited * 50);
+
+        if (chevronsLocked === 7) {
+          worldsVisited++;
+          chevronsLocked = 0;
+          chevronCost = baseChevronCost + (worldsVisited * 50);
+          discoverItem();
+          triggerGateAnimation();
+          displayMessage(`Gate dialed! World ${worldsVisited} visited!`);
+        } else {
+          displayMessage(`Chevron ${chevronsLocked} locked!`);
+        }
+
+        updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+        updateChevrons();
+      } else {
+        displayMessage("Not enough energy to lock a chevron!");
+      }
+    }
+
+    function discoverItem() {
+      const newItem = items[Math.floor(Math.random() * items.length)];
+      collectedItems.push(newItem);
+      itemMultiplier += newItem.bonus;
+
+      const listItem = document.createElement("li");
+      listItem.textContent = `${newItem.name} (+${newItem.bonus}x Multiplier)`;
+      document.getElementById("items").appendChild(listItem);
+
+      displayMessage(`Discovered: ${newItem.name}! Multiplier increased by ${newItem.bonus}x.`);
+    }
+
+    function triggerGateAnimation() {
+      const wormhole = document.querySelector(".wormhole");
+      wormhole.style.display = "block";
+      wormhole.addEventListener("animationend", () => {
+        wormhole.style.display = "none";
+      }, { once: true });
+    }
+
+    function resetGame() {
+      energyCount = 0;
+      chevronsLocked = 0;
+      worldsVisited = 0;
+      chevronCost = baseChevronCost;
+      baseMultiplier = 1;
+      itemMultiplier = 1;
+      collectedItems = [];
+      document.getElementById("items").innerHTML = "";
+      updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+      displayMessage("Game reset!");
+    }
+
+    function updateChevrons() {
+      const chevronVisualizer = document.getElementById("chevron-visualizer");
+      chevronVisualizer.innerHTML = "";
+      for (let i = 0; i < 7; i++) {
+        const chevron = document.createElement("div");
+        chevron.className = "chevron";
+        chevron.dataset.locked = i < chevronsLocked ? "true" : "false";
+        chevron.textContent = i + 1;
+        chevronVisualizer.appendChild(chevron);
+      }
+    }
+
+    function updateDisplay() {
+      document.getElementById("energy-count").textContent = `⚡ ${Math.floor(energyCount)}`;
+      document.getElementById("multiplier").textContent = `${Math.floor(baseMultiplier * itemMultiplier)}x`;
+      document.getElementById("chevrons-locked").textContent = chevronsLocked;
+      document.getElementById("worlds-visited").textContent = worldsVisited;
+      document.getElementById("energy-required").textContent = chevronCost;
+    }
+
+    function displayMessage(message) {
+      const messageDiv = document.getElementById("messages");
+      messageDiv.textContent = message;
+      setTimeout(() => {
+        messageDiv.textContent = "";
+      }, 3000);
+    }
+
+    document.getElementById("tap-button").addEventListener("click", handleTap);
+    document.getElementById("lock-chevron-button").addEventListener("click", lockChevron);
+    document.getElementById("reset-button").addEventListener("click", () => {
+      window.location.reload(); // Reload the entire window to reset the game.
+    });
+updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+  </script>
+
+    <script>
+        // Make energyCount accessible globally for the shooter game
+        window.sharedEnergyCount = () => energyCount;
+    </script>
+    
+     
+    <script>
+        // Shared energy counter logic
+        let energyCount = 0; // Initialize shared energy counter
+
+        // Sync logic for Stargate Game
+        
+    let energyCount = 0;
+    let chevronsLocked = 0;
+    let worldsVisited = 0;
+    let baseChevronCost = 50;
+    let chevronCost = baseChevronCost;
+    let lastTapTime = 0;
+    let baseMultiplier = 1;
+    let itemMultiplier = 1;
+
+    const items = [
+  { name: "Zat Gun", bonus: 2 },
+  { name: "Naquadah Generator", bonus: 5 },
+  { name: "Ancient Tablet", bonus: 10 },
+  { name: "Goa'uld Healing Device", bonus: 8 },
+  { name: "Stargate Dialing Crystal", bonus: 15 },
+  { name: "Replicator Fragment", bonus: 12 },
+  { name: "Ori Staff Weapon", bonus: 7 },
+  { name: "Tau'ri Data Recorder", bonus: 6 },
+  { name: "Tok'ra Memory Device", bonus: 4 },
+  { name: "Asgard Core Crystal", bonus: 20 },
+  { name: "Wraith Dagger", bonus: 3 },
+  { name: "Unas Necklace", bonus: 5 },
+  { name: "Anubis Cloaking Device", bonus: 25 },
+  { name: "Furling Artifact", bonus: 30 },
+  { name: "Ancient Drone Weapon", bonus: 18 },
+  { name: "Atlantis ZPM (Zero Point Module)", bonus: 50 },
+  { name: "SG-1 Patch", bonus: 2 },
+  { name: "Daedalus Control Panel", bonus: 10 },
+  { name: "Puddle Jumper Schematic", bonus: 12 },
+  { name: "DHD Control Key", bonus: 7 },
+  { name: "Ori Book of Origin", bonus: 25 },
+  { name: "Jaffa Staff Fragment", bonus: 5 },
+  { name: "Ascension Device", bonus: 35 },
+  { name: "Ba'al's Time Travel Remote", bonus: 15 },
+  { name: "Ancient Hologram Projector", bonus: 10 },
+  { name: "SGC Gate Shield", bonus: 20 },
+  { name: "Nox Healing Stone", bonus: 28 },
+  { name: "Wraith Stunner", bonus: 8 },
+  { name: "Genii Vault Key", bonus: 6 },
+  { name: "Supergate Fragment", bonus: 18 },
+  { name: "Dakara Weapon Control Module", bonus: 22 },
+  { name: "Tok'ra Crystal Shard", bonus: 16 },
+  { name: "Wraith Regeneration Pod", bonus: 24 },
+  { name: "Tollan Phase Shift Device", bonus: 20 },
+  { name: "Ori Plasma Beam", bonus: 30 },
+  { name: "Asgard Transport Beam Emitter", bonus: 15 },
+  { name: "Ancient Knowledge Cube", bonus: 12 },
+  { name: "Jaffa Symbol Pendant", bonus: 7 },
+  { name: "Atlantis Data Crystal", bonus: 18 },
+  { name: "Stasis Pod Key", bonus: 10 },
+  { name: "Lucian Alliance Tracker", bonus: 8 },
+  { name: "Apophis Insignia Ring", bonus: 5 },
+  { name: "Tollan Personal Shield", bonus: 25 },
+];
+    let collectedItems = [];
+
+    function calculateBaseMultiplier(speed) {
+      if (speed < 300) return 5;
+      if (speed < 600) return 3;
+      return 1;
+    }
+
+    function handleTap() {
+      const now = performance.now();
+      if (lastTapTime > 0) {
+        const tapSpeed = now - lastTapTime;
+        baseMultiplier = calculateBaseMultiplier(tapSpeed);
+      }
+      lastTapTime = now;
+      energyCount += baseMultiplier * itemMultiplier;
+      updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+    }
+
+    function lockChevron() {
+      if (energyCount >= chevronCost) {
+        energyCount -= chevronCost;
+        chevronsLocked++;
+        chevronCost += baseChevronCost + (worldsVisited * 50);
+
+        if (chevronsLocked === 7) {
+          worldsVisited++;
+          chevronsLocked = 0;
+          chevronCost = baseChevronCost + (worldsVisited * 50);
+          discoverItem();
+          triggerGateAnimation();
+          displayMessage(`Gate dialed! World ${worldsVisited} visited!`);
+        } else {
+          displayMessage(`Chevron ${chevronsLocked} locked!`);
+        }
+
+        updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+        updateChevrons();
+      } else {
+        displayMessage("Not enough energy to lock a chevron!");
+      }
+    }
+
+    function discoverItem() {
+      const newItem = items[Math.floor(Math.random() * items.length)];
+      collectedItems.push(newItem);
+      itemMultiplier += newItem.bonus;
+
+      const listItem = document.createElement("li");
+      listItem.textContent = `${newItem.name} (+${newItem.bonus}x Multiplier)`;
+      document.getElementById("items").appendChild(listItem);
+
+      displayMessage(`Discovered: ${newItem.name}! Multiplier increased by ${newItem.bonus}x.`);
+    }
+
+    function triggerGateAnimation() {
+      const wormhole = document.querySelector(".wormhole");
+      wormhole.style.display = "block";
+      wormhole.addEventListener("animationend", () => {
+        wormhole.style.display = "none";
+      }, { once: true });
+    }
+
+    function resetGame() {
+      energyCount = 0;
+      chevronsLocked = 0;
+      worldsVisited = 0;
+      chevronCost = baseChevronCost;
+      baseMultiplier = 1;
+      itemMultiplier = 1;
+      collectedItems = [];
+      document.getElementById("items").innerHTML = "";
+      updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+      displayMessage("Game reset!");
+    }
+
+    function updateChevrons() {
+      const chevronVisualizer = document.getElementById("chevron-visualizer");
+      chevronVisualizer.innerHTML = "";
+      for (let i = 0; i < 7; i++) {
+        const chevron = document.createElement("div");
+        chevron.className = "chevron";
+        chevron.dataset.locked = i < chevronsLocked ? "true" : "false";
+        chevron.textContent = i + 1;
+        chevronVisualizer.appendChild(chevron);
+      }
+    }
+
+    function updateDisplay() {
+      document.getElementById("energy-count").textContent = `⚡ ${Math.floor(energyCount)}`;
+      document.getElementById("multiplier").textContent = `${Math.floor(baseMultiplier * itemMultiplier)}x`;
+      document.getElementById("chevrons-locked").textContent = chevronsLocked;
+      document.getElementById("worlds-visited").textContent = worldsVisited;
+      document.getElementById("energy-required").textContent = chevronCost;
+    }
+
+    function displayMessage(message) {
+      const messageDiv = document.getElementById("messages");
+      messageDiv.textContent = message;
+      setTimeout(() => {
+        messageDiv.textContent = "";
+      }, 3000);
+    }
+
+    document.getElementById("tap-button").addEventListener("click", handleTap);
+    document.getElementById("lock-chevron-button").addEventListener("click", lockChevron);
+    document.getElementById("reset-button").addEventListener("click", () => {
+      window.location.reload(); // Reload the entire window to reset the game.
+    });
+updateDisplay();
+
+
+    function autoSubtractEnergy() {
+      const energyReductionRate = 0.03; // Further reduced subtraction amount.
+      setInterval(() => {
+        if (energyCount > 0) {
+          energyCount -= energyReductionRate;
+          if (energyCount < 0) energyCount = 0; // Prevent negative energy.
+          updateDisplay();
+        }
+      }, 1000); // Subtract energy every 1000ms for a slower pace.
+    }
+    autoSubtractEnergy(); // Start auto-subtraction when the game loads.
+
+  </script>
+
+    <script>
+        // Make energyCount accessible globally for the shooter game
+        window.sharedEnergyCount = () => energyCount;
+    
+
+        // Sync logic for Shooter Game with Tap and Shoot Simulation
+        
+    const layers = [
+      btoa("Reveal Shooter"),
+      btoa("Add Enemies and Power-ups"),
+      btoa("Enable Levels and Gameplay!")
+    ];
+
+    let currentLayer = 0;
+    let shooter, enemies = [], bullets = [], powerups = [], boss = null, bossActive = false;
+    let gameActive = false;
+    let score = 0;
+    let hp = 100;
+    let level = 1;
+    let powerupType = null;
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const unpackButton = document.getElementById("unpackButton");
+    const resetButton = document.getElementById("resetButton");
+
+    canvas.addEventListener("touchstart", handleTouchStart);
+    canvas.addEventListener("touchmove", handleTouchMove);
+    canvas.addEventListener("touchend", handleTouchEnd);
+
+    function unpackLayer() {
+      if (currentLayer < layers.length) {
+        const decompressed = atob(layers[currentLayer]);
+        if (decompressed === "Reveal Shooter") {
+          initializeShooter();
+        } else if (decompressed === "Add Enemies and Power-ups") {
+          addEnemyAndPowerupMechanics();
+        } else if (decompressed === "Enable Levels and Gameplay!") {
+          startGame();
+        }
+        currentLayer++;
+      } else {
+        alert("Game Fully Unpacked!");
+      }
+    }
+
+    function initializeShooter() {
+      shooter = {
+        x: canvas.width / 2 - 25,
+        y: canvas.height - 50,
+        width: 50,
+        height: 10
+      };
+      drawShooter();
+    }
+
+    function drawShooter() {
+      ctx.fillStyle = "#0f0";
+      ctx.fillRect(shooter.x, shooter.y, shooter.width, shooter.height);
+    }
+
+    function addEnemyAndPowerupMechanics() {
+      setInterval(() => {
+        if (gameActive) {
+          const enemy = {
+            x: Math.random() * (canvas.width - 30),
+            y: 0,
+            width: 30,
+            height: 30,
+            speed: 1 + level * 0.5 + Math.random(),
+            type: Math.random() > 0.5 ? "circle" : "square"
+          };
+          enemies.push(enemy);
+
+          if (Math.random() < 0.1) {
+            const powerup = {
+              x: Math.random() * (canvas.width - 20),
+              y: 0,
+              size: 20,
+              speed: 2,
+              emoji: Math.random() > 0.5 ? "💥" : "❤️"
+            };
+            powerups.push(powerup);
+          }
+        }
+      }, 1000);
+    }
+
+    function startGame() {
+      gameActive = true;
+      gameLoop();
+      unpackButton.style.display = "none";
+      resetButton.style.display = "block";
+    }
+
+    function resetGame() {
+      gameActive = false;
+      powerupType = null; // Reset weapon modifier on game reset.
+      console.log("Game reset: Power-up type cleared.");
+      currentLayer = 0;
+      enemies = [];
+      bullets = [];
+      powerups = [];
+      score = 0;
+      hp = 100;
+      level = 1;
+      powerupType = null;
+      initializeShooter();
+      unpackButton.style.display = "block";
+      resetButton.style.display = "none";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawHp() {
+      ctx.fillStyle = "#ff0000";
+      ctx.fillRect(20, 20, (hp / 100) * 200, 20);
+      ctx.strokeStyle = "#fff";
+      ctx.strokeRect(20, 20, 200, 20);
+      ctx.font = "16px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`HP: ${hp}%`, 240, 35);
+    }
+
+    function spawnBoss() {
+      boss = {
+        x: canvas.width / 2 - 75,
+        y: 30,
+        width: 150,
+        height: 150,
+        hp: 150,
+        speed: 1.5,
+        color: "#FF4500",
+        glow: true,
+        oscillate: true
+      };
+      bossActive = true;
+    }
+
+    function drawBoss() {
+      if (boss) {
+        ctx.fillStyle = "#800080";
+        ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+        drawHpBar(boss.x, boss.y - 20, boss.hp, 100, boss.width);
+
+        // Simulate movement
+        boss.y += boss.speed * Math.sin(Date.now() / 1000);
+      }
+    }
+
+    function handleBossDamage() {
+      bullets.forEach((bullet, bIndex) => {
+        if (
+          boss &&
+          bullet.x < boss.x + boss.width &&
+          bullet.x + bullet.width > boss.x &&
+          bullet.y < boss.y + boss.height &&
+          bullet.y + bullet.height > boss.y
+        ) {
+          boss.hp -= 10;
+          bullets.splice(bIndex, 1);
+          if (boss.hp <= 0) {
+            boss = null;
+            bossActive = false;
+            level++;
+            alert("Boss Defeated! Proceeding to the next level.");
+          }
+        }
+      });
+    }
+
+    function gameLoop() {
+      drawBoss();
+      handleBossDamage();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawShooter();
+      drawHp();
+
+      ctx.font = "20px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`Level: ${level}`, 20, 70);
+      ctx.fillText(`Score: ${score}`, 20, 100);
+
+      if (score > level * 20) level++;
+
+      enemies.forEach((enemy, index) => {
+        enemy.y += enemy.speed;
+        if (enemy.type === "circle") {
+          ctx.beginPath();
+          ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2, 0, Math.PI * 2);
+          ctx.fillStyle = "#f00";
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#f00";
+          ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        }
+
+        if (
+          enemy.x < shooter.x + shooter.width &&
+          enemy.x + enemy.width > shooter.x &&
+          enemy.y + enemy.height > shooter.y
+        ) {
+          enemies.splice(index, 1);
+          hp -= 10;
+          if (hp <= 0) {
+            gameActive = false;
+            alert(`Game Over! Final Score: ${score}`);
+          }
+        }
+
+        
+    if (enemy.y > canvas.height) enemies.splice(index, 1);
+    // Add an energy power-up when an enemy dies
+    if (!enemies.includes(enemy)) {
+        const powerup = {
+            x: Math.random() * (canvas.width - 20),
+            y: 0,
+            size: 20,
+            speed: 2,
+            emoji: "⚡" // Energy power-up symbol
+        };
+        powerups.push(powerup);
+    }
+    
+      });
+
+      ctx.fillStyle = "#fff";
+      bullets.forEach((bullet, bIndex) => {
+        bullet.y -= bullet.speed;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        if (bullet.y < 0) bullets.splice(bIndex, 1);
+
+        enemies.forEach((enemy, eIndex) => {
+          if (
+            bullet.x < enemy.x + enemy.width &&
+            bullet.x + bullet.width > enemy.x &&
+            bullet.y < enemy.y + enemy.height &&
+            bullet.y + bullet.height > enemy.y
+          ) {
+            enemies.splice(eIndex, 1);
+            bullets.splice(bIndex, 1);
+            score++;
+          }
+        });
+      });
+
+      powerups.forEach((powerup, index) => {
+        powerup.y += powerup.speed;
+        ctx.font = "20px Arial";
+        ctx.fillText(powerup.emoji, powerup.x, powerup.y);
+
+        if (
+          powerup.x < shooter.x + shooter.width &&
+          powerup.x + powerup.size > shooter.x &&
+          powerup.y + powerup.size > shooter.y
+        ) {
+          
+    
+    if (powerup.emoji === "⚡") {
+        if (window.handleTap) {
+            // Simulate a tap for energy gain in Stargate game
+            window.handleTap();
+        }
+        powerups.splice(index, 1);
+    } else if (powerup.emoji === "💥") {
+    
+        if (window.sharedEnergyCount) {
+            const energyGain = Math.floor(Math.random() * 5) + 1; // Random energy gain between 1 and 5
+            window.energyCount += energyGain;
+        }
+        powerups.splice(index, 1);
+    } else if (powerup.emoji === "💥") {
+    
+            powerupType = "double";
+          } else if (powerup.emoji === "❤️") {
+            hp = Math.min(100, hp + 20);
+          }
+          powerups.splice(index, 1);
+        }
+
+        if (powerup.y > canvas.height) powerups.splice(index, 1);
+      });
+
+      if (gameActive) requestAnimationFrame(gameLoop);
+    }
+
+    function shootBullet() {
+      const bullet = {
+        x: shooter.x + shooter.width / 2 - 5,
+        y: shooter.y - 20,
+        width: 10,
+        height: 20,
+        speed: 8
+      };
+      
+    bullets.push(bullet);
+    if (window.handleTap) {
+        // Simulate a tap for energy gain in Stargate game when shooting
+        window.handleTap();
+    }
+    
+
+      if (powerupType === "double") {
+        bullets.push({
+          x: shooter.x + shooter.width / 2 + 15,
+          y: shooter.y - 20,
+          width: 10,
+          height: 20,
+          speed: 8
+        });
+      }
+    }
+
+    let touchStartX = 0;
+    function handleTouchStart(e) {
+      touchStartX = e.touches[0].clientX;
+    }
+
+    function handleTouchMove(e) {
+      const touchX = e.touches[0].clientX;
+      const deltaX = touchX - touchStartX;
+      shooter.x = Math.max(0, Math.min(canvas.width - shooter.width, shooter.x + deltaX));
+      touchStartX = touchX;
+    }
+
+    function handleTouchEnd(e) {
+      shootBullet();
+    }
+
+    unpackButton.addEventListener("click", unpackLayer);
+    resetButton.addEventListener("click", resetGame);
+  
+    </script>
+
+    <button id="fullscreen-button" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">Toggle Fullscreen</button>
+    <script>
+        document.getElementById('fullscreen-button').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        });
+    </script>
+    </body>
+    
+</html>
