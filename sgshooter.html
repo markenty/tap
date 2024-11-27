@@ -109,7 +109,12 @@ button, input, select, textarea {
         input, textarea {
     font-size: 16px;
 }
-
+html, body {
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+    overflow-x: hidden; /* Disable horizontal scrolling */
+    width: 100%; /* Ensure the width is restricted to the viewport */
+}
     </style>
 </head>
 <body>
@@ -124,11 +129,10 @@ button, input, select, textarea {
 <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
         </div></center>
   <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>   
-      
-      </div>
+        <div class="wormhole"></div>       </div>
 
-                  <center><br/><br/><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
-              <div class="wormhole"></div> 
+                  <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
+            
 
         
   <div id="stargate-game"><center><div id="item-list" class="mt-3">
