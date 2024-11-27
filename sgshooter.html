@@ -1356,28 +1356,42 @@ updateDisplay();
 document.addEventListener('gesturestart', function(event) {
     event.preventDefault(); // Disable gesture-based zoom
 });
+        
+    </script>
+        
+        <script>let autofireInterval = null; // To manage autofire
+let isDragging = false; // Flag to check if the user is dragging
 
-let autofireInterval = null; // Track the autofire interval
+function handleTouchStart(e) {
+    touchStartX = e.touches[0].clientX;
+    isDragging = true;
+
+    // Start autofire when dragging begins
+    if (!autofireInterval) {
+        autofireInterval = setInterval(() => {
+            if (isDragging) {
+                shootBullet();
+            }
+        }, 200); // Adjust rate of fire here (200ms interval)
+    }
+}
 
 function handleTouchMove(e) {
     const touchX = e.touches[0].clientX;
     const deltaX = touchX - touchStartX;
     shooter.x = Math.max(0, Math.min(canvas.width - shooter.width, shooter.x + deltaX));
     touchStartX = touchX;
-
-    // Start autofire if not already running
-    if (!autofireInterval) {
-        autofireInterval = setInterval(shootBullet, 200); // Adjust firing rate as needed
-    }
 }
 
 function handleTouchEnd(e) {
-    // Stop autofire
-    clearInterval(autofireInterval);
-    autofireInterval = null;
-}
-        
-    </script>
+    isDragging = false;
+
+    // Stop autofire when dragging ends
+    if (autofireInterval) {
+        clearInterval(autofireInterval);
+        autofireInterval = null;
+    }
+}</script>
 
     <style>
 textarea {
