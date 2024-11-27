@@ -3,7 +3,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
     <title>Combined Stargate and Shooter Game with Tap and Shoot Simulation</title>
     <style>
         body {
@@ -1406,7 +1407,11 @@ document.addEventListener('gesturestart', (event) => {
 });    
         </script>
 
-    <style>
+    <style>html, body {
+    touch-action: none; /* Disable pinch-to-zoom and panning */
+    -webkit-text-size-adjust: 100%; /* Prevent font size adjustments */
+}
+
 canvas {
     -webkit-user-select: none; /* Prevent text selection */
     user-select: none; /* Standard */
