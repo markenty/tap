@@ -6,6 +6,65 @@
  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
     <title>Combined Stargate and Shooter Game with Tap and Shoot Simulation</title>
     <style>
+    body {
+      background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+      color: #ffffff;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .wormhole {
+      display: none;
+      width: 200px;
+      height: 200px;
+      margin: auto;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(57, 204, 204, 1), transparent);
+      animation: kawoosh 2s ease-out forwards;
+    }
+    @keyframes kawoosh {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0;
+      }
+    }
+    .game-header {
+      text-shadow: 0 2px 5px rgba(57, 204, 204, 0.8);
+    }
+    
+#chevron-visualizer {
+    display: flex;
+    justify-content: center;
+    flex-direction: row; /* Ensure chevrons are laid out horizontally */
+    gap: 10px; /* Add some spacing between chevrons */
+}
+
+
+    .chevron {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #333;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 10px;
+      transition: background-color 0.3s ease;
+    }
+    .chevron[data-locked="true"] {
+      background-color: #ff5722;
+    }
+  </style>
+    <style>
         body {
             display: flex;
             flex-direction: column;
@@ -123,24 +182,32 @@ html, body {
      
         <div id="shooter-game">
       
-  <canvas id="gameCanvas" width="400" height="360">
-</canvas><br/><center> <button id="tap-button" class="btn btn-primary mx-2">⚡</button> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button> <button id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  <div id="gate-animation" class="mt-4"><br/><center><div id="messages" class="text-warning text-center my-3"></div></center>
-        <center><h4>Energy: <span id="energy-count">⚡ 0</span> / Worlds Visited: 🌎 <span id="worlds-visited">0</span> </h4></center>    <center><div class="action-buttons text-center mt-4">
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+<center> <h4><button id="tap-button" class="btn btn-primary mx-2">⚡</button> Energy: <span id="energy-count">⚡ 0</span> / Worlds Visited: 🌎 <span id="worlds-visited">0</span> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button></h4>  </center> 
+<div id="stargate-game" ><center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
+       <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  <center><div class="action-buttons text-center mt-4">
 <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
-        </div></center>
-  <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>   
-        <div class="wormhole"></div>       </div>
+        </div></center> <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div> 
 
-                  <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
+      
+
+        <center><div id="messages" class="text-warning text-center my-3"></div></center>            
+            
+            
+            <center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
+
+                
             
 
         
-  <div id="stargate-game"><center><div id="item-list" class="mt-3">
+  
+      <center><div id="item-list" class="mt-3">
         <h4 class="text-center">Discovered Items:</h4>
         
 <ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 200px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
 
       </div></center>
+      
 <center><div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
     <div class="game-section w-100 p-3">
       <div class="row text-center">
@@ -155,14 +222,6 @@ html, body {
     </div>
   </div>
    </div></center>
-     
- 
-
-       
-      
-            </div>
-            
-            </div> 
       
  
   <script>
@@ -296,39 +355,47 @@ html, body {
       };
       bossActive = true;
     }
+           if (bossActive) {
+    drawBoss(); // Draw boss if active
+}
 
-    function drawBoss() {
-      if (boss) {
-        ctx.fillStyle = "#800080";
+ function drawBoss() {
+    if (boss && bossActive) {
+        ctx.fillStyle = "#FF4500"; // Boss color
         ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-        drawHpBar(boss.x, boss.y - 20, boss.hp, 100, boss.width);
 
-        // Simulate movement
+        // Example: Add simple movement or effects
         boss.y += boss.speed * Math.sin(Date.now() / 1000);
-      }
-    }
 
-    function handleBossDamage() {
-      bullets.forEach((bullet, bIndex) => {
+        // Draw boss health bar
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(boss.x, boss.y - 10, (boss.hp / 150) * boss.width, 5);
+    }
+}
+
+function handleBossDamage() {
+    bullets.forEach((bullet, bIndex) => {
         if (
-          boss &&
-          bullet.x < boss.x + boss.width &&
-          bullet.x + bullet.width > boss.x &&
-          bullet.y < boss.y + boss.height &&
-          bullet.y + bullet.height > boss.y
+            boss &&
+            bullet.x < boss.x + boss.width &&
+            bullet.x + bullet.width > boss.x &&
+            bullet.y < boss.y + boss.height &&
+            bullet.y + bullet.height > boss.y
         ) {
-          boss.hp -= 10;
-          bullets.splice(bIndex, 1);
-          if (boss.hp <= 0) {
-            boss = null;
-            bossActive = false;
-            level++;
-            alert("Boss Defeated! Proceeding to the next level.");
-          }
-        }
-      });
-    }
+            boss.hp -= 10; // Decrease boss health
+            bullets.splice(bIndex, 1); // Remove the bullet
 
+            // Check if the boss is defeated
+            if (boss.hp <= 0) {
+                boss = null;
+                bossActive = false;
+                level++;
+                updateDisplay();
+                alert("Boss defeated! Level up!");
+            }
+        }
+    });
+}
     function gameLoop() {
       drawBoss();
       handleBossDamage();
@@ -367,7 +434,11 @@ html, body {
             alert(`Game Over! Final Score: ${score}`);
           }
         }
-
+    // Check if score exceeds threshold for level up
+    if (score > level * 20) { // Example: Level up every 50 points
+        level++;
+        updateDisplay(); // Refresh UI
+        spawnBoss(); // Spawn a boss on level up
         
     if (enemy.y > canvas.height) enemies.splice(index, 1);
     // Add an energy power-up when an enemy dies
@@ -491,66 +562,8 @@ html, body {
     resetButton.addEventListener("click", resetGame);
   </script>
  
-    </div>
-  <style>
-    body {
-      background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
-      color: #ffffff;
-      font-family: 'Orbitron', sans-serif;
-    }
-    .wormhole {
-      display: none;
-      width: 200px;
-      height: 200px;
-      margin: auto;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(57, 204, 204, 1), transparent);
-      animation: kawoosh 2s ease-out forwards;
-    }
-    @keyframes kawoosh {
-      0% {
-        transform: scale(0);
-        opacity: 0;
-      }
-      50% {
-        transform: scale(1.5);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(1);
-        opacity: 0;
-      }
-    }
-    .game-header {
-      text-shadow: 0 2px 5px rgba(57, 204, 204, 0.8);
-    }
     
-#chevron-visualizer {
-    display: flex;
-    justify-content: center;
-    flex-direction: row; /* Ensure chevrons are laid out horizontally */
-    gap: 10px; /* Add some spacing between chevrons */
-}
-
-
-    .chevron {
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      background: #333;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      font-size: 1.2rem;
-      margin: 10px;
-      transition: background-color 0.3s ease;
-    }
-    .chevron[data-locked="true"] {
-      background-color: #ff5722;
-    }
-  </style>
+  
 
   <script>
     let energyCount = 0;
@@ -849,16 +862,25 @@ updateDisplay();
       return 1;
     }
 
-    function handleTap() {
-      const now = performance.now();
-      if (lastTapTime > 0) {
+function handleTap() {
+    const now = performance.now();
+
+    // Calculate tap speed and update base multiplier
+    if (lastTapTime > 0) {
         const tapSpeed = now - lastTapTime;
         baseMultiplier = calculateBaseMultiplier(tapSpeed);
-      }
-      lastTapTime = now;
-      energyCount += baseMultiplier * itemMultiplier;
-      updateDisplay();
+    }
+    lastTapTime = now;
 
+    // Increment energy count
+    energyCount += baseMultiplier * itemMultiplier;
+
+    // Fire a bullet
+    shootBullet();
+
+    // Update the display
+    updateDisplay();
+}
 
     function autoSubtractEnergy() {
       const energyReductionRate = 0.03; // Further reduced subtraction amount.
@@ -1147,16 +1169,20 @@ updateDisplay();
       bossActive = true;
     }
 
-    function drawBoss() {
-      if (boss) {
-        ctx.fillStyle = "#800080";
+function drawBoss() {
+    if (boss && bossActive) {
+        ctx.fillStyle = "#FF4500"; // Boss color
         ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-        drawHpBar(boss.x, boss.y - 20, boss.hp, 100, boss.width);
 
-        // Simulate movement
+        // Example: Add simple movement or effects
         boss.y += boss.speed * Math.sin(Date.now() / 1000);
-      }
+
+        // Draw boss health bar
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(boss.x, boss.y - 10, (boss.hp / 150) * boss.width, 5);
     }
+}
+   
 
     function handleBossDamage() {
       bullets.forEach((bullet, bIndex) => {
@@ -1364,7 +1390,8 @@ document.addEventListener('gesturestart', function(event) {
         
     </script>
         
-        <script>let autofireInterval = null; // To manage autofire
+        <script>
+            let autofireInterval = null; // To manage autofire
 let isDragging = false; // Flag to check if the user is dragging
 
 function handleTouchStart(e) {
@@ -1455,6 +1482,18 @@ canvas.addEventListener("touchstart", (event) => {
 // Prevent gesture zoom
 canvas.addEventListener("gesturestart", (event) => {
     event.preventDefault(); // Disable gesture-based zoom
+});
+
+// Mouse control for shooter
+canvas.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect(); // Get canvas position
+    const mouseX = e.clientX - rect.left; // Calculate mouse X relative to canvas
+    shooter.x = Math.max(0, Math.min(canvas.width - shooter.width, mouseX - shooter.width / 2));
+});
+
+// Mouse click to shoot
+canvas.addEventListener("click", () => {
+    shootBullet();
 });</script>
     </body>
     
