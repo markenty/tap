@@ -1407,7 +1407,44 @@ document.addEventListener('gesturestart', (event) => {
         </script>
 
     <style>
+/* Restrict user interaction selectively */
+body, button, input, textarea, canvas {
+    -webkit-user-select: none; /* Prevent text selection */
+    user-select: none; /* Standard */
+    -webkit-touch-callout: none; /* Disable callout menu on long press */
+    touch-action: manipulation; /* Allow only necessary gestures */
+}
 
+html {
+    -webkit-text-size-adjust: 100%; /* Prevent text resizing */
+    touch-action: manipulation; /* Disable pinch-zoom globally */
+}
+
+/* Disable text selection for interactive elements only */
+button, input, textarea, canvas {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Allow normal text interaction for headings and paragraphs */
+h1, h2, h3, h4, h5, h6, p, span, div {
+    -webkit-user-select: auto; /* Allow text selection */
+    user-select: auto; /* Standard */
+}
+
+/* Mobile-specific adjustments */
+@media (hover: none) and (pointer: coarse) {
+    body, button, input, textarea, canvas {
+        -webkit-user-select: none; /* Prevent text selection */
+        user-select: none; /* Standard */
+        -webkit-touch-callout: none; /* Disable long-press menu */
+    }
+
+    body {
+        touch-action: manipulation; /* Limit gestures */
+    }
+}
 </style>
 <script>// Prevent unwanted long-press or pinch-zoom actions only on mobile
 if ('ontouchstart' in window) {
