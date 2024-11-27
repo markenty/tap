@@ -1434,16 +1434,41 @@ html {
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%; /* Prevents font resizing */
 }
-textarea {
-    user-select: none;
-    -webkit-user-select: none;
-    pointer-events: none;
-    background: #f9f9f9; /* Optional: make it visually distinct */
-    color: #333;
-    resize: none;
-}
-</style>
 
+   /* Disable text selection for mobile */
+@media (hover: none) and (pointer: coarse) {
+    body, button, input, textarea, canvas {
+        -webkit-user-select: none; /* Safari/Chrome */
+        -ms-user-select: none; /* IE10+ */
+        user-select: none; /* Standard */
+        -webkit-touch-callout: none; /* Disable callout menu */
+    }
+
+    /* Prevent long press context menu */
+    body {
+        touch-action: manipulation; /* Only allow touch manipulation */
+    }
+}     
+</style>
+<script>// Prevent unwanted long-press or pinch-zoom actions only on mobile
+if ('ontouchstart' in window) {
+    // Disable context menu for touch devices
+    document.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
+
+    // Prevent pinch-zoom
+    document.addEventListener('touchstart', (event) => {
+        if (event.touches.length > 1) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+
+    // Disable gesture zoom
+    document.addEventListener('gesturestart', (event) => {
+        event.preventDefault();
+    });
+}</script>
     </body>
     
 </html>
