@@ -118,7 +118,7 @@ button, input, select, textarea {
      
         <div id="shooter-game">
             
-  <canvas id="gameCanvas" width="400" height="400"></canvas> <div id="gate-animation" class="mt-4"><div id="messages" class="text-warning text-center my-3"></div>
+  <canvas id="gameCanvas" width="400" height="400"></canvas> <div id="gate-animation" class="mt-4"><br/><center><div id="messages" class="text-warning text-center my-3"></div></center>
        <center><div class="action-buttons text-center mt-4">
 <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
         </div></center>
@@ -131,11 +131,11 @@ button, input, select, textarea {
 
         
   <div id="stargate-game">
-<p><div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
+<center><div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
     <div class="game-section w-100 p-3">
       <div class="row text-center">
         <div class="col-12">
-          <h4>Energy: <span id="energy-count">⚡ 0</span><h4>
+          <h4>Energy: <span id="energy-count">⚡ 0</span></h4>
           <h6>Multiplier: <span id="multiplier">1x</span></h6>
           <h6>Chevron Progress: <span id="chevrons-locked">0</span>/7</h6>
           <h6>Worlds Visited: <span id="worlds-visited">0</span></h6>
@@ -144,16 +144,16 @@ button, input, select, textarea {
       </div>
     </div>
   </div>
-   </div></p>
+   </div></center>
      
  
 
-       <div id="item-list" class="mt-3">
+       <center><div id="item-list" class="mt-3">
         <h4 class="text-center">Discovered Items:</h4>
         
 <ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 200px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
 
-      </div>
+      </div></center>
       
             </div>
             
@@ -1356,6 +1356,27 @@ updateDisplay();
 document.addEventListener('gesturestart', function(event) {
     event.preventDefault(); // Disable gesture-based zoom
 });
+
+let autofireInterval = null; // Track the autofire interval
+
+function handleTouchMove(e) {
+    const touchX = e.touches[0].clientX;
+    const deltaX = touchX - touchStartX;
+    shooter.x = Math.max(0, Math.min(canvas.width - shooter.width, shooter.x + deltaX));
+    touchStartX = touchX;
+
+    // Start autofire if not already running
+    if (!autofireInterval) {
+        autofireInterval = setInterval(shootBullet, 200); // Adjust firing rate as needed
+    }
+}
+
+function handleTouchEnd(e) {
+    // Stop autofire
+    clearInterval(autofireInterval);
+    autofireInterval = null;
+}
+        
     </script>
 
     <style>
