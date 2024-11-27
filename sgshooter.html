@@ -123,7 +123,7 @@ button, input, select, textarea {
         <div class="wormhole"></div> 
       </div>
 
-                  <center> <button id="tap-button" class="btn btn-primary mx-2">⚡</button> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button> <button id="reset-button" class="btn btn-danger mx-2">Reset All</button> <br/><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
+                  <center> <button id="tap-button" class="btn btn-primary mx-2">⚡</button> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button> <button id="reset-button" class="btn btn-danger mx-2">Reset All</button> <br/><br/><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
             
 <div id="messages" class="text-warning text-center my-3"></div>
       <div class="action-buttons text-center mt-4">
@@ -1337,7 +1337,7 @@ updateDisplay();
   
     </script>
 
-    <button id="fullscreen-button" style="position: fixed; bottom: 10px; right: 10px; z-index: 1000;">Toggle Fullscreen</button>
+    <button id="fullscreen-button" style="position: fixed; bottom: 10px; right: 10px; z-index: 1000; visibility: hidden;">Toggle Fullscreen</button>
     <script>
         document.getElementById('fullscreen-button').addEventListener('click', () => {
             if (!document.fullscreenElement) {
@@ -1357,6 +1357,23 @@ document.addEventListener('gesturestart', function(event) {
     event.preventDefault(); // Disable gesture-based zoom
 });
     </script>
+
+    <style>
+textarea {
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+    background: #f9f9f9; /* Optional: make it visually distinct */
+    color: #333;
+    resize: none;
+}
+</style>
+<textarea readonly>Static text here...</textarea>
+<script>
+document.querySelectorAll('textarea').forEach(textarea => {
+    textarea.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+});
+</script>
     </body>
     
 </html>
