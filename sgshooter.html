@@ -109,25 +109,28 @@ button, input, select, textarea {
         input, textarea {
     font-size: 16px;
 }
-
+.sticky-header {
+    position: sticky; /* Makes the element sticky */
+    top: 0; }
     </style>
 </head>
 <body>
- 
+ <div class="sticky-header">
     <div id="game-container">
      
         <div id="shooter-game">
       
-  <canvas id="gameCanvas" width="400" height="550"></canvas> <div id="gate-animation" class="mt-4"><br/><center><div id="messages" class="text-warning text-center my-3"></div></center>
+  <canvas id="gameCanvas" width="400" height="550">
+</canvas><center> <button id="tap-button" class="btn btn-primary mx-2">⚡</button> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button> <button id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  <div id="gate-animation" class="mt-4"><br/><center><div id="messages" class="text-warning text-center my-3"></div></center>
         <center><h4>Energy: <span id="energy-count">⚡ 0</span> / Worlds Visited: 🌎 <span id="worlds-visited">0</span> </h4></center>    <center><div class="action-buttons text-center mt-4">
 <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
         </div></center>
   <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div>   
-        <div class="wormhole"></div> 
+      
       </div>
 
-                  <center> <button id="tap-button" class="btn btn-primary mx-2">⚡</button> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button> <button id="reset-button" class="btn btn-danger mx-2">Reset All</button> <br/><br/><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
-            
+                  <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button></center>
+              <div class="wormhole"></div> 
 
         
   <div id="stargate-game"><center><div id="item-list" class="mt-3">
