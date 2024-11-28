@@ -253,7 +253,19 @@ html, body {
     <!-- Instructions div -->
     <div class="instructions" id="instructions">
         Alright, genius, here’s the deal: Arrow keys to move, spacebar to fire, two fingers on mobile—simple enough, right? Generate energy with your particle beam, blow up the negative particles, and for the love of science, check the system to see if you’ve got enough juice to lock a chevron. Lock all seven, dial the Stargate, and boom—you’ll get ancient relics of great power. Got it? Good. Now go save the universe or something. - McKay
-    </div></center>  
+    </div></center> 
+    <script>function multiplyScoreByEnergy() {
+     // Apply a very subtle scaling factor
+    score += worldsVisited*.5;
+
+    // Round down to the nearest whole number for subtlety
+    score = Math.floor(score);
+
+
+    // Update the score display
+    const scoreDisplay = document.getElementById("score-display");
+    scoreDisplay.textContent = `Score: ${score}`;
+}</script>
 <script>
         // Get elements
         const toggleTrigger = document.querySelector('.toggle-trigger');
@@ -316,7 +328,7 @@ html, body {
     // Prevent context menu on canvas for mobile devices
     canvas.addEventListener('contextmenu', (event) => {
         event.preventDefault();
-    });
+    });}
 </script>
  <script>// Detect gamepad connection
 window.addEventListener("gamepadconnected", (e) => {
@@ -804,7 +816,7 @@ function handleBossDamage() {
           chevronsLocked = 0;
           chevronCost = baseChevronCost + (worldsVisited * 50);
           discoverItem();
-          triggerGateAnimation();
+          triggerGateAnimation();   multiplyScoreByEnergy(); // Multiply score by energy
           displayMessage(`Gate dialed! World ${worldsVisited} visited!`);
         } else {
           displayMessage(`Chevron ${chevronsLocked} locked!`);
