@@ -201,7 +201,7 @@ html, body {
 <center><center>
   <div id="item-list" class="mt-3"><button id="toggleButton" style="margin-top: 10px; width: 400px;">View Items</button>
     
-    <ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 120px; border: 1px solid rgba(255,255,255,0.5); padding: 10px; display: none;"></ul>
+    <ul id="items" class="list-unstyled text-center" style="width: 400px; overflow-y: auto; max-height: 120px; border: 1px solid rgba(255,255,255,0.5); padding: 10px; display: none;"></ul>
     
     
   </div>
@@ -235,7 +235,27 @@ html, body {
     </div>
   </div>
    </div></center>
-      
+      <script>
+    const canvas = document.getElementById("gameCanvas");
+
+    // Prevent multi-touch gestures (e.g., pinch-zoom) on the canvas
+    canvas.addEventListener('touchstart', (event) => {
+        if (event.touches.length > 1) {
+            event.preventDefault(); // Block pinch-zoom
+        }
+    }, { passive: false });
+
+    // Prevent gesture-based zoom specifically for canvas
+    canvas.addEventListener('gesturestart', (event) => {
+        event.preventDefault(); // Block gesture zoom
+    });
+
+    /
+    // Prevent context menu on canvas for mobile devices
+    canvas.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
+</script>
  <script>// Detect gamepad connection
 window.addEventListener("gamepadconnected", (e) => {
     console.log("Gamepad connected:", e.gamepad);
@@ -1582,6 +1602,7 @@ function updateShooterPosition() {
     }
 }
 
+    
 </script>
     
     </body>
