@@ -183,11 +183,13 @@ html, body {
         <div id="shooter-game">
       
   <canvas id="gameCanvas" width="400" height="500"></canvas>
-<center> <h4><span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / Worlds Visited: 🌎 <span id="worlds-visited">0</span> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button></h4>  </center> 
+ <center><div class="action-buttons text-center mt-4">
+<h4><span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
+        </div></center>
+<center> <h4>Worlds Visited: 🌎 <span id="worlds-visited">0</span>  <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button></h4>  </center> 
 <center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
-     <center><div class="action-buttons text-center mt-4">
-<h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
-        </div></center> <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div> 
+     
+<div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div> 
 
       
 
@@ -204,7 +206,7 @@ html, body {
       <div id="stargate-game" ><center><div id="item-list" class="mt-3">
         <h4 class="text-center">Discovered Items:</h4>
         
-<ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 200px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
+<ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 50px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
 
       </div></center>
       <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  
