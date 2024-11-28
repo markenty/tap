@@ -1,0 +1,212 @@
+ body {
+      background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+      color: #ffffff;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .wormhole {
+      display: none;
+      width: 200px;
+      height: 200px;
+      margin: auto;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(57, 204, 204, 1), transparent);
+      animation: kawoosh 2s ease-out forwards;
+    }
+    @keyframes kawoosh {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0;
+      }
+    }
+    .game-header {
+      text-shadow: 0 2px 5px rgba(57, 204, 204, 0.8);
+    }
+    
+#chevron-visualizer {
+    display: flex;
+    justify-content: center;
+    flex-direction: row; /* Ensure chevrons are laid out horizontally */
+    gap: 10px; /* Add some spacing between chevrons */
+}
+
+
+    .chevron {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #333;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 10px;
+      transition: background-color 0.3s ease;
+    }
+    .chevron[data-locked="true"] {
+      background-color: #ff5722;
+    }
+  </style>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background: #333;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 20px;
+            width: 100%;
+        }
+        @media (min-width: 768px) {
+            #game-container {
+                flex-direction: row;
+                justify-content: space-around;
+            }
+        }
+        #stargate-game, #shooter-game {
+            flex: 1;
+            margin: 10px;
+            padding: 10px;
+            background: #444;
+            border: 1px solid #555;
+            border-radius: 10px;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background: #000;
+            max-width: 100%;
+            height: auto;
+        }
+    button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    button:hover {
+        transform: scale(1.1);
+    }
+
+    #tap-button {
+        background-color: #00bcd4;
+        color: #fff;
+    }
+
+    #lock-chevron-button {
+        background-color: #4caf50;
+        color: #fff;
+    }
+
+    #reset-button {
+        background-color: #f44336;
+        color: #fff;
+    }
+
+    #unpackButton {
+        background-color: #673ab7;
+        color: #fff;
+    }
+
+    #resetButton {
+        background-color: #9e9e9e;
+        color: #fff;
+    }
+
+    #fullscreen-button {
+        background-color: #ff9800;
+        color: #fff;
+    }
+centeringdiv
+        {
+            display: flex;
+        justify-content: center;
+        align-items: center;
+        }
+
+
+        body {
+    touch-action: manipulation;
+    font-size: 16px; /* Ensure a minimum font size of 16px to prevent zooming */
+}
+
+button, input, select, textarea {
+    font-size: 16px; /* Match this for interactive elements */
+}
+
+        input, textarea {
+    font-size: 16px;
+}
+html, body {
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+    overflow-x: hidden; /* Disable horizontal scrolling */
+    width: 100%; /* Ensure the width is restricted to the viewport */
+}
+
+        /* Trigger text styles */
+        .toggle-trigger {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 18px;
+            display: inline-flex;
+            align-items: center;
+            margin: 20px;
+        }
+
+        .toggle-trigger:hover {
+            color: #0056b3;
+        }
+
+        /* Down triangle styles */
+        .toggle-icon {
+            margin-left: 5px;
+            transition: transform 0.3s ease;
+        }
+
+        /* Rotated triangle when expanded */
+        .expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Instructions container styles */
+        .instructions {
+            max-width: 400px;
+            margin: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #000000;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            display: none; /* Hidden by default */
+        }
+   canvas {
+    -webkit-user-select: none; /* Prevent text selection */
+    user-select: none; /* Standard */
+    -webkit-touch-callout: none; /* Disable callout menu */
+    touch-action: manipulation; /* Allow basic gestures but disable zooming and panning */
