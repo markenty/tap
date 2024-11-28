@@ -221,7 +221,7 @@ html, body {
      
         <div id="shooter-game">
       
-  <canvas id="gameCanvas" width="400" height="500"></canvas>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
 
  <center><div class="action-buttons text-center mt-4">
 <h4><button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button>&nbsp; <span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / <span id="energy-required">50</span></h4><h4>Worlds Visited: 🌎 <span id="worlds-visited">0</span> <span style="border-left:1px;"> </span> </h4></div></center>    
@@ -988,7 +988,7 @@ updateDisplay();
   { name: "Asgard Transport Beam Emitter", bonus: 15 },
   { name: "Ancient Knowledge Cube", bonus: 12 },
   { name: "Jaffa Symbol Pendant", bonus: 7 },
-  { name: "Atlantis Data Crystal", bonus: 18 },
+  { name: "Atlantis Data Crystal", bonus: 18, type: "score"  },
   { name: "Stasis Pod Key", bonus: 10 },
   { name: "Lucian Alliance Tracker", bonus: 8 },
   { name: "Apophis Insignia Ring", bonus: 5 },
@@ -1083,7 +1083,8 @@ function handleTap() {
       listItem.textContent = `${newItem.name} (+${newItem.bonus}x Multiplier)`;
       document.getElementById("items").appendChild(listItem);
 
-      displayMessage(`Discovered: ${newItem.name}! Multiplier increased by ${newItem.bonus}x.`);
+      displayMessage(`Discovered: ${newItem.name}! Multiplier increased by ${newItem.bonus}x.`);   
+        
     }
 
     function triggerGateAnimation() {
