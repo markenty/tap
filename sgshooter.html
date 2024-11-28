@@ -183,9 +183,9 @@ html, body {
         <div id="shooter-game">
       
   <canvas id="gameCanvas" width="400" height="500"></canvas>
-<center> <h4><button style="visibility:hidden; display:none; id="tap-button" class="btn btn-primary mx-2">⚡</button> Energy: <span id="energy-count">⚡ 0</span> / Worlds Visited: 🌎 <span id="worlds-visited">0</span> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button></h4>  </center> 
-<div id="stargate-game" ><center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
-      <center><div class="action-buttons text-center mt-4">
+<center> <h4><span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / Worlds Visited: 🌎 <span id="worlds-visited">0</span> <button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button></h4>  </center> 
+<center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
+     <center><div class="action-buttons text-center mt-4">
 <h4>Energy Needed for Next Chevron: <span id="energy-required">50</span></h4>
         </div></center> <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div> 
 
@@ -196,21 +196,21 @@ html, body {
             
             <center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
 
-                
+                  
             
 
         
   
-      <center><div id="item-list" class="mt-3">
+      <div id="stargate-game" ><center><div id="item-list" class="mt-3">
         <h4 class="text-center">Discovered Items:</h4>
         
 <ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 200px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
 
       </div></center>
-      
+      <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  
 <center><div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
     <div class="game-section w-100 p-3">
-      <div class="row text-center">  <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center> 
+      <div class="row text-center">
         <div style="visibility:hidden; display:none;" class="col-12">
           <h4>Energy: <span id="energy-count">⚡ 0</span></h4>
           <h6>Multiplier: <span id="multiplier">1x</span></h6>
@@ -1205,7 +1205,9 @@ function drawBoss() {
       });
     }
 
-    function gameLoop() {
+    function gameLoop() {ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+    updateShooterPosition(); // Update shooter based on keyboard input
       drawBoss();
       handleBossDamage();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1495,6 +1497,35 @@ canvas.addEventListener("mousemove", (e) => {
 canvas.addEventListener("click", () => {
     shootBullet();
 });</script>
+<script>// Variables to track keyboard state
+let keysPressed = {};
+
+// Add event listeners for keydown and keyup
+document.addEventListener("keydown", (e) => {
+    keysPressed[e.key] = true;
+
+    // Shoot bullet when spacebar is pressed
+    if (e.key === " ") {
+        shootBullet();
+    }
+});
+
+document.addEventListener("keyup", (e) => {
+    keysPressed[e.key] = false;
+});
+
+// Update shooter position based on keys pressed
+function updateShooterPosition() {
+    if (keysPressed["ArrowLeft"] || keysPressed["a"]) {
+        shooter.x = Math.max(0, shooter.x - 5); // Move left
+    }
+    if (keysPressed["ArrowRight"] || keysPressed["d"]) {
+        shooter.x = Math.min(canvas.width - shooter.width, shooter.x + 5); // Move right
+    }
+}
+
+</script>
+    
     </body>
     
 </html>
