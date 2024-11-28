@@ -182,14 +182,10 @@ html, body {
      
         <div id="shooter-game">
       
-  <canvas id="gameCanvas" width="400" height="580"></canvas>
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
  <center><div class="action-buttons text-center mt-4">
-<h4><button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button> <span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / <span id="energy-required">50</span> Worlds Visited: 🌎 <span id="worlds-visited">0</span> <span style="border-left:1px;"> </span> </h4></div></center> 
-<center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
-     
+<h4><button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button>&nbsp; <span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / <span id="energy-required">50</span></h4><h4>Worlds Visited: 🌎 <span id="worlds-visited">0</span> <span style="border-left:1px;"> </span> </h4></div></center>    
 <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div> 
-
-      
 
         <center><div id="messages" class="text-warning text-center my-3"></div></center>            
             
@@ -201,14 +197,31 @@ html, body {
 
         
   
-      <div id="stargate-game" ><center><div id="item-list" class="mt-3">
-        <h4 class="text-center">Discovered Items:</h4>
-        
-<ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 50px; border: 1px solid rgba(255,255,255,0.5); padding: 10px;"></ul>
+      <div id="stargate-game" > <center><button id="unpackButton" style="width: 400px;">Click 3x to Start Accelerator</button> <button id="resetButton" style="display: none; width: 400px;">Reset Accelerator</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  
+<center><center>
+  <div id="item-list" class="mt-3"><button id="toggleButton" style="margin-top: 10px; width: 400px;">View Items</button>
+    
+    <ul id="items" class="list-unstyled text-center" style="overflow-y: auto; max-height: 120px; border: 1px solid rgba(255,255,255,0.5); padding: 10px; display: none;"></ul>
+    
+    
+  </div>
+</center>
 
-      </div></center>
-      <center><button id="unpackButton">Start Game</button> <button id="resetButton" style="display: none;">Reset Game</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  
-<center><div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
+<script>
+  const toggleButton = document.getElementById("toggleButton");
+  const itemList = document.getElementById("items");
+
+  toggleButton.addEventListener("click", () => {
+    if (itemList.style.display === "none") {
+      itemList.style.display = "block";
+      toggleButton.textContent = "Hide Items";
+    } else {
+      itemList.style.display = "none";
+      toggleButton.textContent = "View Items";
+    }
+  });
+</script>
+     <div class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center">
     <div class="game-section w-100 p-3">
       <div class="row text-center">
         <div style="visibility:hidden; display:none;" class="col-12">
@@ -223,7 +236,52 @@ html, body {
   </div>
    </div></center>
       
- 
+ <script>// Detect gamepad connection
+window.addEventListener("gamepadconnected", (e) => {
+    console.log("Gamepad connected:", e.gamepad);
+});
+
+window.addEventListener("gamepaddisconnected", (e) => {
+    console.log("Gamepad disconnected:", e.gamepad);
+});
+
+// Process gamepad input
+function handleGamepadInput() {
+    const gamepads = navigator.getGamepads();
+
+    if (!gamepads[0]) return; // No gamepad connected
+
+    const gamepad = gamepads[0];
+
+    // Movement
+    const horizontalAxis = gamepad.axes[0]; // Left stick
+    if (horizontalAxis < -0.5) {
+        shooter.x = Math.max(0, shooter.x - 5); // Move left
+    } else if (horizontalAxis > 0.5) {
+        shooter.x = Math.min(canvas.width - shooter.width, shooter.x + 5); // Move right
+    }
+
+    // Shooting
+    if (gamepad.buttons[0].pressed) {
+        shootBullet(); // Button A
+    }
+}
+
+// Game loop
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+    handleGamepadInput(); // Process gamepad input
+    updateShooterPosition(); // Handle keyboard/touch input
+    drawShooter(); // Redraw shooter
+    drawHp(); // Draw health bar
+
+    // Other game logic...
+
+    if (gameActive) requestAnimationFrame(gameLoop);
+}</script>
+
+          
   <script>
     const layers = [
       btoa("Reveal Shooter"),
