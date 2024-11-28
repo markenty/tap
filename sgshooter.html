@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
-    <title>Stargate DHD Particle Accelerator</title>
+    <title>Stargate DHD Energy Accelerator</title>
     <style>
     body {
       background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
@@ -174,6 +174,45 @@ html, body {
     overflow-x: hidden; /* Disable horizontal scrolling */
     width: 100%; /* Ensure the width is restricted to the viewport */
 }
+
+        /* Trigger text styles */
+        .toggle-trigger {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 18px;
+            display: inline-flex;
+            align-items: center;
+            margin: 20px;
+        }
+
+        .toggle-trigger:hover {
+            color: #0056b3;
+        }
+
+        /* Down triangle styles */
+        .toggle-icon {
+            margin-left: 5px;
+            transition: transform 0.3s ease;
+        }
+
+        /* Rotated triangle when expanded */
+        .expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Instructions container styles */
+        .instructions {
+            max-width: 400px;
+            margin: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #000000;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            display: none; /* Hidden by default */
+        }
     </style>
 </head>
 <body>
@@ -183,13 +222,21 @@ html, body {
         <div id="shooter-game">
       
   <canvas id="gameCanvas" width="400" height="500"></canvas>
-<center><sup>Use arrows to move & Spacebar to fire. Use two fingers on Mobile.</sup></center>
+
  <center><div class="action-buttons text-center mt-4">
 <h4><button id="lock-chevron-button" class="btn btn-success mx-2">Lock Chevron</button>&nbsp; <span id="tap-button" class="btn btn-primary mx-2"></span> Energy: <span id="energy-count">⚡ 0</span> / <span id="energy-required">50</span></h4><h4>Worlds Visited: 🌎 <span id="worlds-visited">0</span> <span style="border-left:1px;"> </span> </h4></div></center>    
 <div width="400" id="chevron-visualizer" class="d-flex justify-content-center my-3 flex-wrap gap-3"></div> 
 
         <center><div id="messages" class="text-warning text-center my-3"></div></center>            
-            
+          <center>    <!-- Toggle trigger -->
+    <p class="toggle-trigger">
+        <sup>Instructions</sup> <span class="toggle-icon">▼</span>
+    </p>
+
+    <!-- Instructions div -->
+    <div class="instructions" id="instructions">
+        Alright, genius, here’s the deal: Arrow keys to move, spacebar to fire, two fingers on mobile—simple enough, right? Generate energy with your particle beam, blow up the negative particles, and for the love of science, check the system to see if you’ve got enough juice to lock a chevron. Lock all seven, dial the Stargate, and boom—you’ll get ancient relics of great power. Got it? Good. Now go save the universe or something. - McKay
+    </div></center>  
             
             <center><div id="gate-animation" class="mt-4"><center><div class="wormhole"></div></center></div><center>
 
@@ -198,7 +245,7 @@ html, body {
 
         
   
-      <div id="stargate-game" > <center><button id="unpackButton" style="width: 400px;">Click 3x to Start Accelerator</button> <button id="resetButton" style="display: none; width: 400px;">Reset Accelerator</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  
+      <div id="stargate-game" > <center><button id="unpackButton" style="width: 400px;">Click 3x to Start Energy Accelerator</button> <button id="resetButton" style="display: none; width: 400px;">Reset Accelerator</button> <button style="display:none;" id="reset-button" class="btn btn-danger mx-2">Reset All</button></center>  
 <center><center>
   <div id="item-list" class="mt-3"><button id="toggleButton" style="margin-top: 10px; width: 400px;">View Items</button>
     
@@ -207,7 +254,21 @@ html, body {
     
   </div>
 </center>
+<script>
+        // Get elements
+        const toggleTrigger = document.querySelector('.toggle-trigger');
+        const instructionsDiv = document.getElementById('instructions');
+        const toggleIcon = document.querySelector('.toggle-icon');
 
+        // Toggle instructions visibility
+        toggleTrigger.addEventListener('click', () => {
+            const isVisible = instructionsDiv.style.display === 'block';
+
+            // Toggle display and icon rotation
+            instructionsDiv.style.display = isVisible ? 'none' : 'block';
+            toggleTrigger.classList.toggle('expanded', !isVisible);
+        });
+    </script>
 <script>
   const toggleButton = document.getElementById("toggleButton");
   const itemList = document.getElementById("items");
