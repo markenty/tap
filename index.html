@@ -329,6 +329,7 @@ this.flashes = [];
             resizeCanvas() {
                 this.canvas.width = window.innerWidth;
                 this.canvas.height = window.innerHeight;
+                
 
                 if (this.player) {
                     this.player.x = Math.min(this.player.x, this.canvas.width - this.player.width);
@@ -488,6 +489,9 @@ this.flashes = [];
 
             loop() {
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                 // Update and draw the parallax background
+    this.background.update();
+    this.background.draw(this.ctx);
 
              const dx = 
     (this.keys["ArrowLeft"] || this.keys["a"] ? -this.player.speed : 0) +
