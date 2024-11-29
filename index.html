@@ -1,7 +1,8 @@
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src="https://sfxr.me/riffwave.js"></script>
+<script src="https://sfxr.me/sfxr.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shooter Game with Levels</title>
@@ -54,6 +55,14 @@
     </div>
     <canvas id="gameCanvas"></canvas>
     <script>
+   let pickupSound, fireSound, enemyDeathSound, playerDeathSound;
+
+window.onload = () => {
+    pickupSound = sfxr.generate('pickupCoin'); // For 1-Up collection
+    fireSound = sfxr.generate('laserShoot');  // For firing bullets
+    enemyDeathSound = sfxr.generate('explosion'); // For enemy death
+    playerDeathSound = sfxr.generate('hitHurt');  // For player death
+};
         class GameEntity {
             constructor(x, y, width, height, color) {
                 this.x = x;
@@ -154,7 +163,7 @@ class ParallaxBackground {
                     Math.cos(angle) * speed,
                     Math.sin(angle) * speed
                 ));
-                 console.log('\u0007');
+                 console.log('\u0007');sfxr.play(fireSound);
                  if (navigator.vibrate) {
         navigator.vibrate(50); // 50ms vibration
     }
@@ -294,6 +303,7 @@ class ParallaxBackground {
                 this.loop = this.loop.bind(this);
                 this.oneUps = [];
 				this.oneUpSpawnRate = 10000;
+               
 
                 window.addEventListener("resize", this.resizeCanvas.bind(this));
                 this.resizeCanvas();
@@ -388,6 +398,8 @@ this.flashes = [];
     ) {
         oneUp.active = false; // Remove the "1-Up"
         this.lives++; // Add a life
+          // Play the "pickupCoin" sound
+            sfxr.play(pickupSound);
     }
 });
                 this.player.bullets.forEach((bullet) => {
@@ -402,6 +414,7 @@ this.flashes = [];
                             enemy.active = false;
                             this.score += 10;
                             this.enemiesDefeated += 1;
+                            sfxr.play(enemyDeathSound);
                     triggerScreenShake();  // Trigger vibration
                 if (navigator.vibrate) {
                     navigator.vibrate(100); // Vibrate for 100ms
@@ -438,7 +451,7 @@ this.flashes = [];
                         e.y + e.height > this.player.y
                     ) {
                         e.active = false;
-                        this.lives--;  triggerScreenShake();  // Trigger vibration
+                        this.lives--;  sfxr.play(playerDeathSound); triggerScreenShake();  // Trigger vibration
                 if (navigator.vibrate) {
                     navigator.vibrate(100); // Vibrate for 100ms
                 }                           this.flashes.push({
