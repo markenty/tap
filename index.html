@@ -233,7 +233,14 @@ class ParallaxBackground {
 }
         }
 
-        class Game {registerTouchEvents() {
+        class Game {spawnOneUp() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const oneUp = new OneUp(x, y, 20, 20, "green");
+    this.oneUps.push(oneUp);
+}
+        
+        registerTouchEvents() {
     let isDragging = false;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
@@ -285,6 +292,8 @@ class ParallaxBackground {
                 this.keys = {};
                 this.enemiesDefeated = 0;
                 this.loop = this.loop.bind(this);
+                this.oneUps = [];
+				this.oneUpSpawnRate = 10000;
 
                 window.addEventListener("resize", this.resizeCanvas.bind(this));
                 this.resizeCanvas();
@@ -310,6 +319,9 @@ this.flashes = [];
                 window.addEventListener("keyup", (e) => this.keys[e.key] = false);
                 this.registerMouseEvents();
     this.registerTouchEvents(); // Add this line
+// Spawn enemies and 1-Up items
+    this.spawnEnemies();
+    setInterval(() => this.spawnOneUp(), this.oneUpSpawnRate);
                 this.spawnEnemies();
                 requestAnimationFrame(this.loop);
             }
@@ -366,6 +378,17 @@ this.flashes = [];
             }
 
             checkCollisions() {
+            this.oneUps.forEach((oneUp) => {
+    if (
+        oneUp.x < this.player.x + this.player.width &&
+        oneUp.x + oneUp.width > this.player.x &&
+        oneUp.y < this.player.y + this.player.height &&
+        oneUp.y + oneUp.height > this.player.y
+    ) {
+        oneUp.active = false; // Remove the "1-Up"
+        this.lives++; // Add a life
+    }
+});
                 this.player.bullets.forEach((bullet) => {
                     this.enemies.forEach((enemy) => {
                         if (
@@ -397,8 +420,13 @@ this.flashes = [];
             updateEntities() {
                 this.player.bullets = this.player.bullets.filter((b) => b.active);
                 this.player.bullets.forEach((b) => b.update(this.canvas.width, this.canvas.height));
-this.flashes = this.flashes.filter((flash) => flash.duration > 0);
-this.flashes.forEach((flash) => flash.duration--);
+                
+                this.oneUps = this.oneUps.filter((o) => o.active);
+    			this.oneUps.forEach((o) => o.update(this.canvas.width, this.canvas.height));
+                
+				this.flashes = this.flashes.filter((flash) => flash.duration > 0);
+				this.flashes.forEach((flash) => flash.duration--);
+                
                 this.enemies = this.enemies.filter((e) => e.active);
                 this.enemies.forEach((e) => {
                     e.update(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
@@ -439,6 +467,7 @@ this.flashes.forEach((flash) => flash.duration--);
             }
 
             drawEntities() {
+            	this.oneUps.forEach((o) => o.draw(this.ctx));
                 this.player.draw(this.ctx);
                 this.player.bullets.forEach((b) => b.draw(this.ctx));
                 this.enemies.forEach((e) => e.draw(this.ctx));
@@ -580,6 +609,37 @@ const dy =
             this.gamepadController.pollInput();
         }
     };
+    
+    // 1up
+    
+    
+    class OneUp extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Optional: Add a slight movement effect
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove "1-Up" if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("+1", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+
+
 </script>
 
 </html>
