@@ -97,12 +97,13 @@ class ParallaxBackground {
                 }
             }
             update() {
-                this.stars.forEach(star => {
-                    star.x -= star.speed;
-                    if (star.x < 0) {
-                        star.x = this.width;
-                        star.y = Math.random() * this.height;
-                        star.speed = Math.random() * 2 + 1;
+                      this.stars.forEach(star => {
+            star.y += star.speed; // Move downwards
+            if (star.y > this.height) {
+                // Reset star to the top if it moves off the bottom
+                star.y = 0;
+                star.x = Math.random() * this.width; // Random horizontal position
+                star.speed = Math.random() * 2 + 1;  // Randomize speed
                     }
                 });
             }
@@ -115,6 +116,36 @@ class ParallaxBackground {
                 });
             }
         }
+        
+        
+        class ShieldItem extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Moves downward
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove item if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("S", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+
+        
+        
         class HomingBullet extends GameEntity {
     constructor(x, y, width, height, color) {
         super(x, y, width, height, color);
@@ -151,6 +182,8 @@ class ParallaxBackground {
                 this.speed = 5;
                 this.bullets = [];
   this.homingActive = false; // Flag for homing bullets
+  this.shieldActive = false; // Shield status
+        this.shieldRadius = 75;   // Radius of the forcefield
             }
             draw(ctx) {
     const centerX = this.x + this.width / 2;
@@ -179,7 +212,33 @@ class ParallaxBackground {
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius / 3, 0, Math.PI * 2);
     ctx.fill();
+        if (this.shieldActive) {
+         ctx.save();
+
+        // Glow properties
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = "rgba(0, 255, 255, 0.75)";
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.5)";
+        ctx.lineWidth = 6;
+
+        // Dynamic pulse effect
+        const pulse = Math.sin(Date.now() / 200) * 5 + this.shieldRadius;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        }
 }
+activateShield() {
+        this.shieldActive = true;
+        console.log("Shield activated!");
+
+        // Deactivate shield after 15 seconds
+        setTimeout(() => {
+            this.shieldActive = false;
+            console.log("Shield deactivated!");
+        }, 15000);
+    }
+
             move(dx, dy, canvasWidth, canvasHeight) {
                 this.x = Math.max(0, Math.min(canvasWidth - this.width, this.x + dx));
                 this.y = Math.max(0, Math.min(canvasHeight - this.height, this.y + dy));
@@ -316,6 +375,12 @@ class HomingEnhancer extends GameEntity {
     }
 }
         class Game {
+        spawnShieldItem() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const shieldItem = new ShieldItem(x, y, 20, 20, "blue");
+    this.shieldItems.push(shieldItem);
+}
         spawnHomingEnhancer() {
     const x = Math.random() * (this.canvas.width - 20);
     const y = -20; // Spawn above the screen
@@ -381,7 +446,8 @@ class HomingEnhancer extends GameEntity {
                 this.lives = 10;
                 this.keys = {};
                 this.enemiesDefeated = 0;
-                this.loop = this.loop.bind(this);
+                this.loop = this.loop.bind(this);this.shieldItems = [];
+setInterval(() => this.spawnShieldItem(), 20000); // Spawn every 20 seconds
                 this.oneUps = [];
 				this.oneUpSpawnRate = 10000;this.homingEnhancers = [];
 setInterval(() => this.spawnHomingEnhancer(), 15000);
@@ -470,7 +536,42 @@ this.flashes = [];
                 }, this.spawnRate);
             }
 
-            checkCollisions() {this.homingEnhancers.forEach((enhancer) => {
+            checkCollisions() {  this.shieldItems.forEach((item) => {
+        if (
+            item.x < this.player.x + this.player.width &&
+            item.x + item.width > this.player.x &&
+            item.y < this.player.y + this.player.height &&
+            item.y + item.height > this.player.y
+        ) {
+            item.active = false; // Remove the item
+            this.player.activateShield(); // Activate the shield
+        }
+    });
+
+    // Destroy enemies on contact if shield is active
+    if (this.player.shieldActive) {
+        this.enemies = this.enemies.filter((enemy) => {
+            const dist = Math.hypot(
+                enemy.x + enemy.width / 2 - (this.player.x + this.player.width / 2),
+                enemy.y + enemy.height / 2 - (this.player.y + this.player.height / 2)
+            );
+            if (dist <= this.player.shieldRadius) {
+                enemy.active = false;
+                this.score += 10; // Award score for destroyed enemy
+                    this.flashes.push({
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y + enemy.height / 2,
+                    size: 40, // Flash size
+                    duration: 10 // Flash duration (frames)
+                });
+                sfxr.play(enemyDeathSound); // Play death sound
+ triggerScreenShake();
+                return false; // Remove enemy
+            }
+            return true; // Keep enemy
+        });
+    }
+this.homingEnhancers.forEach((enhancer) => {
         if (
             enhancer.x < this.player.x + this.player.width &&
             enhancer.x + enhancer.width > this.player.x &&
@@ -531,7 +632,8 @@ this.flashes = [];
                 });
             }
 
-            updateEntities() {
+            updateEntities() { this.shieldItems = this.shieldItems.filter((item) => item.active);
+    this.shieldItems.forEach((item) => item.update(this.canvas.width, this.canvas.height));
                   this.homingEnhancers = this.homingEnhancers.filter((h) => h.active);
     this.homingEnhancers.forEach((h) => h.update(this.canvas.width, this.canvas.height));
 
@@ -590,6 +692,7 @@ this.flashes = [];
             }
 
             drawEntities() {
+            this.shieldItems.forEach((item) => item.draw(this.ctx));
             	this.oneUps.forEach((o) => o.draw(this.ctx));
                 this.player.draw(this.ctx);
                 this.homingEnhancers.forEach((h) => h.draw(this.ctx));
