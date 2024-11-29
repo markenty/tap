@@ -63,6 +63,9 @@ window.onload = () => {
     enemyDeathSound = sfxr.generate('explosion'); // For enemy death
     playerDeathSound = sfxr.generate('hitHurt');  // For player death
 };
+
+
+
         class GameEntity {
             constructor(x, y, width, height, color) {
                 this.x = x;
@@ -112,11 +115,42 @@ class ParallaxBackground {
                 });
             }
         }
+        class HomingBullet extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 5;
+    }
+
+    update(enemies, canvasWidth, canvasHeight) {
+        if (enemies && enemies.length > 0) {
+            // Find the closest enemy
+            const closestEnemy = enemies.reduce((nearest, enemy) => {
+                const distToCurrent = Math.hypot(this.x - enemy.x, this.y - enemy.y);
+                const distToNearest = Math.hypot(this.x - nearest.x, this.y - nearest.y);
+                return distToCurrent < distToNearest ? enemy : nearest;
+            });
+
+            // Adjust bullet direction towards the closest enemy
+            const angle = Math.atan2(closestEnemy.y - this.y, closestEnemy.x - this.x);
+            this.x += Math.cos(angle) * this.speed;
+            this.y += Math.sin(angle) * this.speed;
+        } else {
+            // Move straight if no enemies
+            this.y -= this.speed;
+        }
+
+        // Deactivate bullet if out of bounds
+        if (this.x < 0 || this.x > canvasWidth || this.y < 0 || this.y > canvasHeight) {
+            this.active = false;
+        }
+    }
+}
         class Player extends GameEntity {
             constructor(x, y, width, height, color) {
                 super(x, y, width, height, color);
                 this.speed = 5;
                 this.bullets = [];
+  this.homingActive = false; // Flag for homing bullets
             }
             draw(ctx) {
     const centerX = this.x + this.width / 2;
@@ -151,25 +185,40 @@ class ParallaxBackground {
                 this.y = Math.max(0, Math.min(canvasHeight - this.height, this.y + dy));
             }
             shoot(targetX, targetY) {
-                const angle = Math.atan2(targetY - (this.y + this.height / 2), targetX - (this.x + this.width / 2));
-                const speed = 8;
-                
-                this.bullets.push(new Bullet(
-                    this.x + this.width / 2 - 2.5,
-                    this.y + this.height / 2 - 2.5,
-                    5,
-                    5,
-                    "yellow",
-                    Math.cos(angle) * speed,
-                    Math.sin(angle) * speed
-                ));
-                 console.log('\u0007');sfxr.play(fireSound);
-                 if (navigator.vibrate) {
-        navigator.vibrate(50); // 50ms vibration
-    }
-              
-            }
+        // Homing bullets
+        if (this.homingActive) {
+            this.bullets.push(new HomingBullet(
+                this.x + this.width / 2 - 2.5,
+                this.y + this.height / 2 - 2.5,
+                5,
+                5,
+                "yellow"
+            ));
+        } 
+        // Standard bullets
+        else {
+            const angle = Math.atan2(targetY - (this.y + this.height / 2), targetX - (this.x + this.width / 2));
+            const speed = 8;
+
+            this.bullets.push(new Bullet(
+                this.x + this.width / 2 - 2.5,
+                this.y + this.height / 2 - 2.5,
+                5,
+                5,
+                "yellow",
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+            ));
         }
+        
+        // Play sound and vibrate
+        console.log('\u0007'); 
+        sfxr.play(fireSound);
+        if (navigator.vibrate) {
+            navigator.vibrate(50); // 50ms vibration
+        }
+    }
+}
 
         class Bullet extends GameEntity {
             constructor(x, y, width, height, color, dx, dy) {
@@ -241,8 +290,40 @@ class ParallaxBackground {
     ctx.fill();
 }
         }
+class HomingEnhancer extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Optional: Move the power-up down the screen
+    }
 
-        class Game {spawnOneUp() {
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("H", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+        class Game {
+        spawnHomingEnhancer() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const homingEnhancer = new HomingEnhancer(x, y, 20, 20, "purple");
+    this.homingEnhancers.push(homingEnhancer);
+}
+        
+        spawnOneUp() {
     const x = Math.random() * (this.canvas.width - 20);
     const y = -20; // Spawn above the screen
     const oneUp = new OneUp(x, y, 20, 20, "green");
@@ -302,7 +383,8 @@ class ParallaxBackground {
                 this.enemiesDefeated = 0;
                 this.loop = this.loop.bind(this);
                 this.oneUps = [];
-				this.oneUpSpawnRate = 10000;
+				this.oneUpSpawnRate = 10000;this.homingEnhancers = [];
+setInterval(() => this.spawnHomingEnhancer(), 15000);
                
 
                 window.addEventListener("resize", this.resizeCanvas.bind(this));
@@ -388,7 +470,25 @@ this.flashes = [];
                 }, this.spawnRate);
             }
 
-            checkCollisions() {
+            checkCollisions() {this.homingEnhancers.forEach((enhancer) => {
+        if (
+            enhancer.x < this.player.x + this.player.width &&
+            enhancer.x + enhancer.width > this.player.x &&
+            enhancer.y < this.player.y + this.player.height &&
+            enhancer.y + enhancer.height > this.player.y
+        ) {
+            enhancer.active = false; // Remove the enhancer
+            this.player.homingActive = true; // Enable homing bullets
+
+            console.log("HomingEnhancer collected!");
+
+            // Disable homing bullets after 10 seconds
+            setTimeout(() => {
+                console.log("Homing bullets deactivated!");
+                this.player.homingActive = false;
+            }, 10000);
+        }
+    });
             this.oneUps.forEach((oneUp) => {
     if (
         oneUp.x < this.player.x + this.player.width &&
@@ -432,8 +532,17 @@ this.flashes = [];
             }
 
             updateEntities() {
-                this.player.bullets = this.player.bullets.filter((b) => b.active);
-                this.player.bullets.forEach((b) => b.update(this.canvas.width, this.canvas.height));
+                  this.homingEnhancers = this.homingEnhancers.filter((h) => h.active);
+    this.homingEnhancers.forEach((h) => h.update(this.canvas.width, this.canvas.height));
+
+    this.player.bullets = this.player.bullets.filter((b) => b.active);
+    this.player.bullets.forEach((b) => {
+        if (b instanceof HomingBullet) {
+            b.update(this.enemies, this.canvas.width, this.canvas.height); // Pass dimensions and enemies
+        } else {
+            b.update(this.canvas.width, this.canvas.height);
+        }
+    });
                 
                 this.oneUps = this.oneUps.filter((o) => o.active);
     			this.oneUps.forEach((o) => o.update(this.canvas.width, this.canvas.height));
@@ -483,6 +592,7 @@ this.flashes = [];
             drawEntities() {
             	this.oneUps.forEach((o) => o.draw(this.ctx));
                 this.player.draw(this.ctx);
+                this.homingEnhancers.forEach((h) => h.draw(this.ctx));
                 this.player.bullets.forEach((b) => b.draw(this.ctx));
                 this.enemies.forEach((e) => e.draw(this.ctx));
                 this.flashes.forEach((flash) => {
