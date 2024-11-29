@@ -378,7 +378,10 @@ this.flashes = [];
                             enemy.active = false;
                             this.score += 10;
                             this.enemiesDefeated += 1;
-                    triggerScreenShake(); 
+                    triggerScreenShake();  // Trigger vibration
+                if (navigator.vibrate) {
+                    navigator.vibrate(100); // Vibrate for 100ms
+                }
                             // Add a simple flash effect at the enemy's position
     this.flashes.push({
         x: enemy.x + enemy.width / 2,
@@ -406,7 +409,10 @@ this.flashes.forEach((flash) => flash.duration--);
                         e.y + e.height > this.player.y
                     ) {
                         e.active = false;
-                        this.lives--;  triggerScreenShake();                            this.flashes.push({
+                        this.lives--;  triggerScreenShake();  // Trigger vibration
+                if (navigator.vibrate) {
+                    navigator.vibrate(100); // Vibrate for 100ms
+                }                           this.flashes.push({
             x: this.player.x + this.player.width / 2,
             y: this.player.y + this.player.height / 2,
             size: 50, // Size of the flash
