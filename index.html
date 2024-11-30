@@ -145,7 +145,53 @@ class ParallaxBackground {
 }
 
         
-        
+        class Boss extends GameEntity {
+    constructor(x, y, width, height, color, speed, health) {
+        super(x, y, width, height, color);
+        this.speed = speed;
+        this.health = health;
+        this.originalHealth = health;
+        this.direction = 1; // Moves left and right
+    }
+
+    update(canvasWidth, canvasHeight) {
+        // Move left and right within canvas boundaries
+        this.x += this.speed * this.direction;
+        if (this.x <= 0 || this.x + this.width >= canvasWidth) {
+            this.direction *= -1; // Reverse direction
+        }
+
+        // Fire bullets downward periodically
+        if (Math.random() < 0.02) {
+            this.fireBullet();
+        }
+    }
+
+    fireBullet() {
+        game.enemies.push(new Enemy(
+            this.x + this.width / 2 - 10,
+            this.y + this.height,
+            20,
+            20,
+            "orange",
+            Math.random() * 1.5 + 1
+        ));
+    }
+
+    draw(ctx) {
+        // Boss health bar
+        ctx.fillStyle = "red";
+        ctx.fillRect(this.x, this.y - 10, this.width * (this.health / this.originalHealth), 5);
+
+        // Boss design
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "red";
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
         class HomingBullet extends GameEntity {
     constructor(x, y, width, height, color) {
         super(x, y, width, height, color);
@@ -479,6 +525,8 @@ class HomingEnhancer extends GameEntity {
                 this.level = 1;
                 this.lives = 10;
                 this.keys = {};
+                this.boss = null;
+this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss));
                 this.enemiesDefeated = 0;
                 this.loop = this.loop.bind(this);this.shieldItems = [];
 setInterval(() => this.spawnShieldItem(), 20000); // Spawn every 20 seconds
@@ -666,7 +714,26 @@ this.homingEnhancers.forEach((enhancer) => {
                 });
             }
 
-            updateEntities() { this.shieldItems = this.shieldItems.filter((item) => item.active);
+            updateEntities() {     if (this.boss) {
+        this.boss.update(this.canvas.width, this.canvas.height);
+        this.player.bullets.forEach(bullet => {
+            if (bullet.active && this.boss) {
+    if (bullet.x < this.boss.x + this.boss.width &&
+        bullet.x + bullet.width > this.boss.x &&
+        bullet.y < this.boss.y + this.boss.height &&
+        bullet.y + bullet.height > this.boss.y) {
+        bullet.active = false;
+        this.boss.health -= 10;
+        sfxr.play(enemyDeathSound);
+        if (this.boss.health <= 0) {
+            this.handleBossDefeat();
+        }
+    }
+}
+
+        });
+    }
+this.shieldItems = this.shieldItems.filter((item) => item.active);
     this.shieldItems.forEach((item) => item.update(this.canvas.width, this.canvas.height));
                   this.homingEnhancers = this.homingEnhancers.filter((h) => h.active);
     this.homingEnhancers.forEach((h) => h.update(this.canvas.width, this.canvas.height));
@@ -717,15 +784,40 @@ this.homingEnhancers.forEach((enhancer) => {
             levelUp() {
                 this.level++;
                 this.enemiesDefeated = 0;
-                this.spawnRate = Math.max(500, this.spawnRate - 200);
+                this.spawnRate = Math.max(500, this.spawnRate - 200);// Spawn a boss every 10 levels
+    if (this.level % 10 === 0) {
+        this.boss = new Boss(
+            this.canvas.width / 2 - 50,
+            50,
+            100,
+            100,
+            "purple",
+            2, // Speed
+            100 + this.level * 10 // Health increases with level
+        );
+    }
             }
-
+handleBossDefeat() {this.flashes.push({
+        x: this.boss.x + this.boss.width / 2,
+        y: this.boss.y + this.boss.height / 2,
+        size: Math.max(this.boss.width, this.boss.height) * 1.5, // Flash size larger than the boss
+        duration: 20 // Flash duration (frames)
+    });
+    this.boss = null;
+    this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss)); // Ensure boss-related entities are cleared
+    this.score += 500;
+    this.lives++;
+    sfxr.play(pickupSound);
+    triggerScreenShake();
+}
             endGame() {
                 alert(`Game Over! Final Score: ${this.score}`);
                 window.location.reload();
             }
 
-            drawEntities() {
+            drawEntities() { if (this.boss) {
+        this.boss.draw(this.ctx);
+    }
             this.shieldItems.forEach((item) => item.draw(this.ctx));
             	this.oneUps.forEach((o) => o.draw(this.ctx));
                 this.player.draw(this.ctx);
@@ -798,7 +890,6 @@ const dy =
     }
     shake();
 }
-      
     </script>
     <script>
     class GamepadController {
