@@ -7,8 +7,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Shooter Game with Levels</title>
     <style>
-        body {
-		-webkit-touch-callout: none;
+        body, * {
+		-webkit-touch-callout: none; /* Prevent long-press menu */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+}
             margin: 0;
             padding: 0;
             overflow: hidden;
