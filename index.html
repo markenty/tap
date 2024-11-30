@@ -71,6 +71,17 @@
     </div><div id="messages"></div>
     <canvas id="gameCanvas"></canvas>
     <script>
+
+document.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        // Prevent long-press
+        setTimeout(() => e.preventDefault(), 500);
+    }
+}, { passive: false });
+
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // Disable the right-click or long-press menu
+});	    
    let pickupSound, fireSound, enemyDeathSound, playerDeathSound;
 
 window.onload = () => {
