@@ -14,7 +14,19 @@
             background: linear-gradient(to bottom, #111, #444);
             color: white;
             font-family: sans-serif;
-        }
+        }#messages {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 18px;
+    color: white;
+    background: rgba(0, 0, 0, 0.7); /* Slightly darker background */
+    z-index: 10; /* Ensure it's above the game canvas */
+    pointer-events: none; /* Prevent user interaction */
+}
         #gameCanvas {
             display: block;
             margin: 0;
@@ -52,7 +64,7 @@
         <div id="score">Score: 0</div>
         <div id="level">Level: 1</div>
         <div id="lives">Lives: 3</div>
-    </div>
+    </div><div id="messages"></div>
     <canvas id="gameCanvas"></canvas>
     <script>
    let pickupSound, fireSound, enemyDeathSound, playerDeathSound;
@@ -318,13 +330,13 @@ update(enemies, canvasWidth, canvasHeight, boss) {
         }
 }
 activateShield() {
-        this.shieldActive = true;
+        this.shieldActive = true; 
         console.log("Shield activated!");
 
         // Deactivate shield after 15 seconds
         setTimeout(() => {
-            this.shieldActive = false;
-            console.log("Shield deactivated!");
+            this.shieldActive = false; 
+            console.log("Shield deactivated!");wa
         }, 15000);
     }
 
@@ -528,6 +540,9 @@ class HomingEnhancer extends GameEntity {
                 this.canvas = document.getElementById("gameCanvas");
                 this.ctx = this.canvas.getContext("2d");
                 this.player = null;
+                 this.messages = []; // Array to hold messages
+        this.messageDisplayDuration = 3000; // Time to display each message (in ms)
+        this.messageElement = document.getElementById("messages");
                 this.enemies = [];
                 this.spawnRate = 2000;
                 this.score = 0;
@@ -553,8 +568,38 @@ this.flashes = [];
                 this.registerMouseEvents();
                 
             }
+ showMessage(text) {
+    console.log("Message to display:", text); // Debugging log
+    // Push the message to the queue
+    this.messages.push({ text, timestamp: Date.now() });
 
-            start() {
+    // Immediately update the display
+    this.updateMessageDisplay();
+}
+
+updateMessageDisplay() {
+    if (this.messages.length === 0) {
+        this.messageElement.textContent = ""; // Clear when no messages
+        return;
+    }
+
+    const currentMessage = this.messages[0];
+    const timeElapsed = Date.now() - currentMessage.timestamp;
+
+    // Display the current message
+    this.messageElement.textContent = currentMessage.text;
+
+    // Remove the message after the duration
+    if (timeElapsed > this.messageDisplayDuration) {
+        this.messages.shift(); // Remove the current message
+    }
+
+    // Re-check the messages queue
+    setTimeout(() => this.updateMessageDisplay(), 100);
+}
+
+
+            start() {this.showMessage("Game Started!");
                 this.background = new ParallaxBackground(this.canvas.width, this.canvas.height);
                 this.player = new Player(
                     this.canvas.width / 2 - 25,
@@ -636,7 +681,7 @@ this.flashes = [];
         ) {
             item.active = false; // Remove the item
             this.player.activateShield(); // Activate the shield
-        }
+        this.showMessage("Shield Active!");}
     });
 
     // Destroy enemies on contact if shield is active
@@ -673,6 +718,7 @@ this.homingEnhancers.forEach((enhancer) => {
             this.player.homingActive = true; // Enable homing bullets
 
             console.log("HomingEnhancer collected!");
+this.showMessage("Homing Enhancer collected!");
 
             // Disable homing bullets after 10 seconds
             setTimeout(() => {
@@ -691,7 +737,7 @@ this.homingEnhancers.forEach((enhancer) => {
         oneUp.active = false; // Remove the "1-Up"
         this.lives++; // Add a life
           // Play the "pickupCoin" sound
-            sfxr.play(pickupSound);
+            sfxr.play(pickupSound);this.showMessage("1 UP!");
     }
 });
                 this.player.bullets.forEach((bullet) => {
@@ -811,7 +857,7 @@ handleBossDefeat() {this.flashes.push({
         y: this.boss.y + this.boss.height / 2,
         size: Math.max(this.boss.width, this.boss.height) * 1.5, // Flash size larger than the boss
         duration: 20 // Flash duration (frames)
-    });
+    });this.showMessage("Boss Defeated!");
     this.boss = null;
     this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss)); // Ensure boss-related entities are cleared
     this.score += 500;
