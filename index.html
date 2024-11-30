@@ -822,19 +822,6 @@ this.showMessage("Homing Enhancer collected!");
 
         });
 
-	 // Filter out inactive entities
-    this.player.bullets = this.player.bullets.filter((b) => b.active);
-    this.enemies = this.enemies.filter((e) => e.active);
-    this.shieldItems = this.shieldItems.filter((s) => s.active);
-    this.homingEnhancers = this.homingEnhancers.filter((h) => h.active);
-    this.oneUps = this.oneUps.filter((o) => o.active);
-
-    // Update remaining entities
-    this.player.bullets.forEach((b) => b.update(this.canvas.width, this.canvas.height));
-    this.enemies.forEach((e) => e.update(this.player.x, this.player.y));
-    this.shieldItems.forEach((s) => s.update(this.canvas.width, this.canvas.height));
-    this.homingEnhancers.forEach((h) => h.update(this.canvas.width, this.canvas.height));
-    this.oneUps.forEach((o) => o.update(this.canvas.width, this.canvas.height)); 
     }
 this.shieldItems = this.shieldItems.filter((item) => item.active);
     this.shieldItems.forEach((item) => item.update(this.canvas.width, this.canvas.height));
