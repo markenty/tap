@@ -778,7 +778,7 @@ this.showMessage("Homing Enhancer collected!");
         bullet.y < this.boss.y + this.boss.height &&
         bullet.y + bullet.height > this.boss.y) {
         bullet.active = false;
-        this.boss.health -= 50;
+        this.boss.health -= 5;
         sfxr.play(enemyDeathSound);
         if (this.boss.health <= 0) {
             this.handleBossDefeat();
