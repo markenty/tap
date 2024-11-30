@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Shooter Game with Levels</title>
     <style>
-        body, * {
+        body {
 		-webkit-touch-callout: none; /* Prevent long-press menu */
     -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
 }
@@ -73,17 +73,6 @@
     </div><div id="messages"></div>
     <canvas id="gameCanvas"></canvas>
     <script>
-
-document.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-        // Prevent long-press
-        setTimeout(() => e.preventDefault(), 500);
-    }
-}, { passive: false });
-
-document.addEventListener('contextmenu', (e) => {
-    e.preventDefault(); // Disable the right-click or long-press menu
-});	    
    let pickupSound, fireSound, enemyDeathSound, playerDeathSound;
 
 window.onload = () => {
