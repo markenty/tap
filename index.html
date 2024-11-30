@@ -70,6 +70,10 @@
     </div><div id="messages"></div>
     <canvas id="gameCanvas"></canvas>
     <script>
+
+	    document.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // Prevent the default right-click or long-press menu
+});
    let pickupSound, fireSound, enemyDeathSound, playerDeathSound;
 
 window.onload = () => {
