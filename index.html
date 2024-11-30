@@ -73,7 +73,9 @@
     </div><div id="messages"></div>
     <canvas id="gameCanvas"></canvas>
     <script>
-
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // Prevent the default right-click or long-press menu
+});
 document.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
         // Prevent long-press
