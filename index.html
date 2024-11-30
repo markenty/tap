@@ -190,28 +190,51 @@ class ParallaxBackground {
     const centerY = this.y + this.height / 2;
     const radius = this.width / 2;
 
-    // Outer glow effect
+       // Calculate rotation for spinning hexagon
+    const rotation = Date.now() / 300; // Rotate over time
+
+    // Outer glow effect for player
     ctx.shadowBlur = 20;
     ctx.shadowColor = "cyan";
 
-    // Outer hexagon
-    ctx.fillStyle = "blue";
+    // Draw spinning hexagon
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    ctx.fillStyle = "rgba(0, 100, 255, 0.8)";
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
         const angle = Math.PI / 3 * i;
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
+        const x = radius * Math.cos(angle);
+        const y = radius * Math.sin(angle);
         ctx.lineTo(x, y);
     }
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
 
-    // Inner core (circle)
+    // Inner core with pulsing effect
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "cyan";
+    const pulse = Math.sin(Date.now() / 200) * 3 + radius / 3; // Pulsing radius
+    const gradient = ctx.createRadialGradient(centerX, centerY, pulse / 2, centerX, centerY, pulse);
+    gradient.addColorStop(0, "rgba(0, 255, 255, 1)");
+    gradient.addColorStop(1, "rgba(0, 100, 255, 0)");
+
+    ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius / 3, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, pulse, 0, Math.PI * 2);
     ctx.fill();
+    
+       // Add orbiting particles (optional)
+    for (let i = 0; i < 3; i++) {
+        const angle = Date.now() / 500 + (Math.PI * 2 * i) / 3;
+        const orbitX = centerX + Math.cos(angle) * (radius + 10);
+        const orbitY = centerY + Math.sin(angle) * (radius + 10);
+        ctx.fillStyle = "rgba(0, 255, 255, 0.5)";
+        ctx.beginPath();
+        ctx.arc(orbitX, orbitY, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
         if (this.shieldActive) {
          ctx.save();
 
