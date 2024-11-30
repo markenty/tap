@@ -29,7 +29,12 @@
 } :root {
   touch-action: pan-x pan-y;
   height: 100% 
-} 
+} canvas {
+    -webkit-user-select: none; /* Safari and iOS */
+    -ms-user-select: none;     /* Internet Explorer/Edge */
+    user-select: none;         /* Standard */
+    -webkit-touch-callout: none; /* Disable long-press actions */
+}
         #gameCanvas {
             display: block;
             margin: 0;
