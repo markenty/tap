@@ -162,7 +162,31 @@ class ParallaxBackground {
             }
         }
         
-        
+        class RapidFirePowerUp extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Move downwards
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove the power-up if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("R", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
         class ShieldItem extends GameEntity {
     constructor(x, y, width, height, color) {
         super(x, y, width, height, color);
@@ -284,12 +308,16 @@ update(enemies, canvasWidth, canvasHeight, boss) {
         class Player extends GameEntity {
             constructor(x, y, width, height, color) {
                 super(x, y, width, height, color);
-                this.speed = 5;
-                this.bullets = [];
-  this.homingActive = false; // Flag for homing bullets
-  this.shieldActive = false; // Shield status
-        this.shieldRadius = 75;   // Radius of the forcefield
-            }
+            this.speed = 5;
+            this.bullets = [];
+ 			this.shootCooldown = 0;
+    		this.shootRate = 500; // Default shoot rate in milliseconds
+             this.bulletSpeedMultiplier = 1; // Multiplier for bullet speed
+    		this.isFiring = false; // Track whether the player is holding the fire button
+            this.homingActive = false; // Flag for homing bullets
+  			this.shieldActive = false; // Shield status
+        	this.shieldRadius = 75;   // Radius of the forcefield
+}
             draw(ctx) {
     const centerX = this.x + this.width / 2;
     const centerY = this.y + this.height / 2;
@@ -362,6 +390,7 @@ update(enemies, canvasWidth, canvasHeight, boss) {
         ctx.stroke();
         }
 }
+
 activateShield() {
         this.shieldActive = true; 
         console.log("Shield activated!");
@@ -378,6 +407,8 @@ activateShield() {
                 this.y = Math.max(0, Math.min(canvasHeight - this.height, this.y + dy));
             }
             shoot(targetX, targetY) {
+            
+           
         // Homing bullets
         if (this.homingActive) {
             this.bullets.push(new HomingBullet(
@@ -388,6 +419,7 @@ activateShield() {
                 "yellow"
             ));
         } 
+        
         // Standard bullets
         else {
             const angle = Math.atan2(targetY - (this.y + this.height / 2), targetX - (this.x + this.width / 2));
@@ -406,6 +438,7 @@ activateShield() {
         
         // Play sound and vibrate
         console.log('\u0007'); 
+
         sfxr.play(fireSound);
         if (navigator.vibrate) {
             navigator.vibrate(50); // 50ms vibration
@@ -442,8 +475,11 @@ activateShield() {
     ctx.fill();
 }
             update(canvasWidth, canvasHeight) {
-                this.x += this.dx;
-                this.y += this.dy;
+                const speedMultiplier = game.player.bulletSpeedMultiplier || 1; // Use multiplier
+    this.x += this.dx * speedMultiplier; // Scale horizontal speed
+    this.y += this.dy * speedMultiplier; // Scale vertical speed
+
+    // Deactivate if out of bounds
                 if (this.x < 0 || this.x > canvasWidth || this.y < 0 || this.y > canvasHeight) {
                     this.active = false;
                 }
@@ -528,7 +564,12 @@ class HomingEnhancer extends GameEntity {
     const oneUp = new OneUp(x, y, 20, 20, "green");
     this.oneUps.push(oneUp);
 }
-        
+      spawnRapidFirePowerUp() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const rapidFirePowerUp = new RapidFirePowerUp(x, y, 20, 20, "orange");
+    this.rapidFirePowerUps.push(rapidFirePowerUp);
+}  
         registerTouchEvents() {
     let isDragging = false;
     let dragOffsetX = 0;
@@ -583,6 +624,7 @@ class HomingEnhancer extends GameEntity {
                 this.lives = 10;
                 this.keys = {};
                 this.boss = null;
+                this.rapidFirePowerUps = [];
 this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss));
                 this.enemiesDefeated = 0;
                 this.loop = this.loop.bind(this);this.shieldItems = [];
@@ -590,6 +632,7 @@ setInterval(() => this.spawnShieldItem(), 20000); // Spawn every 20 seconds
                 this.oneUps = [];
 				this.oneUpSpawnRate = 10000;this.homingEnhancers = [];
 setInterval(() => this.spawnHomingEnhancer(), 15000);
+setInterval(() => this.spawnRapidFirePowerUp(), 30000); // Every 30 seconds
                
 
                 window.addEventListener("resize", this.resizeCanvas.bind(this));
@@ -687,8 +730,26 @@ updateMessageDisplay() {
         const rect = this.canvas.getBoundingClientRect();
         const targetX = touch.clientX - rect.left;
         const targetY = touch.clientY - rect.top;
-        handleFire(targetX, targetY);
+        handleFire(targetX, targetY);dd
     });
+}
+
+
+activateRapidFire() {
+    this.player.rapidFireActive = true; // Enable rapid fire
+    const originalShootRate = this.player.shootRate;
+    const originalBulletSpeedMultiplier = this.player.bulletSpeedMultiplier;
+
+    this.player.shootRate = 100; // Faster fire rate
+    this.player.bulletSpeedMultiplier = 2; // Double the bullet speed
+
+    setTimeout(() => {
+        // Revert to original fire rate and speed multiplier
+        this.player.shootRate = originalShootRate;
+        this.player.bulletSpeedMultiplier = originalBulletSpeedMultiplier;
+        this.player.rapidFireActive = false;
+        this.showMessage("Rapid Fire Deactivated!");
+    }, 10000); // Duration: 10 seconds
 }
 
             spawnEnemies() {
@@ -705,7 +766,21 @@ updateMessageDisplay() {
                 }, this.spawnRate);
             }
 
-            checkCollisions() {  this.shieldItems.forEach((item) => {
+            checkCollisions() { 
+   this.rapidFirePowerUps.forEach((powerUp) => {
+    if (
+        powerUp.x < this.player.x + this.player.width &&
+        powerUp.x + powerUp.width > this.player.x &&
+        powerUp.y < this.player.y + this.player.height &&
+        powerUp.y + powerUp.height > this.player.y
+    ) {
+        powerUp.active = false; // Deactivate the power-up
+        this.activateRapidFire(); // Trigger the rapid fire effect
+        this.showMessage("Rapid Fire Activated!"); // Show a message
+    }
+});
+
+this.shieldItems.forEach((item) => {
         if (
             item.x < this.player.x + this.player.width &&
             item.x + item.width > this.player.x &&
@@ -740,6 +815,8 @@ updateMessageDisplay() {
             return true; // Keep enemy
         });
     }
+    
+    
 this.homingEnhancers.forEach((enhancer) => {
         if (
             enhancer.x < this.player.x + this.player.width &&
@@ -760,6 +837,8 @@ this.showMessage("Homing Enhancer collected!");
             }, 10000);
         }
     });
+    
+    
             this.oneUps.forEach((oneUp) => {
     if (
         oneUp.x < this.player.x + this.player.width &&
@@ -802,7 +881,9 @@ this.showMessage("Homing Enhancer collected!");
                 });
             }
 
-            updateEntities() {   
+            updateEntities() { 
+            this.rapidFirePowerUps = this.rapidFirePowerUps.filter((p) => p.active);
+this.rapidFirePowerUps.forEach((p) => p.update(this.canvas.width, this.canvas.height));  
   if (this.boss) {
         this.boss.update(this.canvas.width, this.canvas.height);
         this.player.bullets.forEach(bullet => {
@@ -822,7 +903,7 @@ this.showMessage("Homing Enhancer collected!");
 
         });
 
-    }
+	}
 this.shieldItems = this.shieldItems.filter((item) => item.active);
     this.shieldItems.forEach((item) => item.update(this.canvas.width, this.canvas.height));
                   this.homingEnhancers = this.homingEnhancers.filter((h) => h.active);
@@ -905,7 +986,9 @@ handleBossDefeat() {this.flashes.push({
                 window.location.reload();
             }
 
-            drawEntities() { if (this.boss) {
+            drawEntities() { 
+            this.rapidFirePowerUps.forEach((p) => p.draw(this.ctx));
+            if (this.boss) {
         this.boss.draw(this.ctx);
     }
             this.shieldItems.forEach((item) => item.draw(this.ctx));
@@ -929,8 +1012,12 @@ handleBossDefeat() {this.flashes.push({
                 document.getElementById("lives").textContent = `Lives: ${this.lives}`;
             }
 
-            loop() {
+            loop() {  if (this.player.isFiring && this.player.shootCooldown <= 0) {
+        this.player.shoot(this.mouseX, this.mouseY); // Shoot towards the mouse position
+    }
+
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
                  // Update and draw the parallax background
     this.background.update();
     this.background.draw(this.ctx);
@@ -950,6 +1037,7 @@ const dy =
                 this.updateUI();
 
                 requestAnimationFrame(this.loop);
+this.player.updateCooldown(); // Update the cooldown
             }
         }
 
