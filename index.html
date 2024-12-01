@@ -751,19 +751,40 @@ activateRapidFire() {
         this.showMessage("Rapid Fire Deactivated!");
     }, 10000); // Duration: 10 seconds
 }
+adjustSpawnRate() {
+    const baseRate = 2000; // Initial spawn rate in ms
+    const minRate = 500; // Minimum spawn rate
 
+    // Scale spawn rate based on score
+    this.spawnRate = Math.max(minRate, baseRate - Math.min(this.score * 0.1, 1500));
+}
             spawnEnemies() {
-                setInterval(() => {
-                    const enemy = new Enemy(
-                        Math.random() * this.canvas.width,
-                        Math.random() < 0.5 ? 0 : this.canvas.height,
-                        40,
-                        40,
-                        "red",
-                        Math.random() * 1.5 + this.level * 0.5
-                    );
-                    this.enemies.push(enemy);
-                }, this.spawnRate);
+                const spawnEnemy = () => {
+        const enemy = new Enemy(
+            Math.random() * this.canvas.width,
+            Math.random() < 0.5 ? 0 : this.canvas.height,
+            40,
+            40,
+            "red",
+            Math.random() * 1.5 + this.level * 0.5
+        );
+        this.enemies.push(enemy);
+    };
+    
+
+    const spawnLoop = () => {
+        const now = performance.now();
+
+        // Check if it's time to spawn a new enemy
+        if (!this.lastSpawnTime || now - this.lastSpawnTime >= this.spawnRate) {
+            spawnEnemy();
+            this.lastSpawnTime = now; // Update the last spawn time
+        }
+
+        requestAnimationFrame(spawnLoop); // Continue the loop
+    };
+
+    spawnLoop(); // Start the spawn loop
             }
 
             checkCollisions() { 
@@ -1012,9 +1033,7 @@ handleBossDefeat() {this.flashes.push({
                 document.getElementById("lives").textContent = `Lives: ${this.lives}`;
             }
 
-            loop() {  if (this.player.isFiring && this.player.shootCooldown <= 0) {
-        this.player.shoot(this.mouseX, this.mouseY); // Shoot towards the mouse position
-    }
+            loop() {  
 
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -1035,7 +1054,7 @@ const dy =
 
                 this.drawEntities();
                 this.updateUI();
-
+ this.adjustSpawnRate(); // Adjust spawn rate dynamically
                 requestAnimationFrame(this.loop);
 this.player.updateCooldown(); // Update the cooldown
             }
