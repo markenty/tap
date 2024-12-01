@@ -848,12 +848,12 @@ this.homingEnhancers.forEach((enhancer) => {
             enhancer.active = false; // Remove the enhancer
             this.player.homingActive = true; // Enable homing bullets
 
-            console.log("HomingEnhancer collected!");
-this.showMessage("Homing Enhancer collected!");
+            console.log("Homing DroneActivated!");
+this.showMessage("Homing Drone Activated!");
 
             // Disable homing bullets after 10 seconds
             setTimeout(() => {
-                console.log("Homing bullets deactivated!");
+                console.log("Homing Drone deactivated!");
                 this.player.homingActive = false;
             }, 10000);
         }
