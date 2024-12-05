@@ -179,6 +179,31 @@ window.onload = () => {
                 ctx.fillRect(this.x, this.y, this.width, this.height);
             }
         }
+        class GravityFieldPowerUp extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Move downwards
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove the power-up if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("G", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
 class ParallaxBackground {
             constructor(width, height) {
                 this.width = width;
@@ -372,7 +397,19 @@ update(enemies, canvasWidth, canvasHeight, boss) {
   			this.shieldActive = false; // Shield status
         	this.shieldRadius = 75;   // Radius of the forcefield
 }
-            draw(ctx) {
+            draw(ctx) {if (this.gravityFieldActive) {
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
+    const radius = 150; // Radius of the gravity field
+
+    ctx.save();
+    ctx.globalAlpha = 0.5; // Transparency for the aura
+    ctx.fillStyle = this.shieldActive ? "blue" : "red"; // Blue for attract, red for repel
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
     const centerX = this.x + this.width / 2;
     const centerY = this.y + this.height / 2;
     const radius = this.width / 2;
@@ -633,6 +670,11 @@ clearGameState() {
     // Log state reset for debugging
     console.log("In-memory state reset:", { score: this.score, level: this.level, lives: this.lives });
 
+}	spawnGravityFieldPowerUp() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const gravityFieldPowerUp = new GravityFieldPowerUp(x, y, 20, 20, "white");
+    this.gravityFieldPowerUps.push(gravityFieldPowerUp);
 }
         spawnShieldItem() {
     const x = Math.random() * (this.canvas.width - 20);
@@ -699,7 +741,9 @@ clearGameState() {
     });
 }
 
-            constructor() {
+            constructor() {this.gravityFieldPowerUps = [];
+setInterval(() => this.spawnGravityFieldPowerUp(), 30000); // Spawn every 30 seconds
+
                 this.canvas = document.getElementById("gameCanvas");
                 this.ctx = this.canvas.getContext("2d");
                 this.player = null;
@@ -827,7 +871,37 @@ updateMessageDisplay() {
     });
 }
 
+activateGravityField() {
+    const effectDuration = 10 * 1000; // 10 seconds
+    const repelSpeed = 15; // Speed at which enemies are repelled
+    const attractSpeed = 9; // Speed at which enemies are attracted
 
+    const interval = setInterval(() => {
+        this.enemies.forEach((enemy) => {
+            const angle = Math.atan2(
+                (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2),
+                (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2)
+            );
+
+            if (this.player.shieldActive) {
+                // Attract enemies if shield is active
+                enemy.x += Math.cos(angle) * attractSpeed;
+                enemy.y += Math.sin(angle) * attractSpeed;
+            } else {
+                // Repel enemies if shield is not active
+                enemy.x -= Math.cos(angle) * repelSpeed;
+                enemy.y -= Math.sin(angle) * repelSpeed;
+            }
+        });
+    }, 100); // Update every 100ms
+
+    setTimeout(() => {
+        clearInterval(interval); // Stop the effect after the duration
+        this.showMessage("Gravity Field Deactivated!");
+    }, effectDuration);
+
+    this.showMessage("Gravity Field Activated!");
+}
 activateRapidFire() {
     this.player.rapidFireActive = true; // Enable rapid fire
     const originalShootRate = this.player.shootRate;
@@ -880,7 +954,18 @@ adjustSpawnRate() {
     spawnLoop(); // Start the spawn loop
             }
 
-            checkCollisions() { 
+            checkCollisions() { this.gravityFieldPowerUps.forEach((powerUp) => {
+    if (
+        powerUp.x < this.player.x + this.player.width &&
+        powerUp.x + powerUp.width > this.player.x &&
+        powerUp.y < this.player.y + this.player.height &&
+        powerUp.y + powerUp.height > this.player.y
+    ) {
+        powerUp.active = false; // Deactivate the power-up
+        this.activateGravityField(); // Trigger the gravity field effect
+        this.showMessage("Gravity Field Active!");
+    }
+});
    this.rapidFirePowerUps.forEach((powerUp) => {
     if (
         powerUp.x < this.player.x + this.player.width &&
@@ -995,7 +1080,8 @@ this.showMessage("Homing Drone Activated!");
                 });
             }
 
-            updateEntities() { 
+            updateEntities() { this.gravityFieldPowerUps = this.gravityFieldPowerUps.filter((p) => p.active);
+this.gravityFieldPowerUps.forEach((p) => p.update(this.canvas.width, this.canvas.height));
             this.rapidFirePowerUps = this.rapidFirePowerUps.filter((p) => p.active);
 this.rapidFirePowerUps.forEach((p) => p.update(this.canvas.width, this.canvas.height));  
   if (this.boss) {
@@ -1122,7 +1208,7 @@ handleBossDefeat() {this.flashes.push({
     }
 }
 
-            drawEntities() { 
+            drawEntities() { this.gravityFieldPowerUps.forEach((p) => p.draw(this.ctx));
             this.rapidFirePowerUps.forEach((p) => p.draw(this.ctx));
             if (this.boss) {
         this.boss.draw(this.ctx);
