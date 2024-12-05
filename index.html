@@ -93,8 +93,8 @@ outline: none;
         <div id="score">Score: 0</div>
         <div id="level">Level: 1</div>
         <div id="lives">Lives: 3</div><div class="floating-menu">
-    <button id="selectButton">Select</button>
-    <button id="startButton">Start</button>
+    <center><button id="selectButton">Select</button>
+    <button id="startButton">Start</button></center>
 </div>
 
 <style>
@@ -1079,7 +1079,7 @@ this.shieldItems = this.shieldItems.filter((item) => item.active);
             "purple",
             2, // Speed
             300 + this.level * 50 // Health increases with level
-        );
+        );alert(`Boss Spawned!`);
     }
             }
 handleBossDefeat() {this.flashes.push({
@@ -1088,12 +1088,13 @@ handleBossDefeat() {this.flashes.push({
         size: Math.max(this.boss.width, this.boss.height) * 1.5, // Flash size larger than the boss
         duration: 20 // Flash duration (frames)
     });this.showMessage("Boss Defeated!");
+   alert(`Boss Defeated!`);
     this.boss = null;
     this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss)); // Ensure boss-related entities are cleared
     this.score += 500;
     this.lives++;
     sfxr.play(pickupSound);
-    triggerScreenShake();
+    triggerScreenShake();duration: 20
     
     // Save game state
     this.saveGameState();
