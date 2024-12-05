@@ -673,7 +673,7 @@ clearGameState() {
 }	spawnGravityFieldPowerUp() {
     const x = Math.random() * (this.canvas.width - 20);
     const y = -20; // Spawn above the screen
-    const gravityFieldPowerUp = new GravityFieldPowerUp(x, y, 20, 20, "white");
+    const gravityFieldPowerUp = new GravityFieldPowerUp(x, y, 20, 20, "black");
     this.gravityFieldPowerUps.push(gravityFieldPowerUp);
 }
         spawnShieldItem() {
