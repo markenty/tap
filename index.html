@@ -545,6 +545,41 @@ class HomingEnhancer extends GameEntity {
     }
 }
         class Game {
+        saveGameState() {
+    const gameState = {
+        score: this.score,
+        level: this.level,
+        lives: this.lives,
+    };
+    localStorage.setItem('shooterGameState', JSON.stringify(gameState));
+    console.log("Game state saved:", gameState);
+}
+loadGameState() {
+    const savedState = localStorage.getItem('shooterGameState');
+    if (savedState) {
+        const { score, level, lives } = JSON.parse(savedState);
+        this.score = score;
+        this.level = level;
+        this.lives = lives;
+        console.log("Game state loaded:", { score, level, lives });
+    } else {
+        console.log("No saved game state found. Starting fresh.");
+    }
+}
+clearGameState() {
+    // Clear in-memory state
+    this.score = 0;
+    this.level = 1;
+    this.lives = 3;
+
+    // Clear localStorage and verify
+    localStorage.removeItem('shooterGameState');
+    console.log("LocalStorage cleared. Current storage:", localStorage.getItem('shooterGameState'));
+
+    // Log state reset for debugging
+    console.log("In-memory state reset:", { score: this.score, level: this.level, lives: this.lives });
+
+}
         spawnShieldItem() {
     const x = Math.random() * (this.canvas.width - 20);
     const y = -20; // Spawn above the screen
@@ -675,7 +710,11 @@ updateMessageDisplay() {
 }
 
 
-            start() {this.showMessage("Game Started!");
+            start() {
+            this.loadGameState(); // Display the system dialog box for the current level
+    alert(`Welcome to the Game!\n\nCurrent Level: ${this.level}\nPress OK to start.`);
+
+            this.showMessage("Game Started!");
                 this.background = new ParallaxBackground(this.canvas.width, this.canvas.height);
                 this.player = new Player(
                     this.canvas.width / 2 - 25,
@@ -964,7 +1003,7 @@ this.shieldItems = this.shieldItems.filter((item) => item.active);
             size: 50, // Size of the flash
             duration: 15 // Number of frames to show
         });
-                        if (this.lives <= 0) this.endGame();
+                        if (this.lives <= 0) this.endGame();  
                     }
                 });
 
@@ -1001,11 +1040,32 @@ handleBossDefeat() {this.flashes.push({
     this.lives++;
     sfxr.play(pickupSound);
     triggerScreenShake();
+    
+    // Save game state
+    this.saveGameState();
+
+    // Reload the page after saving the game state
+    setTimeout(() => {
+       
+    }, 2000); // Add a small delay before reload (e.g., 2 seconds)
 }
-            endGame() {
-                alert(`Game Over! Final Score: ${this.score}`);
-                window.location.reload();
-            }
+            endGame() {alert(`Game Over! Final Score: ${this.score}`);
+    // Clear game state in localStorage
+    
+
+    // Show a confirmation dialog box with options
+    const userChoice = confirm("Game Over! Would you like to quit? \n\nPress OK to quit or Cancel to restart."); this.player.activateShield();
+
+    if (userChoice) {
+        // Restart the game: reload the page
+        this.clearGameState();localStorage.removeItem('shooterGameState'); // Clear game state explicitly
+        window.location.reload(); this.player.activateShield();
+        
+    } else {
+        // Exit the game: close the window
+        window.close();  this.player.activateShield();// This may not work on all browsers due to security restrictions
+    }
+}
 
             drawEntities() { 
             this.rapidFirePowerUps.forEach((p) => p.draw(this.ctx));
@@ -1034,7 +1094,7 @@ handleBossDefeat() {this.flashes.push({
             }
 
             loop() {  
-
+				this.saveGameState();
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
                  // Update and draw the parallax background
