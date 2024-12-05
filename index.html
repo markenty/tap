@@ -92,7 +92,61 @@ outline: none;
     <div id="ui">
         <div id="score">Score: 0</div>
         <div id="level">Level: 1</div>
-        <div id="lives">Lives: 3</div>
+        <div id="lives">Lives: 3</div><div class="floating-menu">
+    <button id="selectButton">Select</button>
+    <button id="startButton">Start</button>
+</div>
+
+<style>
+    .floating-menu {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 200px;
+        height: 50px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        z-index: 1000;
+    }
+
+    .floating-menu button {
+        flex: 1;
+        height: 50%;
+        margin: 0 5px;
+        border: none;
+        border-radius: 5px;
+        background: linear-gradient(to bottom, #444, #666);
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .floating-menu button:active {
+        transform: scale(0.95);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+<script>
+    // Add functionality for the buttons
+    document.getElementById('startButton').addEventListener('click', function () {
+        alert('Game Paused');
+    });
+
+    document.getElementById('selectButton').addEventListener('click', function () {
+        window.location.href = 'https://markenty.github.io/tap/';
+    });
+</script>
+
     </div><div id="messages"></div>
     <canvas id="gameCanvas"></canvas>
     <script>
