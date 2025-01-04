@@ -346,6 +346,10 @@
                         if (enemy.currentHP <= 0) {
                             addExplosion(enemy.x, enemy.y);
                             enemies.splice(enemyIndex, 1);
+
+                            // Restore player HP to max when an enemy is killed
+                            player.currentHP = player.maxHP;
+
                             checkLevelComplete();
                         }
                         bullets.splice(index, 1);
@@ -456,106 +460,5 @@
         initializeLevel();
         gameLoop();
     </script>
-
-<style>
-    #controlRing {
-        position: absolute;
-        bottom: 10px; /* Moved down by 5px */
-        left: 10px;   /* Moved left by 5px */
-        width: 80px;  /* Keep size */
-        height: 80px; /* Keep size */
-        border: 24px solid rgba(0, 0, 255, 0.8); /* Keep thickness */
-        border-radius: 50%;
-        touch-action: none;
-        z-index: 1;
-    }
-    #dpad {
-        position: absolute;
-        bottom: 38px; /* Adjusted to maintain center alignment */
-        left: 38px;   /* Adjusted to maintain center alignment */
-        width: 64px;  /* Reduced diameter by 20px */
-        height: 64px; /* Reduced diameter by 20px */
-        border: 4px solid rgba(255, 255, 255, 0.5); /* Keep thickness */
-        border-radius: 50%;
-        background: transparent; /* Transparent inside */
-        touch-action: none;
-        z-index: 3; /* Highest z-index */
-    }
-</style>
-<div id="controlRing"></div>
-<script>
-    const controlRing = document.getElementById('controlRing');
-    let aimDirection = { x: 1, y: 0 }; // Default direction (right)
-    let isControlRingActive = false;
-    let isReticleVisible = true;
-
-    controlRing.addEventListener('touchstart', (event) => {
-        event.preventDefault();
-        isControlRingActive = true;
-        updateAimDirection(event.touches[0]);
-    });
-
-    controlRing.addEventListener('touchmove', (event) => {
-        if (isControlRingActive) {
-            event.preventDefault();
-            updateAimDirection(event.touches[0]);
-        }
-    });
-
-    controlRing.addEventListener('touchend', () => {
-        isControlRingActive = false;
-    });
-
-    function updateAimDirection(touch) {
-        const rect = controlRing.getBoundingClientRect();
-        const dx = touch.clientX - (rect.left + rect.width / 2);
-        const dy = touch.clientY - (rect.top + rect.height / 2);
-        const magnitude = Math.sqrt(dx * dx + dy * dy);
-
-        if (magnitude > 0) {
-            aimDirection.x = dx / magnitude;
-            aimDirection.y = dy / magnitude;
-
-            // Update reticle position and ensure it's visible
-            reticle.x = player.x + aimDirection.x * 50;
-            reticle.y = player.y + aimDirection.y * 50;
-            isReticleVisible = true;
-        }
-    }
-
-    function updateReticle() {
-        if (!player) return;
-        if (!isControlRingActive) {
-            // Show reticle during movement if no active aim control
-            reticle.x = player.x + aimDirection.x * 50;
-            reticle.y = player.y + aimDirection.y * 50;
-        }
-    }
-
-    function shootBullet() {
-        if (player.currentHP <= 0) return; // Prevent shooting if player is dead
-
-        // Fire projectiles toward the reticle
-        const dx = reticle.x - player.x;
-        const dy = reticle.y - player.y;
-        const magnitude = Math.sqrt(dx * dx + dy * dy);
-        if (magnitude > 0) {
-            bullets.push({
-                x: player.x,
-                y: player.y,
-                dx: dx / magnitude,
-                dy: dy / magnitude
-            });
-        }
-    }
-
-    function drawReticle() {
-        if (!player || player.currentHP <= 0 || !isReticleVisible) return;
-        ctx.font = `${player.size * 0.25}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('❌', reticle.x, reticle.y);
-    }
-</script>
 </body>
 </html>
