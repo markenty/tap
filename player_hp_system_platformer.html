@@ -1,0 +1,441 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platformer Corrected</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+            background-color: #87CEEB;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+        .joystick-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            background-color: #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+        }
+        .joystick {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #999;
+            border-radius: 50%;
+            touch-action: none;
+        }
+        .button {
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            background-color: #333;
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+        <div class="joystick-container">
+            <div id="joystick" class="joystick"></div>
+        </div>
+        <div>
+            <div id="jumpButton" class="button">Jump</div>
+        </div>
+    </div>
+    
+<script>
+    // Prevent pinch-to-zoom
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('gesturechange', (e) => e.preventDefault());
+    document.addEventListener('gestureend', (e) => e.preventDefault());
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let score = 0; // Enemy death counter
+        
+let playerHP = 3; // Player Health Points
+
+const player = {
+            x: canvas.width / 2 - 20,
+            y: canvas.height - 200,
+            width: 40,
+            height: 40,
+            dx: 0,
+            dy: 0,
+            speed: 0.2,
+            gravity: 0.5,
+            maxSpeed: 5,
+            friction: 0.9,
+            canJump: false,
+            jumpPower: -15,
+            emoji: "🤖",
+        };
+
+        const platforms = [];
+        const enemies = [];
+        const projectiles = [];
+        const explosions = [];
+
+        const joystick = document.getElementById("joystick");
+        const jumpButton = document.getElementById("jumpButton");
+        const joystickCenter = { x: 50, y: 50 };
+        let joystickOffset = { x: 0, y: 0 };
+        let isJoystickActive = false;
+
+        joystick.addEventListener("touchstart", () => {
+            isJoystickActive = true;
+        });
+
+        joystick.addEventListener("touchmove", (e) => {
+            const touch = e.touches[0];
+            const rect = joystick.parentElement.getBoundingClientRect();
+            const x = touch.clientX - rect.left - joystickCenter.x;
+            const y = touch.clientY - rect.top - joystickCenter.y;
+            const distance = Math.min(Math.sqrt(x * x + y * y), joystickCenter.x);
+            const angle = Math.atan2(y, x);
+            joystickOffset.x = Math.cos(angle) * distance;
+            joystickOffset.y = Math.sin(angle) * distance;
+            joystick.style.transform = `translate(${joystickOffset.x}px, ${joystickOffset.y}px)`;
+        });
+
+        joystick.addEventListener("touchend", () => {
+            joystickOffset = { x: 0, y: 0 };
+            joystick.style.transform = "translate(0, 0)";
+            isJoystickActive = false;
+        });
+
+        jumpButton.addEventListener("touchstart", () => {
+            if (player.canJump) {
+                player.dy = player.jumpPower;
+                player.canJump = false;
+            }
+        });
+
+        canvas.addEventListener("touchstart", (e) => {
+            const touch = e.touches[0];
+            const directionX = joystickOffset.x || 0; // Use joystick direction
+            const directionY = joystickOffset.y || -1; // Default upward
+            
+    // Trigger screen shake
+    shakeAmount = 10;
+
+    projectiles.push(
+                createProjectile(
+                    player.x + player.width / 2,
+                    player.y + player.height / 2,
+                    directionX,
+                    directionY
+                )
+            );
+        });
+
+        function createPlatform(x, y) {
+            return { x, y, width: 200, height: 20 };
+        }
+
+        function createEnemy(x, y, speed) {
+            return { x, y, width: 40, height: 40, dy: speed, emoji: "👾" };
+        }
+
+        function createProjectile(x, y, directionX, directionY) {
+            const speed = 10;
+            const magnitude = Math.sqrt(directionX ** 2 + directionY ** 2);
+            return {
+                x,
+                y,
+                dx: (directionX / magnitude) * speed,
+                dy: (directionY / magnitude) * speed,
+                radius: 5,
+            };
+        }
+
+        function createExplosion(x, y) {
+            const particles = [];
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: (Math.random() - 0.5) * 5,
+                    dy: (Math.random() - 0.5) * 5,
+                    size: Math.random() * 5 + 2,
+                    alpha: 1,
+                    decay: 0.03 + Math.random() * 0.02,
+                });
+            }
+            explosions.push({ particles });
+        }
+
+        function updateExplosions() {
+            for (const explosion of explosions) {
+                for (const particle of explosion.particles) {
+                    particle.x += particle.dx;
+                    particle.y += particle.dy;
+                    particle.alpha -= particle.decay;
+                }
+                explosion.particles = explosion.particles.filter(p => p.alpha > 0);
+            }
+        }
+
+        function spawnEnemies() {
+            if (Math.random() < 0.02) {
+                const x = Math.random() * (canvas.width - 40);
+                const y = -40;
+                enemies.push(createEnemy(x, y, 2));
+            }
+        }
+
+        
+// Check for player collisions with enemies and take damage
+function checkPlayerEnemyCollisions() {
+    for (const enemy of enemies) {
+        if (
+            player.x < enemy.x + enemy.width &&
+            player.x + player.width > enemy.x &&
+            player.y < enemy.y + enemy.height &&
+            player.y + player.height > enemy.y
+        ) {
+            playerHP--;
+            enemies.splice(enemies.indexOf(enemy), 1); // Remove enemy after collision
+            if (playerHP <= 0) {
+                alert("Game Over! Player defeated.");
+                document.location.reload();
+            }
+        }
+    }
+}
+
+function checkCollisions() {
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                for (let j = projectiles.length - 1; j >= 0; j--) {
+                    const enemy = enemies[i];
+                    const projectile = projectiles[j];
+                    if (
+                        projectile.x > enemy.x &&
+                        projectile.x < enemy.x + enemy.width &&
+                        projectile.y > enemy.y &&
+                        projectile.y < enemy.y + enemy.height
+                    ) {
+                        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                        enemies.splice(i, 1);
+                        projectiles.splice(j, 1);
+                        score++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function applyPhysics() {
+            if (isJoystickActive) {
+                player.dx = joystickOffset.x / 10;
+            } else {
+                player.dx *= player.friction;
+            }
+
+            player.dy += player.gravity;
+            player.y += player.dy;
+            player.x += player.dx;
+
+            for (const platform of platforms) {
+                if (
+                    player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y + player.height >= platform.y &&
+                    player.y + player.height <= platform.y + 10 // Collision tolerance
+                ) {
+                    player.y = platform.y - player.height;
+                    player.dy = 0;
+                    player.canJump = true;
+                }
+            }
+
+            if (player.y > canvas.height) {
+                player.y = canvas.height - player.height;
+                player.dy = 0;
+                player.canJump = true;
+            }
+        }
+
+        function updateEntities() {
+            for (const enemy of enemies) {
+                enemy.y += enemy.dy;
+            }
+            for (const projectile of projectiles) {
+                projectile.x += projectile.dx;
+                projectile.y += projectile.dy;
+            }
+            updateExplosions();
+        }
+
+        function drawPlayer() {
+            ctx.font = `${player.width}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            ctx.fillText(player.emoji, player.x + player.width / 2, player.y + player.height);
+        }
+
+        function drawPlatforms() {
+            ctx.fillStyle = "#8B4513";
+            for (const platform of platforms) {
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            }
+        }
+
+        function drawEnemies() {
+            for (const enemy of enemies) {
+                ctx.font = `${enemy.width}px Arial`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.fillText(enemy.emoji, enemy.x + enemy.width / 2, enemy.y + enemy.height);
+            }
+        }
+
+        function drawProjectiles() {
+            ctx.fillStyle = "red";
+            for (const projectile of projectiles) {
+                ctx.beginPath();
+                ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawExplosions() {
+            for (const explosion of explosions) {
+                for (const particle of explosion.particles) {
+                    ctx.fillStyle = `rgba(255, 100, 0, ${particle.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        
+function drawHP() {
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "red";
+    ctx.fillText(`HP: ${playerHP}`, canvas.width - 120, 60);
+}
+
+function drawScore() {
+
+            ctx.font = "24px Arial";
+            ctx.fillStyle = "black";
+            ctx.fillText(`Score: ${score}`, canvas.width - 120, 30);
+        }
+
+        
+// Generate platforms as the player jumps higher
+function generatePlatforms() {
+    const highestPlatform = Math.min(...platforms.map(p => p.y));
+    if (player.y < highestPlatform + 400) {
+        const newPlatformX = Math.random() * (canvas.width - 200);
+        const newPlatformY = highestPlatform - 150;
+        platforms.push(createPlatform(newPlatformX, newPlatformY));
+    }
+}
+
+// Scroll canvas as the player ascends
+function scrollCanvas() {
+    if (player.y < canvas.height / 2) {
+        const scrollAmount = canvas.height / 2 - player.y;
+        player.y += scrollAmount;
+        for (const platform of platforms) {
+            platform.y += scrollAmount;
+        }
+        for (const enemy of enemies) {
+            enemy.y += scrollAmount;
+        }
+        for (const projectile of projectiles) {
+            projectile.y += scrollAmount;
+        }
+    }
+}
+
+
+// Screen Shake Variables
+let shakeAmount = 0;
+
+// Apply screen shake effect
+function applyScreenShake() {
+    if (shakeAmount > 0) {
+        const offsetX = (Math.random() - 0.5) * shakeAmount;
+        const offsetY = (Math.random() - 0.5) * shakeAmount;
+        ctx.setTransform(1, 0, 0, 1, offsetX, offsetY);
+        shakeAmount -= 1; // Reduce shake over time
+    } else {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    }
+}
+
+function gameLoop() {
+    applyScreenShake();
+
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            spawnEnemies();
+            
+applyPhysics();
+generatePlatforms();
+scrollCanvas();
+
+            updateEntities();
+            
+checkCollisions();
+checkPlayerEnemyCollisions();
+
+
+            drawPlatforms();
+            drawPlayer();
+            drawEnemies();
+            drawProjectiles();
+            drawExplosions();
+            
+drawScore();
+drawHP();
+
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialization
+        platforms.push(createPlatform(0, canvas.height - 100));
+        platforms.push(createPlatform(200, canvas.height - 200));
+        platforms.push(createPlatform(400, canvas.height - 300));
+
+        gameLoop();
+    </script>
+</body>
+</html>
