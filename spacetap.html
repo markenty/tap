@@ -1,0 +1,1398 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="https://sfxr.me/riffwave.js"></script>
+<script src="https://sfxr.me/sfxr.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Shooter Game with Levels</title>
+    <style>
+        body {-webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #111, #444);
+            color: white;
+            font-family: sans-serif;
+        }#messages {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 18px;
+    color: white;
+    background: rgba(0, 0, 0, 0.7); /* Slightly darker background */
+    z-index: 10; /* Ensure it's above the game canvas */
+    pointer-events: none; /* Prevent user interaction */
+} :root {
+  touch-action: pan-x pan-y;
+  height: 100% 
+} canvas {touch-action: manipulation;
+		
+    -webkit-touch-callout: none;
+-webkit-user-select: none;
+-khtml-user-select: none;
+-moz-user-select: none;
+-ms-user-select: none;
+user-select: none;
+outline: none;
+-webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+}
+        #gameCanvas {
+            display: block;
+            margin: 0;
+            background: #000;-webkit-touch-callout: none;
+    -webkit-touch-callout: none;
+-webkit-user-select: none;
+-khtml-user-select: none;
+-moz-user-select: none;
+-ms-user-select: none;
+user-select: none;
+outline: none;
+-webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+            
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 18px;
+		-webkit-touch-callout: none;
+-webkit-user-select: none;
+-khtml-user-select: none;
+-moz-user-select: none;
+-ms-user-select: none;
+user-select: none;
+outline: none;
+-webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+        }
+        #ui div {
+            margin: 0 10px;
+        }
+        #ui {
+    position: fixed; /* Ensure it stays on top */
+    top: 0;
+    width: 100%;
+    z-index: 10; /* Keep it above the canvas */
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    box-sizing: border-box;
+    font-size: 18px;
+}
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="score">Score: 0</div>
+        <div id="level">Level: 1</div>
+        <div id="lives">Lives: 3</div><div class="floating-menu">
+    <center><button id="selectButton">Select</button>
+    <button id="startButton">Start</button></center>
+</div>
+
+<style>
+    .floating-menu {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 200px;
+        height: 50px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        z-index: 1000;
+    }
+
+    .floating-menu button {
+        flex: 1;
+        height: 50%;
+        margin: 0 5px;
+        border: none;
+        border-radius: 5px;
+        background: linear-gradient(to bottom, #444, #666);
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .floating-menu button:active {
+        transform: scale(0.95);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+<script>
+    // Add functionality for the buttons
+    document.getElementById('startButton').addEventListener('click', function () {
+        alert('Game Paused');
+    });
+
+    document.getElementById('selectButton').addEventListener('click', function () {
+        window.location.href = 'https://markenty.github.io/tap/';
+    });
+</script>
+
+    </div><div id="messages"></div>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+
+	    document.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // Prevent the default right-click or long-press menu
+});
+   let pickupSound, fireSound, enemyDeathSound, playerDeathSound;
+
+window.onload = () => {
+    pickupSound = sfxr.generate('pickupCoin'); // For 1-Up collection
+    fireSound = sfxr.generate('laserShoot');  // For firing bullets
+    enemyDeathSound = sfxr.generate('explosion'); // For enemy death
+    playerDeathSound = sfxr.generate('hitHurt');  // For player death
+};
+
+
+
+        class GameEntity {
+            constructor(x, y, width, height, color) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.color = color;
+                this.active = true;
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+        class GravityFieldPowerUp extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Move downwards
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove the power-up if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("G", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+class ParallaxBackground {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.stars = [];
+                this.createStars();
+            }
+            createStars() {
+                for (let i = 0; i < 100; i++) {
+                    this.stars.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        speed: Math.random() * 2 + 1
+                    });
+                }
+            }
+            update() {
+                      this.stars.forEach(star => {
+            star.y += star.speed; // Move downwards
+            if (star.y > this.height) {
+                // Reset star to the top if it moves off the bottom
+                star.y = 0;
+                star.x = Math.random() * this.width; // Random horizontal position
+                star.speed = Math.random() * 2 + 1;  // Randomize speed
+                    }
+                });
+            }
+            draw(ctx) {
+                ctx.fillStyle = "white";
+                this.stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        }
+        
+        class RapidFirePowerUp extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Move downwards
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove the power-up if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("R", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+        class ShieldItem extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Moves downward
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove item if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("S", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+
+        
+        class Boss extends GameEntity {
+    constructor(x, y, width, height, color, speed, health) {
+        super(x, y, width, height, color);
+        this.speed = speed;
+        this.health = health;
+        this.originalHealth = health;
+        this.direction = 1; // Moves left and right
+    }
+
+    update(canvasWidth, canvasHeight) {
+        // Move left and right within canvas boundaries
+        this.x += this.speed * this.direction;
+        if (this.x <= 0 || this.x + this.width >= canvasWidth) {
+            this.direction *= -1; // Reverse direction
+        }
+
+        // Fire bullets downward periodically
+        if (Math.random() < 0.02) {
+            this.fireBullet();
+        }
+    }
+
+    fireBullet() {
+        game.enemies.push(new Enemy(
+            this.x + this.width / 2 - 10,
+            this.y + this.height,
+            20,
+            20,
+            "orange",
+            Math.random() * 1.5 + 1
+        ));
+    }
+
+    draw(ctx) {
+        // Boss health bar
+        ctx.fillStyle = "red";
+        ctx.fillRect(this.x, this.y - 10, this.width * (this.health / this.originalHealth), 5);
+
+        // Boss design
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "red";
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+        class HomingBullet extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 12;
+    }
+
+update(enemies, canvasWidth, canvasHeight, boss) {
+        // Combine enemies and the boss into a single array
+        const targets = boss ? [...enemies, boss] : enemies;
+
+        if (targets && targets.length > 0) {
+            // Find the closest target (either an enemy or the boss)
+            const closestTarget = targets.reduce((nearest, target) => {
+                const targetCenterX = target.x + target.width / 2;
+                const targetCenterY = target.y + target.height / 2;
+                const distToCurrent = Math.hypot(this.x - targetCenterX, this.y - targetCenterY);
+                const nearestCenterX = nearest.x + nearest.width / 2;
+                const nearestCenterY = nearest.y + nearest.height / 2;
+                const distToNearest = Math.hypot(this.x - nearestCenterX, this.y - nearestCenterY);
+                return distToCurrent < distToNearest ? target : nearest;
+            });
+
+            // Adjust bullet direction towards the closest target
+            const angle = Math.atan2(
+                (closestTarget.y + closestTarget.height / 2) - this.y,
+                (closestTarget.x + closestTarget.width / 2) - this.x
+            );
+            this.x += Math.cos(angle) * this.speed;
+            this.y += Math.sin(angle) * this.speed;
+        } else {
+            // Move in a random direction if no targets are present
+            if (!this.randomAngle) {
+                this.randomAngle = Math.random() * Math.PI * 2; // Generate a random direction once
+            }
+            this.x += Math.cos(this.randomAngle) * this.speed;
+            this.y += Math.sin(this.randomAngle) * this.speed;
+        }
+
+        // Deactivate the bullet if it goes out of bounds
+        if (this.x < 0 || this.x > canvasWidth || this.y < 0 || this.y > canvasHeight) {
+            this.active = false;
+        }
+    }
+}
+        class Player extends GameEntity {
+            constructor(x, y, width, height, color) {
+                super(x, y, width, height, color);
+            this.speed = 5;
+            this.bullets = [];
+ 			this.shootCooldown = 0;
+    		this.shootRate = 500; // Default shoot rate in milliseconds
+             this.bulletSpeedMultiplier = 1; // Multiplier for bullet speed
+    		this.isFiring = false; // Track whether the player is holding the fire button
+            this.homingActive = false; // Flag for homing bullets
+  			this.shieldActive = false; // Shield status
+        	this.shieldRadius = 75;   // Radius of the forcefield
+}
+            draw(ctx) {if (this.gravityFieldActive) {
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
+    const radius = 150; // Radius of the gravity field
+
+    ctx.save();
+    ctx.globalAlpha = 0.5; // Transparency for the aura
+    ctx.fillStyle = this.shieldActive ? "blue" : "red"; // Blue for attract, red for repel
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
+    const radius = this.width / 2;
+
+       // Calculate rotation for spinning hexagon
+    const rotation = Date.now() / 300; // Rotate over time
+
+    // Outer glow effect for player
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "cyan";
+
+    // Draw spinning hexagon
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    ctx.fillStyle = "rgba(0, 100, 255, 0.8)";
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = Math.PI / 3 * i;
+        const x = radius * Math.cos(angle);
+        const y = radius * Math.sin(angle);
+        ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Inner core with pulsing effect
+    ctx.shadowBlur = 0;
+    const pulse = Math.sin(Date.now() / 200) * 3 + radius / 3; // Pulsing radius
+    const gradient = ctx.createRadialGradient(centerX, centerY, pulse / 2, centerX, centerY, pulse);
+    gradient.addColorStop(0, "rgba(0, 255, 255, 1)");
+    gradient.addColorStop(1, "rgba(0, 100, 255, 0)");
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, pulse, 0, Math.PI * 2);
+    ctx.fill();
+    const coreGradient = ctx.createRadialGradient(
+        centerX, centerY, radius * 0.1, // Start (bright core)
+        centerX, centerY, radius * 0.6  // End (darker edge)
+    );
+    coreGradient.addColorStop(0, "cyan"); // Bright center
+    coreGradient.addColorStop(1, "blue"); // Darker edge
+    ctx.fillStyle = coreGradient;
+       // Add orbiting particles (optional)
+    for (let i = 0; i < 3; i++) {
+        const angle = Date.now() / 500 + (Math.PI * 2 * i) / 3;
+        const orbitX = centerX + Math.cos(angle) * (radius + 10);
+        const orbitY = centerY + Math.sin(angle) * (radius + 10);
+        ctx.fillStyle = "rgba(0, 255, 255, 0.5)";
+        ctx.beginPath();
+        ctx.arc(orbitX, orbitY, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+        if (this.shieldActive) {
+         ctx.save();
+
+        // Glow properties
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = "rgba(0, 255, 255, 0.75)";
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.5)";
+        ctx.lineWidth = 6;
+
+        // Dynamic pulse effect
+        const pulse = Math.sin(Date.now() / 200) * 5 + this.shieldRadius;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        }
+}
+
+activateShield() {
+        this.shieldActive = true; 
+        console.log("Shield activated!");
+
+        // Deactivate shield after 15 seconds
+        setTimeout(() => {
+            this.shieldActive = false; 
+            console.log("Shield deactivated!");wa
+        }, 15000);
+    }
+
+            move(dx, dy, canvasWidth, canvasHeight) {
+                this.x = Math.max(0, Math.min(canvasWidth - this.width, this.x + dx));
+                this.y = Math.max(0, Math.min(canvasHeight - this.height, this.y + dy));
+            }
+            shoot(targetX, targetY) {
+            
+           
+        // Homing bullets
+        if (this.homingActive) {
+            this.bullets.push(new HomingBullet(
+                this.x + this.width / 2 - 2.5,
+                this.y + this.height / 2 - 2.5,
+                5,
+                5,
+                "yellow"
+            ));
+        } 
+        
+        // Standard bullets
+        else {
+            const angle = Math.atan2(targetY - (this.y + this.height / 2), targetX - (this.x + this.width / 2));
+            const speed = 8;
+
+            this.bullets.push(new Bullet(
+                this.x + this.width / 2 - 2.5,
+                this.y + this.height / 2 - 2.5,
+                5,
+                5,
+                "yellow",
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+            ));
+        }
+        
+        // Play sound and vibrate
+        console.log('\u0007'); 
+
+        sfxr.play(fireSound);
+        if (navigator.vibrate) {
+            navigator.vibrate(50); // 50ms vibration
+        }
+    }
+}
+
+        class Bullet extends GameEntity {
+            constructor(x, y, width, height, color, dx, dy) {
+                super(x, y, width, height, color);
+                this.dx = dx;
+                this.dy = dy;
+            }
+            draw(ctx) {
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
+    const radius = this.width / 2;
+
+    // Outer glow
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "lime";
+
+    // Orb design
+    ctx.fillStyle = "green";
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner core
+    ctx.shadowBlur = 1;
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius / 2, 0, Math.PI * 2);
+    ctx.fill();
+}
+            update(canvasWidth, canvasHeight) {
+                const speedMultiplier = game.player.bulletSpeedMultiplier || 1; // Use multiplier
+    this.x += this.dx * speedMultiplier; // Scale horizontal speed
+    this.y += this.dy * speedMultiplier; // Scale vertical speed
+
+    // Deactivate if out of bounds
+                if (this.x < 0 || this.x > canvasWidth || this.y < 0 || this.y > canvasHeight) {
+                    this.active = false;
+                }
+            }
+        }
+
+        class Enemy extends GameEntity {
+            constructor(x, y, width, height, color, speed) {
+                super(x, y, width, height, color);
+                this.speed = speed;
+            }
+            update(playerX, playerY) {
+                const angle = Math.atan2(playerY - this.y, playerX - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+            }
+            draw(ctx) {
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
+    const outerRadius = this.width / 2;
+    const innerRadius = outerRadius * 0.6;
+    const teeth = 8;
+
+    // Gear design
+    ctx.fillStyle = "red";
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "magenta";
+    ctx.beginPath();
+    for (let i = 0; i < teeth * 2; i++) {
+        const angle = (Math.PI / teeth) * i;
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+        }
+class HomingEnhancer extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Optional: Move the power-up down the screen
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("H", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+        class Game {
+        saveGameState() {
+    const gameState = {
+        score: this.score,
+        level: this.level,
+        lives: this.lives,
+    };
+    localStorage.setItem('shooterGameState', JSON.stringify(gameState));
+    console.log("Game state saved:", gameState);
+}
+loadGameState() {
+    const savedState = localStorage.getItem('shooterGameState');
+    if (savedState) {
+        const { score, level, lives } = JSON.parse(savedState);
+        this.score = score;
+        this.level = level;
+        this.lives = lives;
+        console.log("Game state loaded:", { score, level, lives });
+    } else {
+        console.log("No saved game state found. Starting fresh.");
+    }
+}
+clearGameState() {
+    // Clear in-memory state
+    this.score = 0;
+    this.level = 1;
+    this.lives = 3;
+
+    // Clear localStorage and verify
+    localStorage.removeItem('shooterGameState');
+    console.log("LocalStorage cleared. Current storage:", localStorage.getItem('shooterGameState'));
+
+    // Log state reset for debugging
+    console.log("In-memory state reset:", { score: this.score, level: this.level, lives: this.lives });
+
+}	spawnGravityFieldPowerUp() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const gravityFieldPowerUp = new GravityFieldPowerUp(x, y, 20, 20, "black");
+    this.gravityFieldPowerUps.push(gravityFieldPowerUp);
+}
+        spawnShieldItem() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const shieldItem = new ShieldItem(x, y, 20, 20, "blue");
+    this.shieldItems.push(shieldItem);
+}
+        spawnHomingEnhancer() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const homingEnhancer = new HomingEnhancer(x, y, 20, 20, "purple");
+    this.homingEnhancers.push(homingEnhancer);
+}
+        
+        spawnOneUp() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const oneUp = new OneUp(x, y, 20, 20, "green");
+    this.oneUps.push(oneUp);
+}
+      spawnRapidFirePowerUp() {
+    const x = Math.random() * (this.canvas.width - 20);
+    const y = -20; // Spawn above the screen
+    const rapidFirePowerUp = new RapidFirePowerUp(x, y, 20, 20, "orange");
+    this.rapidFirePowerUps.push(rapidFirePowerUp);
+}  
+        registerTouchEvents() {
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    this.canvas.addEventListener("touchstart", (e) => {
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+
+        if (
+            touchX >= this.player.x &&
+            touchX <= this.player.x + this.player.width &&
+            touchY >= this.player.y &&
+            touchY <= this.player.y + this.player.height
+        ) {
+            isDragging = true;
+            dragOffsetX = touchX - this.player.x;
+            dragOffsetY = touchY - this.player.y;
+        }
+    });
+
+    this.canvas.addEventListener("touchmove", (e) => {
+        if (isDragging) {
+            const touch = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+
+            this.player.x = Math.max(0, Math.min(this.canvas.width - this.player.width, touchX - dragOffsetX));
+            this.player.y = Math.max(0, Math.min(this.canvas.height - this.player.height, touchY - dragOffsetY));
+        }
+    });
+
+    this.canvas.addEventListener("touchend", () => {
+        isDragging = false;
+    });
+}
+
+            constructor() {this.gravityFieldPowerUps = [];
+setInterval(() => this.spawnGravityFieldPowerUp(), 30000); // Spawn every 30 seconds
+
+                this.canvas = document.getElementById("gameCanvas");
+                this.ctx = this.canvas.getContext("2d");
+                this.player = null;
+                 this.messages = []; // Array to hold messages
+        this.messageDisplayDuration = 3000; // Time to display each message (in ms)
+        this.messageElement = document.getElementById("messages");
+                this.enemies = [];
+                this.spawnRate = 2000;
+                this.score = 0;
+                this.level = 1;
+                this.lives = 10;
+                this.keys = {};
+                this.boss = null;
+                this.rapidFirePowerUps = [];
+this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss));
+                this.enemiesDefeated = 0;
+                this.loop = this.loop.bind(this);this.shieldItems = [];
+setInterval(() => this.spawnShieldItem(), 20000); // Spawn every 20 seconds
+                this.oneUps = [];
+				this.oneUpSpawnRate = 10000;this.homingEnhancers = [];
+setInterval(() => this.spawnHomingEnhancer(), 15000);
+setInterval(() => this.spawnRapidFirePowerUp(), 30000); // Every 30 seconds
+               
+
+                window.addEventListener("resize", this.resizeCanvas.bind(this));
+                this.resizeCanvas();
+this.flashes = [];
+                
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.registerMouseEvents();
+                
+            }
+ showMessage(text) {
+    console.log("Message to display:", text); // Debugging log
+    // Push the message to the queue
+    this.messages.push({ text, timestamp: Date.now() });
+
+    // Immediately update the display
+    this.updateMessageDisplay();
+}
+
+updateMessageDisplay() {
+    if (this.messages.length === 0) {
+        this.messageElement.textContent = ""; // Clear when no messages
+        return;
+    }
+
+    const currentMessage = this.messages[0];
+    const timeElapsed = Date.now() - currentMessage.timestamp;
+
+    // Display the current message
+    this.messageElement.textContent = currentMessage.text;
+
+    // Remove the message after the duration
+    if (timeElapsed > this.messageDisplayDuration) {
+        this.messages.shift(); // Remove the current message
+    }
+
+    // Re-check the messages queue
+    setTimeout(() => this.updateMessageDisplay(), 100);
+}
+
+
+            start() {
+            this.loadGameState(); // Display the system dialog box for the current level
+    alert(`Welcome to the Game!\n\nCurrent Level: ${this.level}\nPress OK to start.`);
+
+            this.showMessage("Game Started!");
+                this.background = new ParallaxBackground(this.canvas.width, this.canvas.height);
+                this.player = new Player(
+                    this.canvas.width / 2 - 25,
+                    this.canvas.height / 2 - 25,
+                    50,
+                    50,
+                    "lime"
+                );
+
+                window.addEventListener("keydown", (e) => this.keys[e.key] = true);
+                window.addEventListener("keyup", (e) => this.keys[e.key] = false);
+                this.registerMouseEvents();
+    this.registerTouchEvents(); // Add this line
+// Spawn enemies and 1-Up items
+    this.spawnEnemies();
+    setInterval(() => this.spawnOneUp(), this.oneUpSpawnRate);
+                this.spawnEnemies();
+                requestAnimationFrame(this.loop);
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+
+                if (this.player) {
+                    this.player.x = Math.min(this.player.x, this.canvas.width - this.player.width);
+                    this.player.y = Math.min(this.player.y, this.canvas.height - this.player.height);
+                }
+            }
+
+          registerMouseEvents() {
+    const handleFire = (x, y) => {
+        this.player.shoot(x, y);
+    };
+
+    this.canvas.addEventListener("mousemove", (e) => {
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseX = e.clientX - rect.left;
+        this.mouseY = e.clientY - rect.top;
+    });
+
+    this.canvas.addEventListener("click", (e) => {
+        const rect = this.canvas.getBoundingClientRect();
+        const targetX = e.clientX - rect.left;
+        const targetY = e.clientY - rect.top;
+        handleFire(targetX, targetY);
+    });
+
+    this.canvas.addEventListener("touchstart", (e) => {
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const targetX = touch.clientX - rect.left;
+        const targetY = touch.clientY - rect.top;
+        handleFire(targetX, targetY);dd
+    });
+}
+
+activateGravityField() {
+    const effectDuration = 10 * 1000; // 10 seconds
+    const repelSpeed = 42; // Speed at which enemies are repelled
+    const attractSpeed = 6; // Speed at which enemies are attracted
+
+    const interval = setInterval(() => {
+        this.enemies.forEach((enemy) => {
+            const angle = Math.atan2(
+                (this.player.y + this.player.height / 2) - (enemy.y + enemy.height / 2),
+                (this.player.x + this.player.width / 2) - (enemy.x + enemy.width / 2)
+            );
+
+            if (this.player.shieldActive) {
+                // Attract enemies if shield is active
+                enemy.x += Math.cos(angle) * attractSpeed;
+                enemy.y += Math.sin(angle) * attractSpeed;
+            } else {
+                // Repel enemies if shield is not active
+                enemy.x -= Math.cos(angle) * repelSpeed;
+                enemy.y -= Math.sin(angle) * repelSpeed;
+            }
+        });
+    }, 100); // Update every 100ms
+
+    setTimeout(() => {
+        clearInterval(interval); // Stop the effect after the duration
+        this.showMessage("Gravity Field Deactivated!");
+    }, effectDuration);
+
+    this.showMessage("Gravity Field Activated!");
+}
+activateRapidFire() {
+    this.player.rapidFireActive = true; // Enable rapid fire
+    const originalShootRate = this.player.shootRate;
+    const originalBulletSpeedMultiplier = this.player.bulletSpeedMultiplier;
+
+    this.player.shootRate = 100; // Faster fire rate
+    this.player.bulletSpeedMultiplier = 2; // Double the bullet speed
+
+    setTimeout(() => {
+        // Revert to original fire rate and speed multiplier
+        this.player.shootRate = originalShootRate;
+        this.player.bulletSpeedMultiplier = originalBulletSpeedMultiplier;
+        this.player.rapidFireActive = false;
+        this.showMessage("Rapid Fire Deactivated!");
+    }, 10000); // Duration: 10 seconds
+}
+adjustSpawnRate() {
+    const baseRate = 2000; // Initial spawn rate in ms
+    const minRate = 500; // Minimum spawn rate
+
+    // Scale spawn rate based on score
+    this.spawnRate = Math.max(minRate, baseRate - Math.min(this.score * 0.1, 1500));
+}
+            spawnEnemies() {
+                const spawnEnemy = () => {
+        const enemy = new Enemy(
+            Math.random() * this.canvas.width,
+            Math.random() < 0.5 ? 0 : this.canvas.height,
+            40,
+            40,
+            "red",
+            Math.random() * 1.5 + this.level * 0.5
+        );
+        this.enemies.push(enemy);
+    };
+    
+
+    const spawnLoop = () => {
+        const now = performance.now();
+
+        // Check if it's time to spawn a new enemy
+        if (!this.lastSpawnTime || now - this.lastSpawnTime >= this.spawnRate) {
+            spawnEnemy();
+            this.lastSpawnTime = now; // Update the last spawn time
+        }
+
+        requestAnimationFrame(spawnLoop); // Continue the loop
+    };
+
+    spawnLoop(); // Start the spawn loop
+            }
+
+            checkCollisions() { this.gravityFieldPowerUps.forEach((powerUp) => {
+    if (
+        powerUp.x < this.player.x + this.player.width &&
+        powerUp.x + powerUp.width > this.player.x &&
+        powerUp.y < this.player.y + this.player.height &&
+        powerUp.y + powerUp.height > this.player.y
+    ) {
+        powerUp.active = false; // Deactivate the power-up
+        this.activateGravityField(); // Trigger the gravity field effect
+        this.showMessage("Gravity Field Active!");
+    }
+});
+   this.rapidFirePowerUps.forEach((powerUp) => {
+    if (
+        powerUp.x < this.player.x + this.player.width &&
+        powerUp.x + powerUp.width > this.player.x &&
+        powerUp.y < this.player.y + this.player.height &&
+        powerUp.y + powerUp.height > this.player.y
+    ) {
+        powerUp.active = false; // Deactivate the power-up
+        this.activateRapidFire(); // Trigger the rapid fire effect
+        this.showMessage("Rapid Fire Activated!"); // Show a message
+    }
+});
+
+this.shieldItems.forEach((item) => {
+        if (
+            item.x < this.player.x + this.player.width &&
+            item.x + item.width > this.player.x &&
+            item.y < this.player.y + this.player.height &&
+            item.y + item.height > this.player.y
+        ) {
+            item.active = false; // Remove the item
+            this.player.activateShield(); // Activate the shield
+        this.showMessage("Shield Active!");}
+    });
+
+    // Destroy enemies on contact if shield is active
+    if (this.player.shieldActive) {
+        this.enemies = this.enemies.filter((enemy) => {
+            const dist = Math.hypot(
+                enemy.x + enemy.width / 2 - (this.player.x + this.player.width / 2),
+                enemy.y + enemy.height / 2 - (this.player.y + this.player.height / 2)
+            );
+            if (dist <= this.player.shieldRadius) {
+                enemy.active = false;
+                this.score += 10; // Award score for destroyed enemy
+                    this.flashes.push({
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y + enemy.height / 2,
+                    size: 40, // Flash size
+                    duration: 10 // Flash duration (frames)
+                });
+                sfxr.play(enemyDeathSound); // Play death sound
+ triggerScreenShake();
+                return false; // Remove enemy
+            }
+            return true; // Keep enemy
+        });
+    }
+    
+    
+this.homingEnhancers.forEach((enhancer) => {
+        if (
+            enhancer.x < this.player.x + this.player.width &&
+            enhancer.x + enhancer.width > this.player.x &&
+            enhancer.y < this.player.y + this.player.height &&
+            enhancer.y + enhancer.height > this.player.y
+        ) {
+            enhancer.active = false; // Remove the enhancer
+            this.player.homingActive = true; // Enable homing bullets
+
+            console.log("Homing DroneActivated!");
+this.showMessage("Homing Drone Activated!");
+
+            // Disable homing bullets after 10 seconds
+            setTimeout(() => {
+                console.log("Homing Drone deactivated!");
+                this.player.homingActive = false;
+            }, 10000);
+        }
+    });
+    
+    
+            this.oneUps.forEach((oneUp) => {
+    if (
+        oneUp.x < this.player.x + this.player.width &&
+        oneUp.x + oneUp.width > this.player.x &&
+        oneUp.y < this.player.y + this.player.height &&
+        oneUp.y + oneUp.height > this.player.y
+    ) {
+        oneUp.active = false; // Remove the "1-Up"
+        this.lives++; // Add a life
+          // Play the "pickupCoin" sound
+            sfxr.play(pickupSound);this.showMessage("1 UP!");
+    }
+});
+                this.player.bullets.forEach((bullet) => {
+                    this.enemies.forEach((enemy) => {
+                        if (
+                            bullet.x < enemy.x + enemy.width &&
+                            bullet.x + bullet.width > enemy.x &&
+                            bullet.y < enemy.y + enemy.height &&
+                            bullet.y + bullet.height > enemy.y
+                        ) {
+                            bullet.active = false;
+                            enemy.active = false;
+                            this.score += 10;
+                            this.enemiesDefeated += 1;
+                            sfxr.play(enemyDeathSound);
+                    triggerScreenShake();  // Trigger vibration
+                if (navigator.vibrate) {
+                    navigator.vibrate(100); // Vibrate for 100ms
+                }
+                            // Add a simple flash effect at the enemy's position
+    this.flashes.push({
+        x: enemy.x + enemy.width / 2,
+        y: enemy.y + enemy.height / 2,
+        size: 40, // Size of the flash
+        duration: 10 // Number of frames to show
+    });
+                        }
+                    });
+                });
+            }
+
+            updateEntities() { this.gravityFieldPowerUps = this.gravityFieldPowerUps.filter((p) => p.active);
+this.gravityFieldPowerUps.forEach((p) => p.update(this.canvas.width, this.canvas.height));
+            this.rapidFirePowerUps = this.rapidFirePowerUps.filter((p) => p.active);
+this.rapidFirePowerUps.forEach((p) => p.update(this.canvas.width, this.canvas.height));  
+  if (this.boss) {
+        this.boss.update(this.canvas.width, this.canvas.height);
+        this.player.bullets.forEach(bullet => {
+            if (bullet.active && this.boss) {
+    if (bullet.x < this.boss.x + this.boss.width &&
+        bullet.x + bullet.width > this.boss.x &&
+        bullet.y < this.boss.y + this.boss.height &&
+        bullet.y + bullet.height > this.boss.y) {
+        bullet.active = false;
+        this.boss.health -= 10;
+        sfxr.play(enemyDeathSound);
+        if (this.boss.health <= 0) {
+            this.handleBossDefeat();
+        }
+    }
+}
+
+        });
+
+	}
+this.shieldItems = this.shieldItems.filter((item) => item.active);
+    this.shieldItems.forEach((item) => item.update(this.canvas.width, this.canvas.height));
+                  this.homingEnhancers = this.homingEnhancers.filter((h) => h.active);
+    this.homingEnhancers.forEach((h) => h.update(this.canvas.width, this.canvas.height));
+
+    this.player.bullets = this.player.bullets.filter((b) => b.active);
+    this.player.bullets.forEach((b) => {
+        if (b instanceof HomingBullet) {
+            b.update(this.enemies, this.canvas.width, this.canvas.height); // Pass dimensions and enemies
+        } else {
+            b.update(this.canvas.width, this.canvas.height);
+        }
+    });
+                
+                this.oneUps = this.oneUps.filter((o) => o.active);
+    			this.oneUps.forEach((o) => o.update(this.canvas.width, this.canvas.height));
+                
+				this.flashes = this.flashes.filter((flash) => flash.duration > 0);
+				this.flashes.forEach((flash) => flash.duration--);
+                
+                this.enemies = this.enemies.filter((e) => e.active);
+                this.enemies.forEach((e) => {
+                    e.update(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
+                    if (
+                        e.x < this.player.x + this.player.width &&
+                        e.x + e.width > this.player.x &&
+                        e.y < this.player.y + this.player.height &&
+                        e.y + e.height > this.player.y
+                    ) {
+                        e.active = false;
+                        this.lives--;  sfxr.play(playerDeathSound); triggerScreenShake();  // Trigger vibration
+                if (navigator.vibrate) {
+                    navigator.vibrate(100); // Vibrate for 100ms
+                }                           this.flashes.push({
+            x: this.player.x + this.player.width / 2,
+            y: this.player.y + this.player.height / 2,
+            size: 50, // Size of the flash
+            duration: 15 // Number of frames to show
+        });
+                        if (this.lives <= 0) this.endGame();  
+                    }
+                });
+
+                if (this.enemiesDefeated >= 20) {
+                    this.levelUp();
+                }
+            }
+
+            levelUp() {
+                this.level++;
+                this.enemiesDefeated = 0;
+                this.spawnRate = Math.max(500, this.spawnRate - 200);// Spawn a boss every 10 levels
+    if (this.level % 10 === 0) {
+        this.boss = new Boss(
+            this.canvas.width / 2 - 50,
+            50,
+            100,
+            100,
+            "purple",
+            2, // Speed
+            300 + this.level * 50 // Health increases with level
+        );alert(`Boss Spawned!`);
+    }
+            }
+handleBossDefeat() {this.flashes.push({
+        x: this.boss.x + this.boss.width / 2,
+        y: this.boss.y + this.boss.height / 2,
+        size: Math.max(this.boss.width, this.boss.height) * 1.5, // Flash size larger than the boss
+        duration: 20 // Flash duration (frames)
+    });this.showMessage("Boss Defeated!");
+   alert(`Boss Defeated!`);
+    this.boss = null;
+    this.enemies = this.enemies.filter(enemy => !(enemy instanceof Boss)); // Ensure boss-related entities are cleared
+    this.score += 500;
+    this.lives++;
+    sfxr.play(pickupSound);
+    triggerScreenShake();duration: 20
+    
+    // Save game state
+    this.saveGameState();
+
+    // Reload the page after saving the game state
+    setTimeout(() => {
+       
+    }, 2000); // Add a small delay before reload (e.g., 2 seconds)
+}
+            endGame() {alert(`Game Over! Final Score: ${this.score}`);
+    // Clear game state in localStorage
+    
+
+    // Show a confirmation dialog box with options
+    const userChoice = confirm("Game Over! Would you like to quit? \n\nPress OK to quit or Cancel to restart."); this.player.activateShield();
+
+    if (userChoice) {
+        // Restart the game: reload the page
+        this.clearGameState();localStorage.removeItem('shooterGameState'); // Clear game state explicitly
+        window.location.reload(); this.player.activateShield();
+        
+    } else {
+        // Exit the game: close the window
+        window.close();  this.player.activateShield();// This may not work on all browsers due to security restrictions
+    }
+}
+
+            drawEntities() { this.gravityFieldPowerUps.forEach((p) => p.draw(this.ctx));
+            this.rapidFirePowerUps.forEach((p) => p.draw(this.ctx));
+            if (this.boss) {
+        this.boss.draw(this.ctx);
+    }
+            this.shieldItems.forEach((item) => item.draw(this.ctx));
+            	this.oneUps.forEach((o) => o.draw(this.ctx));
+                this.player.draw(this.ctx);
+                this.homingEnhancers.forEach((h) => h.draw(this.ctx));
+                this.player.bullets.forEach((b) => b.draw(this.ctx));
+                this.enemies.forEach((e) => e.draw(this.ctx));
+                this.flashes.forEach((flash) => {
+    this.ctx.fillStyle = `rgba(255, 255, 0, ${flash.duration / 10})`; // Yellow flash that fades
+    this.ctx.beginPath();
+    this.ctx.arc(flash.x, flash.y, flash.size * (flash.duration / 10), 0, Math.PI * 2);
+    this.ctx.fill();
+});
+
+            }
+
+            updateUI() {
+                document.getElementById("score").textContent = `Score: ${this.score}`;
+                document.getElementById("level").textContent = `Level: ${this.level}`;
+                document.getElementById("lives").textContent = `Lives: ${this.lives}`;
+            }
+
+            loop() {  
+				this.saveGameState();
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                 // Update and draw the parallax background
+    this.background.update();
+    this.background.draw(this.ctx);
+
+             const dx = 
+    (this.keys["ArrowLeft"] || this.keys["a"] ? -this.player.speed : 0) +
+    (this.keys["ArrowRight"] || this.keys["d"] ? this.player.speed : 0);
+const dy = 
+    (this.keys["ArrowUp"] || this.keys["w"] ? -this.player.speed : 0) +
+    (this.keys["ArrowDown"] || this.keys["s"] ? this.player.speed : 0);
+
+                this.player.move(dx, dy, this.canvas.width, this.canvas.height);
+                this.updateEntities();
+                this.checkCollisions();
+
+                this.drawEntities();
+                this.updateUI();
+ this.adjustSpawnRate(); // Adjust spawn rate dynamically
+                requestAnimationFrame(this.loop);
+this.player.updateCooldown(); // Update the cooldown
+            }
+        }
+
+        const game = new Game();
+        game.start();
+
+     function triggerScreenShake() {
+    const canvas = document.getElementById("gameCanvas");
+    const intensity = 5; // Shake intensity
+    const duration = 200; // Shake duration in milliseconds
+    const startTime = performance.now();
+
+    function shake() {
+        const elapsed = performance.now() - startTime;
+        if (elapsed < duration) {
+            const offsetX = (Math.random() - 0.5) * intensity;
+            const offsetY = (Math.random() - 0.5) * intensity;
+
+            // Only apply transform to canvas
+            const transformValue = `translate(${offsetX}px, ${offsetY}px)`;
+            canvas.style.transform = transformValue;
+
+            requestAnimationFrame(shake);
+        } else {
+            // Reset canvas position
+            canvas.style.transform = "";
+        }
+    }
+    shake();
+}
+    </script>
+    <script>
+    class GamepadController {
+        constructor(player, canvas) {
+            this.player = player;
+            this.canvas = canvas;
+            this.gamepadIndex = null;
+            this.initGamepadEvents();
+        }
+
+        initGamepadEvents() {
+            // Detect when a gamepad connects
+            window.addEventListener("gamepadconnected", (event) => {
+                this.gamepadIndex = event.gamepad.index;
+                console.log("Gamepad connected:", event.gamepad);
+            });
+
+            // Detect when a gamepad disconnects
+            window.addEventListener("gamepaddisconnected", (event) => {
+                if (this.gamepadIndex === event.gamepad.index) {
+                    this.gamepadIndex = null;
+                    console.log("Gamepad disconnected:", event.gamepad);
+                }
+            });
+        }
+
+        pollInput() {
+            if (this.gamepadIndex === null) return; // No gamepad connected
+
+            const gamepad = navigator.getGamepads()[this.gamepadIndex];
+            if (!gamepad) return;
+
+            const axes = gamepad.axes;
+            const buttons = gamepad.buttons;
+
+            // Player movement using left stick (axes 0 and 1)
+            const dx = axes[0] * this.player.speed;
+            const dy = axes[1] * this.player.speed;
+            this.player.move(dx, dy, this.canvas.width, this.canvas.height);
+
+            // Shooting direction using right stick (axes 2 and 3)
+            const aimX = axes[2];
+            const aimY = axes[3];
+            if (Math.abs(aimX) > 0.2 || Math.abs(aimY) > 0.2) { // Deadzone
+                const targetX = this.player.x + this.player.width / 2 + aimX * 100;
+                const targetY = this.player.y + this.player.height / 2 + aimY * 100;
+                this.player.shoot(targetX, targetY);
+            }
+
+            // Button actions
+            if (buttons[0].pressed) {
+                console.log("Button A pressed (Shoot)");
+            }
+
+            if (buttons[1].pressed) {
+                console.log("Button B pressed (Special)");
+            }
+        }
+    }
+
+    // Integrate gamepad into the Game class
+    const originalStart = Game.prototype.start;
+    Game.prototype.start = function () {
+        originalStart.call(this);
+        this.gamepadController = new GamepadController(this.player, this.canvas);
+    };
+
+    const originalLoop = Game.prototype.loop;
+    Game.prototype.loop = function () {
+        originalLoop.call(this);
+        if (this.gamepadController) {
+            this.gamepadController.pollInput();
+        }
+    };
+    
+    // 1up
+    
+    
+    class OneUp extends GameEntity {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.speed = 1; // Optional: Add a slight movement effect
+    }
+
+    update(canvasWidth, canvasHeight) {
+        this.y += this.speed;
+        if (this.y > canvasHeight) {
+            this.active = false; // Remove "1-Up" if it goes off-screen
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("+1", this.x + this.width / 2, this.y + this.height / 2 + 4);
+    }
+}
+
+
+</script>
+</body>
+</html>
