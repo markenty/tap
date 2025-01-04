@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Dev Projects</title>
+  <style>
+    /* Reset and base styles */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Arial', sans-serif;
+      font-style: italic;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #0c0f14, #20262e);
+      color: #00ffff; /* Neon teal */
+    }
+
+    /* Container and Layout */
+    .container {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100vh;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      border-bottom: 1px solid #00ffff;
+      padding-bottom: 10px;
+    }
+
+    .title {
+      font-size: 2.5em;
+    }
+
+    .menu {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu h2 {
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    .game-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .game-list li {
+      margin: 10px 0;
+    }
+
+    .game-list ul {
+      margin-left: 20px;
+    }
+
+    .game-list a {
+      text-decoration: none;
+      color: #00ffff;
+      font-size: 1.2em;
+      border: 1px solid #00ffff;
+      padding: 10px 20px;
+      display: inline-block;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .game-list a:hover {
+      background: #00ffff;
+      color: #0c0f14;
+    }
+
+    .footer {
+      text-align: center;
+      border-top: 1px solid #00ffff;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">Game Dev Projects</h1>
+    </header>
+    <div class="menu">
+      <h2>Access Menu:</h2>
+      <ul class="game-list">
+        <li>PROJECTS/
+          <ul>
+            <li><a href="floatboy.html" target="_blank">[FLOATBOY]</a></li>
+            <li><a href="jumpbot.html" target="_blank">[JUMPBOT]</a></li>
+            <li><a href="spacetap.html" target="_blank">[SPACETAP]</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <footer class="footer">
+      <p>© 2025 Game Dev Studio</p>
+    </footer>
+  </div>
+</body>
+</html>
