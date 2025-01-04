@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,52 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game Dev Projects</title>
   <style>
-    /* Reset and base styles */
+    /* Base styles */
     body {
       margin: 0;
       padding: 0;
       font-family: 'Arial', sans-serif;
       font-style: italic;
       text-transform: uppercase;
-      background: linear-gradient(135deg, #0c0f14, #20262e);
-      color: #00ffff; /* Neon teal */
-    }
-
-    /* Container and Layout */
-    .container {
+      background: #0c0f14;
+      color: #ffffff;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       height: 100vh;
-      padding: 20px;
     }
 
+    /* Header styles */
     .header {
       text-align: center;
-      border-bottom: 1px solid #00ffff;
-      padding-bottom: 10px;
+      padding: 40px 20px;
     }
 
     .title {
-      font-size: 2.5em;
+      font-size: 4rem;
+      letter-spacing: 5px;
+      margin: 0;
+      color: #00ffff;
     }
 
+    .subtitle {
+      font-size: 1.5rem;
+      margin: 10px 0 0 0;
+      color: #ffffff;
+      opacity: 0.8;
+    }
+
+    /* Menu styles */
     .menu {
-      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
     }
 
     .menu h2 {
+      font-size: 2rem;
+      letter-spacing: 2px;
       margin-bottom: 20px;
-      text-shadow: 0 0 10px #00ffff;
+      color: #00ffff;
     }
 
     .game-list {
       list-style: none;
       padding: 0;
+      margin: 0;
     }
 
     .game-list li {
@@ -64,45 +70,54 @@
 
     .game-list a {
       text-decoration: none;
+      font-size: 1.5rem;
       color: #00ffff;
-      font-size: 1.2em;
-      border: 1px solid #00ffff;
       padding: 10px 20px;
+      border: 1px solid #00ffff;
       display: inline-block;
-      transition: background 0.3s, color 0.3s;
+      transition: background 0.3s, color 0.3s, transform 0.3s;
+      text-align: center;
     }
 
     .game-list a:hover {
       background: #00ffff;
       color: #0c0f14;
+      transform: scale(1.05);
     }
 
+    /* Footer styles */
     .footer {
       text-align: center;
-      border-top: 1px solid #00ffff;
-      padding-top: 10px;
+      padding: 20px;
+      font-size: 0.9rem;
+      color: #ffffff;
+      opacity: 0.6;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h4 class="title">html game ideas</h4>
-    
-    <div class="menu">
-      <ul class="game-list">
-        <li>PROJECTS/
-          <ul>
-            <li><a href="floatboy.html" target="_blank">[FLOATBOY]</a></li>
-            <li><a href="jumpbot.html" target="_blank">[JUMPBOT]</a></li>
-            <li><a href="spacetap.html" target="_blank">[SPACETAP]</a></li>
-          </ul>
-        </li>
-      </ul>
-    </div></header>
-    <footer class="footer">
-      <p>© 2025 OHI</p>
-    </footer>
-  </div>
+  <header class="header">
+    <h1 class="title">HTML Game Ideas</h1>
+    <p class="subtitle">Creative Concepts and Prototypes</p>
+  </header>
+
+  <main class="menu">
+    <h2>Projects</h2>
+    <ul class="game-list">
+      <li>
+        <a href="floatboy.html" target="_blank">Floatboy</a>
+      </li>
+      <li>
+        <a href="jumpbot.html" target="_blank">Jumpbot</a>
+      </li>
+      <li>
+        <a href="spacetap.html" target="_blank">Spacetap</a>
+      </li>
+    </ul>
+  </main>
+
+  <footer class="footer">
+    <p>© 2025 OHI. All Rights Reserved.</p>
+  </footer>
 </body>
-</html>
+</html>>
