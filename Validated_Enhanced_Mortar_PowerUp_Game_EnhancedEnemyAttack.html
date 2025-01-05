@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Quadradius Game - Enhanced Effects</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+        margin: 0;
+    }
+    #game {
+        display: grid;
+        width: 90vw;
+        max-width: 500px;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 2px;
+    }
+    .cell {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 1px solid #ccc;
+    }
+    .cell.light {
+        background-color: #f0d9b5;
+    }
+    .cell.dark {
+        background-color: #b58863;
+    }
+    .piece {
+        width: 80%;
+        height: 80%;
+        border-radius: 50%;
+    }
+    .piece.player1 {
+        background-color: red;
+    }
+    .piece.player2 {
+        background-color: black;
+    }
+    .power-up {
+        width: 80%;
+        height: 80%;
+        border-radius: 50%;
+        background-color: yellow;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.2em;
+        color: black;
+    }
+    .highlight {
+        outline: 3px solid yellow;
+    }
+    .explosion {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: radial-gradient(circle, red, orange, yellow, transparent);
+        border-radius: 50%;
+        animation: explode 0.5s ease-out forwards;
+        pointer-events: none;
+        z-index: 1000;
+    }
+    @keyframes explode {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2); opacity: 0; }
+    }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script>
+    const game = document.getElementById("game");
+    let currentPlayer = 1;
+    let selectedPiece = null;
+    const board = [
+        [0, -1, 0, -1, 0, -1, 0, -1, 0, -1],
+        [-1, 0, -1, 0, -1, 0, -1, 0, -1, 0],
+        [0, -1, 0, -1, 0, -1, 0, -1, 0, -1],
+        [-1, 0, -1, 0, -1, 0, -1, 0, -1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    ];
+    const powerUps = ["Mortar", "Recruit", "Destroy Column"];
+    const powerUpLifetime = 10000;
+    let powerUpInterval;
+    function buildBoard() {
+        game.innerHTML = "";
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                const cell = document.createElement("div");
+                cell.classList.add("cell", (row + col) % 2 === 0 ? "light" : "dark");
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+                const cellContent = board[row][col];
+                if (cellContent === 1 || cellContent === -1) {
+                    const piece = document.createElement("div");
+                    piece.classList.add("piece", cellContent === 1 ? "player1" : "player2");
+                    cell.appendChild(piece);
+                } else if (typeof cellContent === "string") {
+                    const powerUp = document.createElement("div");
+                    powerUp.classList.add("power-up");
+                    powerUp.style.fontSize = `${Math.min(game.clientWidth / 10, 50) / 5}px`;
+                    powerUp.textContent = cellContent;
+                    cell.appendChild(powerUp);
+                }
+                cell.addEventListener("click", () => handleCellClick(row, col));
+                game.appendChild(cell);
+            }
+        }
+    }
+    function handleCellClick(row, col) {
+        const cellContent = board[row][col];
+        if (currentPlayer === 1 && cellContent === currentPlayer) {
+            selectedPiece = { row, col };
+        } else if (selectedPiece && isValidMove(selectedPiece.row, selectedPiece.col, row, col)) {
+            if (typeof board[row][col] === "string") {
+                applyPowerUp(row, col, currentPlayer);
+            }
+            movePiece(selectedPiece.row, selectedPiece.col, row, col);
+            selectedPiece = null;
+            currentPlayer = -1;
+            buildBoard();
+            setTimeout(moveEnemyPieces, 1000);
+        }
+    }
+    function isValidMove(fromRow, fromCol, toRow, toCol) {
+        const rowDiff = Math.abs(toRow - fromRow);
+        const colDiff = Math.abs(toCol - fromCol);
+        const destination = board[toRow][toCol];
+        return (
+            (destination === 0 || typeof destination === "string" || destination === -currentPlayer) &&
+            (rowDiff === 1 && colDiff === 0 || rowDiff === 0 && colDiff === 1 || rowDiff === 1 && colDiff === 1)
+        );
+    }
+    function movePiece(fromRow, fromCol, toRow, toCol) {
+        if (board[toRow][toCol] === -currentPlayer) {
+            console.log(`Player ${currentPlayer} attacked an opponent!`);
+            createExplosion(toRow, toCol);
+        }
+        board[toRow][toCol] = board[fromRow][fromCol];
+        board[fromRow][fromCol] = 0;
+    }
+    function createExplosion(row, col) {
+        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+        if (cell) {
+            const rect = cell.getBoundingClientRect();
+            const explosion = document.createElement("div");
+            explosion.classList.add("explosion");
+            explosion.style.left = `${rect.left + window.scrollX}px`;
+            explosion.style.top = `${rect.top + window.scrollY}px`;
+            document.body.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 500);
+        }
+    }
+    function applyPowerUp(row, col, player) {
+        const powerUp = board[row][col];
+        if (typeof powerUp === "string") {
+            console.log(`Power-Up Activated: ${powerUp}`);
+            if (powerUp === "Mortar") {
+                console.log("Mortar activated!");
+                const targets = findMultipleNearestOpponents(row, col, player, 4);
+                targets.forEach(target => {
+                    if (target) launchMortar(row, col, target.row, target.col, player);
+                });
+            } else if (powerUp === "Recruit") {
+                console.log("Recruit activated!");
+                const target = findNearestOpponent(row, col, player);
+                if (target) recruitPiece(target.row, target.col, player);
+            } else if (powerUp === "Destroy Column") {
+                console.log("Destroy Column activated!");
+                destroyColumn(col);
+            }
+            board[row][col] = 0;
+        }
+    }
+    function destroyColumn(col) {
+        console.log(`Destroying all pieces in column ${col}!`);
+        for (let row = 0; row < 10; row++) {
+            if (board[row][col] !== 0) {
+                createExplosion(row, col);
+                board[row][col] = 0;
+            }
+        }
+        buildBoard();
+    }
+    function recruitPiece(row, col, player) {
+        console.log(`Recruited opponent at (${row}, ${col})!`);
+        board[row][col] = player;
+        buildBoard();
+    }
+    function findNearestOpponent(row, col, player) {
+        let nearest = null;
+        let minDistance = Infinity;
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+                if (board[r][c] === -player) {
+                    const distance = Math.sqrt(Math.pow(row - r, 2) + Math.pow(col - c, 2));
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearest = { row: r, col: c };
+                    }
+                }
+            }
+        }
+        return nearest;
+    }
+    function findMultipleNearestOpponents(row, col, player, numTargets) {
+        const opponents = [];
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+                if (board[r][c] === -player) {
+                    const distance = Math.sqrt(Math.pow(row - r, 2) + Math.pow(col - c, 2));
+                    opponents.push({ row: r, col: c, distance });
+                }
+            }
+        }
+        opponents.sort((a, b) => a.distance - b.distance);
+        return opponents.slice(0, numTargets);
+    }
+    function launchMortar(fromRow, fromCol, toRow, toCol, player) {
+        createExplosion(toRow, toCol);
+        if (board[toRow][toCol] === -player || board[toRow][toCol] === player) {
+            console.log("Opponent hit!");
+            board[toRow][toCol] = 0;
+        }
+        buildBoard();
+    }
+    function moveEnemyPieces() {
+        const enemies = [];
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                if (board[row][col] === -1) {
+                    const moves = getValidEnemyMoves(row, col);
+                    if (moves.length > 0) enemies.push({ row, col, moves });
+                }
+            }
+        }
+        if (enemies.length > 0) {
+            // Prioritize attacking the nearest player
+            for (const enemy of enemies) {
+                for (const [toRow, toCol] of enemy.moves) {
+                    if (board[toRow][toCol] === 1) {
+                        movePiece(enemy.row, enemy.col, toRow, toCol);
+                        currentPlayer = 1;
+                        buildBoard();
+                        return;
+                    }
+                }
+            }
+            // Prioritize power-ups if no attack is possible
+            for (const enemy of enemies) {
+                for (const [toRow, toCol] of enemy.moves) {
+                    if (typeof board[toRow][toCol] === "string") {
+                        applyPowerUp(toRow, toCol, -1);
+                        movePiece(enemy.row, enemy.col, toRow, toCol);
+                        currentPlayer = 1;
+                        buildBoard();
+                        return;
+                    }
+                }
+            }
+            // If no attacks or power-ups, move randomly
+            const randomEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+            const [toRow, toCol] = randomEnemy.moves[0];
+            movePiece(randomEnemy.row, randomEnemy.col, toRow, toCol);
+        }
+        currentPlayer = 1;
+        buildBoard();
+    }
+    function getValidEnemyMoves(row, col) {
+        const directions = [
+            [0, 1], [1, 0], [0, -1], [-1, 0], 
+            [1, 1], [1, -1], [-1, 1], [-1, -1]
+        ];
+        const validMoves = [];
+        for (const [dRow, dCol] of directions) {
+            const newRow = row + dRow;
+            const newCol = col + dCol;
+            if (
+                newRow >= 0 &&
+                newRow < 10 &&
+                newCol >= 0 &&
+                newCol < 10 &&
+                (board[newRow][newCol] === 0 || typeof board[newRow][newCol] === "string" || board[newRow][newCol] === 1)
+            ) {
+                validMoves.push([newRow, newCol]);
+            }
+        }
+        return validMoves;
+    }
+    function startPowerUpSpawning() {
+        powerUpInterval = setInterval(() => {
+            const emptyCells = [];
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 10; col++) {
+                    if (board[row][col] === 0) emptyCells.push({ row, col });
+                }
+            }
+            if (emptyCells.length > 0) {
+                const { row, col } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                const powerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
+                board[row][col] = powerUp;
+                setTimeout(() => {
+                    if (board[row][col] === powerUp) {
+                        board[row][col] = 0;
+                        buildBoard();
+                    }
+                }, powerUpLifetime);
+                buildBoard();
+            }
+        }, 5000);
+    }
+    buildBoard();
+    startPowerUpSpawning();
+</script>
+</body>
+</html>
