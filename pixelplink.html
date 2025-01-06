@@ -424,14 +424,15 @@
             }
         }
 
-        function triggerEffects() {
-            gameArea.classList.add('shake');
-            document.body.classList.add('flash');
-            setTimeout(() => {
-                gameArea.classList.remove('shake');
-                document.body.classList.remove('flash');
-            }, 300); // Remove effects after duration
-        }
+        function moveCrosshair(e) {
+    const x = e.clientX; // Get the mouse X coordinate
+    const y = e.clientY; // Get the mouse Y coordinate
+
+    // Set the crosshair position, ensuring it's centered
+    crosshair.style.left = `${x}px`;
+    crosshair.style.top = `${y}px`;
+    crosshair.style.transform = 'translate(-50%, -50%)'; // Centers the crosshair
+}
 
         function moveCrosshair(e) {
     const x = e.clientX;
