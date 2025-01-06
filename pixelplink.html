@@ -423,7 +423,14 @@
                 setTimeout(() => fountain.remove(), 700); // Remove fountain after animation
             }
         }
-
+function triggerEffects () {
+gameArea.classList.add( 'shake');
+document.body.classList.add('flash');
+setTimeout ( ( ) => {
+gameArea.classList.remove ('shake');
+document.body.classList.remove( 'flash');
+3, 300); // Remove effects after duration
+}
         function moveCrosshair(e) {
     const x = e.clientX; // Get the mouse X coordinate
     const y = e.clientY; // Get the mouse Y coordinate
@@ -434,17 +441,7 @@
     crosshair.style.transform = 'translate(-50%, -50%)'; // Centers the crosshair
 }
 
-        function moveCrosshair(e) {
-    const x = e.clientX;
-    const y = e.clientY;
-
-    const crosshairOffsetX = -15; // Fine-tune horizontal alignment
-    const crosshairOffsetY = 0; // Fine-tune vertical alignment
-
-
-}
-
-
+        
         initGame();
     </script>
 </body>
