@@ -434,11 +434,16 @@
         }
 
         function moveCrosshair(e) {
-            let x = e.clientX;
-            let y = e.clientY;
-            crosshair.style.left = `${x}px`;
-crosshair.style.top = `${y}px`;
-        }
+    const x = e.clientX;
+    const y = e.clientY;
+
+    const crosshairOffsetX = -10; // Fine-tune horizontal alignment
+    const crosshairOffsetY = -10; // Fine-tune vertical alignment
+
+    crosshair.style.left = `${x + crosshairOffsetX}px`;
+    crosshair.style.top = `${y + crosshairOffsetY}px`;
+}
+
 
         initGame();
     </script>
