@@ -155,7 +155,7 @@ function addSplatterEffect(x, y) {
             splatterEffects.forEach(({ x, y, alpha, size }) => {
                 ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
                 ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.arc(x, y, size, 0, Math.PI * .5);
                 ctx.fill();
             });
         }
