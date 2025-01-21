@@ -273,22 +273,22 @@
                 }
 
                 if (
-                    player.isAttacking &&
-                    player.attackFrame < 5 &&
-                    Math.abs(player.x - enemy.x) < 50 &&
-                    Math.abs(player.y - enemy.y) < 50
-                ) {
-                    enemy.hp -= 10;
-                    addPunchEffect(enemy.x, enemy.y - 25);
-                    addSplatterEffect(enemy.x, enemy.y); // Add splatter effect on hit
-                    applyScreenShake(10, 10);
-                       // Knockback with random range
-    const knockbackMultiplier = .1; // Random between 0.5 and 1
+    player.isAttacking &&
+    player.attackFrame < 5 &&
+    Math.abs(player.x - enemy.x) < 50 &&
+    Math.abs(player.y - enemy.y) < 50
+) {
+    enemy.hp -= 10;
+    addPunchEffect(enemy.x, enemy.y - 25);
+    addSplatterEffect(enemy.x, enemy.y); // Add splatter effect on hit
+    applyScreenShake(10, 10);
+
+    // Reduced random knockback
+    const knockbackMultiplier = Math.random() * 0.15 + 0.1; // Random between 0.1 and 0.25
     enemy.knockback = {
         x: (enemy.x - player.x) * knockbackMultiplier,
         y: (enemy.y - player.y) * knockbackMultiplier,
         frames: 10,
-        currentFrame: 0,
     };
 }
 
