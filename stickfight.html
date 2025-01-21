@@ -201,13 +201,13 @@ function addSplatterEffect(x, y) {
             punchEffects.forEach(({ x, y, alpha }) => {
                 ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
                 ctx.beginPath();
-                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fill();
                 // Draw the red "X" emoji
         ctx.font = '10px Arial'; // Set font size and style
         ctx.textAlign = 'center'; // Center the emoji horizontally
         ctx.textBaseline = 'middle'; // Center the emoji vertically
-        ctx.fillText('❌', x, y); // Draw the emoji
+        ctx.fillText('💢', x, y); // Draw the emoji
             });
         }
 
