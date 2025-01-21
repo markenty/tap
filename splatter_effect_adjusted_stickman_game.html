@@ -287,7 +287,8 @@
     enemy.knockback = {
         x: (enemy.x - player.x) * knockbackMultiplier,
         y: (enemy.y - player.y) * knockbackMultiplier,
-        frames: 6,
+        frames: 10,
+        currentFrame: 0,
     };
 }
 
