@@ -293,7 +293,7 @@
 
                 if (enemy.knockback) {
     // Gradually increase knockback force as frames progress
-    const progressionMultiplier = 1 + enemy.knockback.currentFrame / enemy.knockback.frames;
+    const progressionMultiplier = .5 + enemy.knockback.currentFrame / enemy.knockback.frames;
     enemy.x += enemy.knockback.x * progressionMultiplier;
     enemy.y += enemy.knockback.y * progressionMultiplier;
 
