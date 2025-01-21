@@ -292,13 +292,17 @@
 }
 
                 if (enemy.knockback) {
-                    enemy.x += enemy.knockback.x;
-                    enemy.y += enemy.knockback.y;
-                    enemy.knockback.frames--;
-                    if (enemy.knockback.frames <= 0) {
-                        enemy.knockback = null;
-                    }
-                }
+    // Gradually increase knockback force as frames progress
+    const progressionMultiplier = 1 + enemy.knockback.currentFrame / enemy.knockback.frames;
+    enemy.x += enemy.knockback.x * progressionMultiplier;
+    enemy.y += enemy.knockback.y * progressionMultiplier;
+
+    // Increment the frame counter and reduce knockback duration
+    enemy.knockback.currentFrame++;
+    if (enemy.knockback.currentFrame >= enemy.knockback.frames) {
+        enemy.knockback = null; // End knockback after all frames are processed
+    }
+}
 
                 if (enemy.hp <= 0 && !enemy.isDead) {
     enemy.isDead = true;
