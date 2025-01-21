@@ -125,7 +125,39 @@
             player.velocityY = 0;
             joystick.style.transform = 'translate(-50%, -50%)';
         });
+function addSplatterEffect(x, y) {
+            for (let i = 0; i < 10; i++) {
+                splatterEffects.push({
+                    x,
+                    y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    alpha: 1,
+                    size: Math.random() * 3 + 2,
+                });
+            }
+        }
 
+        function updateSplatterEffects() {
+            for (let i = splatterEffects.length - 1; i >= 0; i--) {
+                const effect = splatterEffects[i];
+                effect.x += effect.dx;
+                effect.y += effect.dy;
+                effect.alpha -= 0.02;
+                if (effect.alpha <= 0) {
+                    splatterEffects.splice(i, 1);
+                }
+            }
+        }
+
+        function drawSplatterEffects() {
+            splatterEffects.forEach(({ x, y, alpha, size }) => {
+                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
         const attackButton = document.getElementById('attack');
         attackButton.addEventListener('touchstart', () => {
             if (!player.isDead) {
@@ -256,6 +288,8 @@
                         frames: 10,
                     };
                     addPunchEffect(enemy.x, enemy.y - 25);
+                    addSplatterEffect(enemy.x, enemy.y); // Add splatter effect on hit
+                    applyScreenShake(10, 10);
                     applyScreenShake(10, 10);
                 }
 
