@@ -306,9 +306,9 @@
     deadBodies.push(enemy);
 }
 
-deadBodies.forEach((deadEnemy, index) => {
-    deadEnemy.alpha -= 1 / 600;
-    if (deadEnemy.alpha <= 0) deadBodies.splice(index, 1);
+deadBodies.forEach((enemy, index) => {
+    enemy.alpha -= 1 / 600;
+    if (enemy.alpha <= 0) deadBodies.splice(index, 1);
 });
         }
 
