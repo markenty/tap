@@ -283,7 +283,7 @@
                     addSplatterEffect(enemy.x, enemy.y); // Add splatter effect on hit
                     applyScreenShake(10, 10);
                        // Knockback with random range
-    const knockbackMultiplier = Math.random() * 0.5 + 0.5; // Random between 0.5 and 1
+    const knockbackMultiplier = Math.random() * 0.3 + 0.1; // Random between 0.5 and 1
     enemy.knockback = {
         x: (enemy.x - player.x) * knockbackMultiplier,
         y: (enemy.y - player.y) * knockbackMultiplier,
