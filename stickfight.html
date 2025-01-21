@@ -309,12 +309,37 @@ function addSplatterEffect(x, y) {
                 }
 
                 if (enemy.hp <= 0 && !enemy.isDead) {
-                    enemy.isDead = true;
-                    enemy.rotation = Math.PI / 2;
-                    enemy.fadeCounter = 0; // Start fade counter
-                    deadBodies.push({ ...enemy });
-                }
-            });
+    // Mark the enemy as dead
+    enemy.isDead = true;
+    enemy.rotation = Math.PI / 2; // Optional: Rotate enemy to simulate death
+    enemy.fadeCounter = 0; // Initialize fade counter
+    deadBodies.push({ ...enemy }); // Add to deadBodies array for rendering fading effects
+}
+
+// Fade out and remove dead enemies
+deadBodies.forEach((deadEnemy, index) => {
+    deadEnemy.fadeCounter++;
+
+    // Gradually reduce alpha for fade effect
+    deadEnemy.alpha = 1 - deadEnemy.fadeCounter / 600;
+
+    if (deadEnemy.fadeCounter > 600) {
+        // Remove the sprite once fully faded
+        deadBodies.splice(index, 1);
+    }
+});
+
+// Drawing dead bodies with fading effect
+deadBodies.forEach((deadEnemy) => {
+    if (deadEnemy.alpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = deadEnemy.alpha; // Set transparency
+        ctx.translate(deadEnemy.x + deadEnemy.width / 2, deadEnemy.y + deadEnemy.height / 2);
+        ctx.rotate(deadEnemy.rotation);
+        ctx.drawImage(deadEnemy.sprite, -deadEnemy.width / 2, -deadEnemy.height / 2, deadEnemy.width, deadEnemy.height);
+        ctx.restore();
+    }
+});
         }
 
         function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
