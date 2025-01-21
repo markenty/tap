@@ -299,12 +299,17 @@
                 }
 
                 if (enemy.hp <= 0 && !enemy.isDead) {
-                    enemy.isDead = true;
-                    enemy.rotation = Math.PI / 2;
-                    enemy.fadeCounter = 0; // Start fade counter
-                    deadBodies.push({ ...enemy });
-                }
-            });
+    enemy.isDead = true;
+    enemy.rotation = Math.PI / 2;
+    enemy.fadeCounter = 0;
+    enemy.alpha = 1;
+    deadBodies.push(enemy);
+}
+
+deadBodies.forEach((deadEnemy, index) => {
+    deadEnemy.alpha -= 1 / 600;
+    if (deadEnemy.alpha <= 0) deadBodies.splice(index, 1);
+});
         }
 
         function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
