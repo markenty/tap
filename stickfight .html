@@ -353,6 +353,8 @@ function addSplatterEffect(x, y) {
 
         function gameLoop() {
             updateScreenShake();
+            updatePunchEffects();
+            updateSplatterEffects();
 
             ctx.save();
             ctx.translate(screenShake.x, screenShake.y);
@@ -363,12 +365,11 @@ function addSplatterEffect(x, y) {
             if (!player.isDead) drawStickman(player);
             updateEnemies();
             enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
-            updatePunchEffects();
             drawPunchEffects();
+            drawSplatterEffects();
             ctx.restore();
             requestAnimationFrame(gameLoop);
         }
-
         gameLoop();
     </script>
 </body>
