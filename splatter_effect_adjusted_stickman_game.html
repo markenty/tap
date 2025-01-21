@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stickman Game - Splatter Effect</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background: #f2f2f2;
+        }
+        .joystick-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+        }
+        .joystick {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            background: lightgray;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .attack {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 70px;
+            height: 70px;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Onscreen Controls -->
+    <div class="joystick-container" id="joystickContainer">
+        <div class="joystick" id="joystick"></div>
+    </div>
+    <div class="attack" id="attack">Punch</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const punchEffects = [];
+        const splatterEffects = [];
+        const deadBodies = [];
+        const enemies = [];
+        let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            width: 20,
+            height: 50,
+            hp: 100,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            isAttacking: false,
+            attackFrame: 0,
+            isDead: false,
+            rotation: 0,
+        };
+
+        const joystickContainer = document.getElementById('joystickContainer');
+        const joystick = document.getElementById('joystick');
+        const center = { x: joystickContainer.offsetWidth / 2, y: joystickContainer.offsetHeight / 2 };
+        let joystickPosition = { x: center.x, y: center.y };
+        let isDragging = false;
+
+        joystick.addEventListener('touchstart', () => (isDragging = true));
+        joystick.addEventListener('touchmove', (e) => {
+            if (isDragging && !player.isDead) {
+                const rect = joystickContainer.getBoundingClientRect();
+                const touch = e.touches[0];
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+
+                const dx = x - center.x;
+                const dy = y - center.y;
+                const distance = Math.min(Math.sqrt(dx * dx + dy * dy), center.x);
+
+                const angle = Math.atan2(dy, dx);
+                joystickPosition.x = center.x + Math.cos(angle) * distance;
+                joystickPosition.y = center.y + Math.sin(angle) * distance;
+
+                player.velocityX = Math.cos(angle) * (distance / center.x) * player.speed;
+                player.velocityY = Math.sin(angle) * (distance / center.y) * player.speed;
+
+                joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
+            }
+        });
+
+        joystick.addEventListener('touchend', () => {
+            isDragging = false;
+            joystickPosition = { x: center.x, y: center.y };
+            player.velocityX = 0;
+            player.velocityY = 0;
+            joystick.style.transform = 'translate(-50%, -50%)';
+        });
+
+        const attackButton = document.getElementById('attack');
+        attackButton.addEventListener('touchstart', () => {
+            if (!player.isDead) {
+                player.isAttacking = true;
+                player.attackFrame = 0;
+            }
+        });
+
+        function applyScreenShake(intensity, duration) {
+            screenShake.intensity = intensity;
+            screenShake.duration = duration;
+        }
+
+        function updateScreenShake() {
+            if (screenShake.duration > 0) {
+                screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+                screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+                screenShake.duration--;
+            } else {
+                screenShake.x = 0;
+                screenShake.y = 0;
+            }
+        }
+
+        function addPunchEffect(x, y) {
+            punchEffects.push({ x, y, alpha: 1 });
+        }
+
+        function addSplatterEffect(x, y) {
+            for (let i = 0; i < 10; i++) {
+                splatterEffects.push({
+                    x,
+                    y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    alpha: 1,
+                    size: Math.random() * 3 + 2,
+                });
+            }
+        }
+
+        function updateSplatterEffects() {
+            for (let i = splatterEffects.length - 1; i >= 0; i--) {
+                const effect = splatterEffects[i];
+                effect.x += effect.dx;
+                effect.y += effect.dy;
+                effect.alpha -= 0.02;
+                if (effect.alpha <= 0) {
+                    splatterEffects.splice(i, 1);
+                }
+            }
+        }
+
+        function drawSplatterEffects() {
+            splatterEffects.forEach(({ x, y, alpha, size }) => {
+                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function updatePunchEffects() {
+            for (let i = punchEffects.length - 1; i >= 0; i--) {
+                const effect = punchEffects[i];
+                effect.alpha -= 0.05;
+                if (effect.alpha <= 0) {
+                    punchEffects.splice(i, 1);
+                }
+            }
+        }
+
+        function drawPunchEffects() {
+            punchEffects.forEach(({ x, y, alpha }) => {
+                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, 15, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        setInterval(() => {
+            if (enemies.length < 5 && !player.isDead) {
+                enemies.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    width: 20,
+                    height: 50,
+                    hp: 50,
+                    isAttacking: false,
+                    attackFrame: 0,
+                    isDead: false,
+                    rotation: 0,
+                    knockback: null,
+                    fadeCounter: 0,
+                });
+            }
+        }, 2000);
+
+        function updatePlayer() {
+            if (player.isDead) return;
+
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+            if (player.isAttacking) {
+                player.attackFrame++;
+                if (player.attackFrame > 10) {
+                    player.isAttacking = false;
+                    player.attackFrame = 0;
+                }
+            }
+        }
+
+        function updateEnemies() {
+            enemies.forEach((enemy, index) => {
+                if (enemy.isDead) {
+                    enemy.fadeCounter++;
+                    if (enemy.fadeCounter > 600) {
+                        enemies.splice(index, 1);
+                    }
+                    return;
+                }
+
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 10) {
+                    enemy.x += (dx / distance) * 2;
+                    enemy.y += (dy / distance) * 2;
+                } else if (!player.isDead) {
+                    enemy.isAttacking = true;
+                    enemy.attackFrame++;
+                    if (enemy.attackFrame > 10) {
+                        enemy.attackFrame = 0;
+                        player.hp -= 5;
+                        addPunchEffect(player.x, player.y - 25);
+                        applyScreenShake(10, 10);
+                    }
+                }
+
+                if (
+                    player.isAttacking &&
+                    player.attackFrame < 5 &&
+                    Math.abs(player.x - enemy.x) < 50 &&
+                    Math.abs(player.y - enemy.y) < 50
+                ) {
+                    enemy.hp -= 10;
+                    addPunchEffect(enemy.x, enemy.y - 25);
+                    addSplatterEffect(enemy.x, enemy.y); // Add splatter effect on hit
+                    applyScreenShake(10, 10);
+                    enemy.knockback = {
+                        x: (enemy.x - player.x) * 0.5,
+                        y: (enemy.y - player.y) * 0.5,
+                        frames: 10,
+                    };
+                }
+
+                if (enemy.knockback) {
+                    enemy.x += enemy.knockback.x;
+                    enemy.y += enemy.knockback.y;
+                    enemy.knockback.frames--;
+                    if (enemy.knockback.frames <= 0) {
+                        enemy.knockback = null;
+                    }
+                }
+
+                if (enemy.hp <= 0 && !enemy.isDead) {
+                    enemy.isDead = true;
+                    enemy.rotation = Math.PI / 2;
+                    enemy.fadeCounter = 0; // Start fade counter
+                    deadBodies.push({ ...enemy });
+                }
+            });
+        }
+
+        function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.strokeStyle = color || "black";
+            ctx.fillStyle = color || "black";
+            ctx.globalAlpha = fadeCounter ? 1 - fadeCounter / 600 : 1; // Adjust opacity for fading enemies
+
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, -height / 2, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(0, -height / 2);
+            ctx.lineTo(0, height / 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            if (isAttacking && attackFrame < 5) {
+                ctx.moveTo(0, -10);
+                ctx.lineTo(30, -10);
+            } else {
+                ctx.moveTo(0, -10);
+                ctx.lineTo(-15, 10);
+                ctx.moveTo(0, -10);
+                ctx.lineTo(15, 10);
+            }
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, 20);
+            ctx.lineTo(-10, 40);
+            ctx.moveTo(0, 20);
+            ctx.lineTo(10, 40);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            updateScreenShake();
+            updatePunchEffects();
+            updateSplatterEffects();
+
+            ctx.save();
+            ctx.translate(screenShake.x, screenShake.y);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            deadBodies.forEach(drawStickman);
+            updatePlayer();
+            if (!player.isDead) drawStickman(player);
+            updateEnemies();
+            enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
+            drawPunchEffects();
+            drawSplatterEffects();
+            ctx.restore();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
