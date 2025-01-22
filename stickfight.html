@@ -53,6 +53,181 @@
         }
     </style>
 </head>
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyBVCLza2Y3wyvrfmSUBA10WMV_RbRaDNuU",
+    authDomain: "sfdata-f0f64.firebaseapp.com",
+    projectId: "sfdata-f0f64",
+    storageBucket: "sfdata-f0f64.firebasestorage.app",
+    messagingSenderId: "741326174103",
+    appId: "1:741326174103:web:ce21be8c00400644b736d2",
+    measurementId: "G-J0HYZ06LV8"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+
+      import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+const db = getFirestore(app);
+const gameStateRef = doc(db, "gameState", "global");
+
+// Initialize the game state if it doesn't exist
+async function initializeGameState() {
+    const docSnap = await getDoc(gameStateRef);
+    if (!docSnap.exists()) {
+        await setDoc(gameStateRef, {
+            enemies: [], // No enemies at the start
+            lastUpdated: Date.now() // Timestamp for the last update
+        });
+    }
+}
+import { updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+const gameStateRef = db.collection('gameState').doc('global');
+
+// Spawn new enemies
+function spawnEnemy() {
+    gameStateRef.update({
+        enemies: firebase.firestore.FieldValue.arrayUnion({
+            id: `enemy-${Math.random().toString(36).substring(2)}`,
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            hp: 50,
+            isDead: false
+        })
+    });
+}
+
+// Spawn an enemy every 5 seconds
+setInterval(() => {
+    spawnEnemy();
+}, 5000);
+
+        gameStateRef.onSnapshot((doc) => {
+    const data = doc.data();
+    if (data) {
+        enemies.length = 0;
+        data.enemies.forEach((enemy) => enemies.push(enemy));
+    }
+});
+
+// Call this function when the game starts
+initializeGameState();
+        
+import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+onSnapshot(gameStateRef, (doc) => {
+    if (doc.exists()) {
+        const data = doc.data();
+        enemies.length = 0; // Clear local enemies array
+        data.enemies.forEach((enemy) => {
+            enemies.push(enemy); // Add synced enemies
+        });
+    }
+});
+        
+const playerId = `player-${Math.random().toString(36).substring(2)}`; // Generate a unique player ID
+const playerRef = db.collection('players').doc(playerId);
+
+// Spawn the player with default attributes
+async function initializePlayer() {
+    await playerRef.set({
+        x: canvas.width / 2, // Initial spawn location
+        y: canvas.height / 2,
+        hp: 100,
+        isAttacking: false,
+        lastUpdated: Date.now()
+    });
+}
+function updatePlayerInFirestore() {
+    playerRef.update({
+        x: player.x,
+        y: player.y,
+        hp: player.hp,
+        isAttacking: player.isAttacking,
+        lastUpdated: Date.now()
+    });
+}
+
+// Debounce updates to Firestore (to reduce write frequency)
+setInterval(() => {
+    updatePlayerInFirestore();
+}, 100); // Update every 100ms
+
+// Call this when the user opens the game
+initializePlayer();
+
+// Handle Player Disconnects
+        window.addEventListener('beforeunload', async () => {
+    await playerRef.delete();
+});
+
+// sync other players
+        db.collection('players').onSnapshot((snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+        const data = change.doc.data();
+        if (change.type === "added") {
+            // Add new player
+            enemies.push({ id: change.doc.id, ...data, color: "blue" }); // Treat them as friendly entities
+        } else if (change.type === "modified") {
+            // Update existing player
+            const existingPlayer = enemies.find((p) => p.id === change.doc.id);
+            if (existingPlayer) {
+                existingPlayer.x = data.x;
+                existingPlayer.y = data.y;
+                existingPlayer.hp = data.hp;
+            }
+        } else if (change.type === "removed") {
+            // Remove player
+            const index = enemies.findIndex((p) => p.id === change.doc.id);
+            if (index !== -1) {
+                enemies.splice(index, 1);
+            }
+        }
+    });
+});
+function detectCollisions() {
+    enemies.forEach((enemy, index) => {
+        if (
+            player.isAttacking &&
+            Math.abs(player.x - enemy.x) < 50 &&
+            Math.abs(player.y - enemy.y) < 50
+        ) {
+            // Damage the enemy
+            enemy.hp -= 10;
+
+            // Update enemy in Firestore
+            gameStateRef.update({
+                enemies: firebase.firestore.FieldValue.arrayUnion({
+                    ...enemy,
+                    hp: enemy.hp
+                })
+            });
+
+            // Remove enemy if dead
+            if (enemy.hp <= 0) {
+                enemies.splice(index, 1);
+            }
+        }
+    });
+}
+attackButton.addEventListener('touchstart', () => {
+    player.isAttacking = true;
+    updatePlayerInFirestore();
+    detectCollisions(); // Check for hits
+});
+
+</script>
 <body>
     <canvas id="gameCanvas"></canvas>
 
@@ -357,25 +532,29 @@ function addSplatterEffect(x, y) {
         }
 
         function gameLoop() {
-            updateScreenShake();
-            updatePunchEffects();
-            updateSplatterEffects();
+    updateScreenShake();
+    updatePunchEffects();
+    updateSplatterEffects();
 
-            ctx.save();
-            ctx.translate(screenShake.x, screenShake.y);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(screenShake.x, screenShake.y);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            deadBodies.forEach(drawStickman);
-            updatePlayer();
-            if (!player.isDead) drawStickman(player);
-            updateEnemies();
-            enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
-            drawPunchEffects();
-            drawSplatterEffects();
-            ctx.restore();
-            requestAnimationFrame(gameLoop);
-        }
-        gameLoop();
+    deadBodies.forEach(drawStickman);
+    updatePlayer();
+    if (!player.isDead) drawStickman(player);
+
+    updateEnemies();
+    enemies.forEach((enemy) => drawStickman({ ...enemy, color: enemy.isDead ? "gray" : "red" }));
+
+    drawPunchEffects();
+    drawSplatterEffects();
+
+    ctx.restore();
+    requestAnimationFrame(gameLoop);
+}
+gameLoop();
+
     </script>
 </body>
 </html>
