@@ -91,33 +91,43 @@
         };
 
         const joystickContainer = document.getElementById('joystickContainer');
-        const joystick = document.getElementById('joystick');
-        const center = { x: joystickContainer.offsetWidth / 2, y: joystickContainer.offsetHeight / 2 };
+const joystick = document.getElementById('joystick');
+
+// Use a consistent radius based on container's dimensions
+const radius = joystickContainer.offsetWidth / 2;
+const center = { x: radius, y: radius };
         let joystickPosition = { x: center.x, y: center.y };
         let isDragging = false;
 let killCount = 0;
         joystick.addEventListener('touchstart', () => (isDragging = true));
-        joystick.addEventListener('touchmove', (e) => {
-            if (isDragging && !player.isDead) {
-                const rect = joystickContainer.getBoundingClientRect();
-                const touch = e.touches[0];
-                const x = touch.clientX - rect.left;
-                const y = touch.clientY - rect.top;
+     joystick.addEventListener('touchmove', (e) => {
+    if (isDragging && !player.isDead) {
+        const rect = joystickContainer.getBoundingClientRect();
+        const touch = e.touches[0];
+        // Calculate touch position relative to container
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
 
-                const dx = x - center.x;
-                const dy = y - center.y;
-                const distance = Math.min(Math.sqrt(dx * dx + dy * dy), center.x);
+        // Compute difference from center
+        const dx = x - center.x;
+        const dy = y - center.y;
+        // Use uniform radius for distance limiting
+        const distance = Math.min(Math.sqrt(dx * dx + dy * dy), radius);
 
-                const angle = Math.atan2(dy, dx);
-                joystickPosition.x = center.x + Math.cos(angle) * distance;
-                joystickPosition.y = center.y + Math.sin(angle) * distance;
+        const angle = Math.atan2(dy, dx);
+        // Compute joystick position constrained within circle
+        joystickPosition.x = center.x + Math.cos(angle) * distance;
+        joystickPosition.y = center.y + Math.sin(angle) * distance;
 
-                player.velocityX = Math.cos(angle) * (distance / center.x) * player.speed;
-                player.velocityY = Math.sin(angle) * (distance / center.y) * player.speed;
+        // Normalize velocity by radius to get consistent speeds
+        player.velocityX = Math.cos(angle) * (distance / radius) * player.speed;
+        player.velocityY = Math.sin(angle) * (distance / radius) * player.speed;
 
-                joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
-            }
-        });
+        // Apply transform based on adjusted position relative to container's center
+        joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
+    }
+});
+
 
         joystick.addEventListener('touchend', () => {10
             isDragging = false;
