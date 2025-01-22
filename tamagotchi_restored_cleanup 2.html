@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamagotchi Unified with Items and Movement</title>
+  <style>
+    @font-face {
+      font-family: "8bit";
+      src: url("https://fonts.cdnfonts.com/s/18139/PressStart2P-Regular.woff") format("woff");
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: "8bit", Arial, sans-serif;
+    }
+
+    .meters-container {
+      width: 90%;
+      max-width: 400px;
+      margin-top: 10px;
+    }
+
+    .meter {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .meter-label {
+      flex: 1;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .meter-bar {
+      flex: 4;
+      height: 20px;
+      background: red;
+      position: relative;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      background: green;
+      width: 100%;
+      transition: width 0.2s ease-out;
+    }
+
+    canvas {
+      background: #161b22;
+      border: 2px solid #58a6ff;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .controls-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 90%;
+      max-width: 400px;
+      margin-top: 20px;
+    }
+
+    .coins {
+      flex: 1;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .controls {
+      flex: 3;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: 2px solid #58a6ff;
+      background: #161b22;
+      color: white;
+      font-size: 1rem;
+      font-family: "8bit", Arial, sans-serif;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      flex: 1;
+      min-width: 100px;
+    }
+
+    button:hover {
+      background: #58a6ff;
+      color: black;
+      border-color: #1f6feb;
+    }
+
+    .inventory {
+      margin-top: 10px;
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .inventory-section {
+      border: 2px solid #58a6ff;
+      border-radius: 5px;
+      padding: 10px;
+      background: #161b22;
+    }
+
+    .inventory-section h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .inventory-section .inventory-meter {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .inventory-meter .inventory-fill {
+      flex: 1;
+      height: 10px;
+      background: red;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .inventory-meter .inventory-fill span {
+      display: block;
+      height: 100%;
+      background: green;
+      transition: width 0.2s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <div class="meters-container">
+    <div class="meter">
+      <div class="meter-label">Hunger</div>
+      <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label">Happiness</div>
+      <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label">Cleanliness</div>
+      <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
+    </div>
+  </div>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div class="controls-container">
+    <div class="coins" id="coinCount">Coins: 0</div>
+    <div class="controls">
+      <button id="feedBtn">Feed</button>
+      <button id="playBtn">Play</button>
+      <button id="cleanBtn">Clean</button>
+    </div>
+  </div>
+  <div class="inventory">
+    <div class="inventory-section" id="foodInventory">
+      <h3>Food</h3>
+      <div class="inventory-meter"><div class="inventory-fill"><span id="foodFill" style="width: 100%;"></span></div></div>
+    </div>
+    <div class="inventory-section" id="toyInventory">
+      <h3>Toys</h3>
+      <div class="inventory-meter"><div class="inventory-fill"><span id="toyFill" style="width: 100%;"></span></div></div>
+    </div>
+    <div class="inventory-section" id="cleaningInventory">
+      <h3>Cleaning Supplies</h3>
+      <div class="inventory-meter"><div class="inventory-fill"><span id="cleaningFill" style="width: 100%;"></span></div></div>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const tamagotchi = {
+      hunger: 100,
+      happiness: 100,
+      cleanliness: 100,
+      alive: true,
+      x: canvas.width / 2,
+      y: canvas.height / 2 - 50,
+      dx: 2,
+      dy: 1,
+      bounce: 0,
+      coins: 0,
+      food: 100,
+      toys: 100,
+      cleaningSupplies: 100,
+    };
+
+    const spriteSize = 32;
+    const items = [];
+    const itemEmojis = {
+      feed: ["🍎", "🍔", "🍕", "🍇", "🍗"],
+      play: ["⚽", "🏀", "🎾", "🎲", "🪁"],
+      clean: ["🧼", "🧽", "🪣", "🚿", "🪥"],
+    };
+
+    function updateMeters() {
+      document.getElementById("hungerFill").style.width = `${tamagotchi.hunger}%`;
+      document.getElementById("happinessFill").style.width = `${tamagotchi.happiness}%`;
+      document.getElementById("cleanlinessFill").style.width = `${tamagotchi.cleanliness}%`;
+      document.getElementById("foodFill").style.width = `${tamagotchi.food}%`;
+      document.getElementById("toyFill").style.width = `${tamagotchi.toys}%`;
+      document.getElementById("cleaningFill").style.width = `${tamagotchi.cleaningSupplies}%`;
+      document.getElementById("coinCount").textContent = `Coins: ${tamagotchi.coins}`;
+    }
+
+    function spawnItem(type) {
+      const emoji = itemEmojis[type][Math.floor(Math.random() * itemEmojis[type].length)];
+      const x = Math.random() * (canvas.width - 20);
+      const y = Math.random() * (canvas.height - 20);
+      items.push({ type, emoji, x, y });
+    }
+
+    function moveTamagotchi() {
+      tamagotchi.x += tamagotchi.dx;
+      tamagotchi.y += tamagotchi.dy;
+
+      // Bounce back if it hits canvas edges
+      if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
+      if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
+    }
+
+    function drawEnvironment() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      items.forEach(item => {
+        ctx.font = "20px Arial";
+        ctx.fillText(item.emoji, item.x, item.y);
+      });
+      drawTamagotchi();
+    }
+
+    function drawTamagotchi() {
+      const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
+
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(
+        tamagotchi.x + spriteSize / 2,
+        tamagotchi.y + spriteSize / 2 + bounceOffset,
+        spriteSize,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      const emoji = tamagotchi.happiness > 70 ? "😊" : tamagotchi.happiness > 30 ? "😐" : "😢";
+      ctx.font = `${spriteSize * 2}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "black";
+      ctx.fillText(
+        emoji,
+        tamagotchi.x + spriteSize / 2,
+        tamagotchi.y + spriteSize / 2 + bounceOffset
+      );
+    }
+
+    function updateStats() {
+      if (!tamagotchi.alive) return;
+
+      tamagotchi.hunger -= 0.1;
+      tamagotchi.happiness -= 0.05;
+      tamagotchi.cleanliness -= 0.07;
+
+      tamagotchi.hunger = Math.max(0, Math.min(100, tamagotchi.hunger));
+      tamagotchi.happiness = Math.max(0, Math.min(100, tamagotchi.happiness));
+      tamagotchi.cleanliness = Math.max(0, Math.min(100, tamagotchi.cleanliness));
+
+      updateMeters();
+    }
+
+    document.getElementById("feedBtn").addEventListener("click", () => {
+      if (tamagotchi.food > 0) {
+        tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
+        tamagotchi.food -= 10;
+        spawnItem("feed");
+      }
+    });
+
+    document.getElementById("playBtn").addEventListener("click", () => {
+      if (tamagotchi.toys > 0) {
+        tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
+        tamagotchi.toys -= 10;
+        spawnItem("play");
+      }
+    });
+
+    document.getElementById("cleanBtn").addEventListener("click", () => {
+      if (tamagotchi.cleaningSupplies > 0) {
+        tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
+        tamagotchi.cleaningSupplies -= 10;
+        spawnItem("clean");
+      }
+    });
+
+    function gameLoop() {
+      if (tamagotchi.alive) {
+        moveTamagotchi();
+        updateStats();
+        drawEnvironment();
+      }
+    }
+
+    setInterval(gameLoop, 100);
+  
+// Cleanup items and animate cleaning
+function cleanup() {
+  items.length = 0; // Clear all items
+  poops.forEach(poop => {
+    const cleanupEmoji = itemEmojis.clean[Math.floor(Math.random() * itemEmojis.clean.length)];
+    cleanupAnimations.push({ emoji: cleanupEmoji, x: poop.x, y: poop.y, frames: 50 });
+  });
+  poops.length = 0; // Clear all poop items
+}
+
+// Example usage in a button event:
+document.getElementById("cleanBtn").addEventListener("click", () => {
+  if (tamagotchi.alive) {
+    tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20); // Increase cleanliness
+    cleanup(); // Trigger cleanup logic
+  }
+});
+
+</script>
+</body>
+</html>
