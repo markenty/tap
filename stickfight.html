@@ -1,560 +1,504 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StickFight</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            margin: auto;
-            background: #f2f2f2;
-        }
-        .joystick-container {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            width: 120px;
-            height: 120px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 50%;
-        }
-        .joystick {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 60px;
-            height: 60px;
-            background: lightgray;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .attack {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 70px;
-            height: 70px;
-            background: red;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            user-select: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>StickFight Multiplayer</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: #f2f2f2;
+    }
+    .joystick-container {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 120px;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+    }
+    .joystick {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60px;
+      height: 60px;
+      background: lightgray;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .attack {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 70px;
+      height: 70px;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+    }
+  </style>
 </head>
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBVCLza2Y3wyvrfmSUBA10WMV_RbRaDNuU",
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Onscreen Controls -->
+  <div class="joystick-container" id="joystickContainer">
+    <div class="joystick" id="joystick"></div>
+  </div>
+  <div class="attack" id="attack">Punch</div>
+
+  <!-- Firebase App and Firestore (Modular v9+) -->
+  <!-- Replace with your own Firebase script links or use local bundler -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+    import {
+      getFirestore,
+      collection,
+      doc,
+      setDoc,
+      updateDoc,
+      onSnapshot,
+      getDoc
+    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+
+    // Your Firebase config here
+    const firebaseConfig = {
+        apiKey: "AIzaSyBVCLza2Y3wyvrfmSUBA10WMV_RbRaDNuU",
     authDomain: "sfdata-f0f64.firebaseapp.com",
     projectId: "sfdata-f0f64",
     storageBucket: "sfdata-f0f64.firebasestorage.app",
     messagingSenderId: "741326174103",
     appId: "1:741326174103:web:ce21be8c00400644b736d2",
     measurementId: "G-J0HYZ06LV8"
-  };
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+    // Generate or retrieve a unique ID for this player (e.g. from auth or random)
+    const playerId = "player_" + Math.floor(Math.random() * 999999);
 
-      import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+    // Reference to the 'players' collection in Firestore
+    const playersRef = collection(db, "players");
 
-const db = getFirestore(app);
-const gameStateRef = doc(db, "gameState", "global");
+    // Create/initialize a doc for this player
+    const playerDoc = doc(playersRef, playerId);
 
-// Initialize the game state if it doesn't exist
-async function initializeGameState() {
-    const docSnap = await getDoc(gameStateRef);
-    if (!docSnap.exists()) {
-        await setDoc(gameStateRef, {
-            enemies: [], // No enemies at the start
-            lastUpdated: Date.now() // Timestamp for the last update
-        });
-    }
-}
-import { updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+    // Store other players locally
+    const otherPlayers = {};
 
-const gameStateRef = db.collection('gameState').doc('global');
+    // -----------------------------------------------------------------------------------------
+    // GAME CODE
+    // -----------------------------------------------------------------------------------------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-// Spawn new enemies
-function spawnEnemy() {
-    gameStateRef.update({
-        enemies: firebase.firestore.FieldValue.arrayUnion({
-            id: `enemy-${Math.random().toString(36).substring(2)}`,
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            hp: 50,
-            isDead: false
-        })
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const punchEffects = [];
+    const splatterEffects = [];
+    const deadBodies = [];
+    const enemies = [];
+    let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+
+    // Local player object
+    const player = {
+      id: playerId,
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: 20,
+      height: 50,
+      hp: 100,
+      velocityX: 0,
+      velocityY: 0,
+      speed: 5,
+      isAttacking: false,
+      attackFrame: 0,
+      isDead: false,
+      rotation: 0,
+      color: "blue",
+    };
+
+    // Onscreen joystick logic
+    const joystickContainer = document.getElementById('joystickContainer');
+    const joystick = document.getElementById('joystick');
+    const center = { x: joystickContainer.offsetWidth / 2, y: joystickContainer.offsetHeight / 2 };
+    let joystickPosition = { x: center.x, y: center.y };
+    let isDragging = false;
+
+    joystick.addEventListener('touchstart', () => (isDragging = true));
+    joystick.addEventListener('touchmove', (e) => {
+      if (isDragging && !player.isDead) {
+        const rect = joystickContainer.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const dx = x - center.x;
+        const dy = y - center.y;
+        const distance = Math.min(Math.sqrt(dx*dx + dy*dy), center.x);
+        const angle = Math.atan2(dy, dx);
+        joystickPosition.x = center.x + Math.cos(angle)*distance;
+        joystickPosition.y = center.y + Math.sin(angle)*distance;
+        player.velocityX = Math.cos(angle)*(distance/center.x)*player.speed;
+        player.velocityY = Math.sin(angle)*(distance/center.y)*player.speed;
+        joystick.style.transform =
+          `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
+      }
     });
-}
-
-// Spawn an enemy every 5 seconds
-setInterval(() => {
-    spawnEnemy();
-}, 5000);
-
-        gameStateRef.onSnapshot((doc) => {
-    const data = doc.data();
-    if (data) {
-        enemies.length = 0;
-        data.enemies.forEach((enemy) => enemies.push(enemy));
-    }
-});
-
-// Call this function when the game starts
-initializeGameState();
-        
-import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
-
-onSnapshot(gameStateRef, (doc) => {
-    if (doc.exists()) {
-        const data = doc.data();
-        enemies.length = 0; // Clear local enemies array
-        data.enemies.forEach((enemy) => {
-            enemies.push(enemy); // Add synced enemies
-        });
-    }
-});
-        
-const playerId = `player-${Math.random().toString(36).substring(2)}`; // Generate a unique player ID
-const playerRef = db.collection('players').doc(playerId);
-
-// Spawn the player with default attributes
-async function initializePlayer() {
-    await playerRef.set({
-        x: canvas.width / 2, // Initial spawn location
-        y: canvas.height / 2,
-        hp: 100,
-        isAttacking: false,
-        lastUpdated: Date.now()
+    joystick.addEventListener('touchend', () => {
+      isDragging = false;
+      joystickPosition = { x: center.x, y: center.y };
+      player.velocityX = 0;
+      player.velocityY = 0;
+      joystick.style.transform = 'translate(-50%, -50%)';
     });
-}
-function updatePlayerInFirestore() {
-    playerRef.update({
+
+    function addSplatterEffect(x, y) {
+      for (let i = 0; i < 10; i++) {
+        splatterEffects.push({
+          x,
+          y,
+          dx: (Math.random() - 0.5)*10,
+          dy: (Math.random() - 0.5)*10,
+          alpha: 1,
+          size: Math.random()*3 + 2,
+        });
+      }
+    }
+    function updateSplatterEffects() {
+      for (let i = splatterEffects.length - 1; i >= 0; i--) {
+        const effect = splatterEffects[i];
+        effect.x += effect.dx;
+        effect.y += effect.dy;
+        effect.alpha -= 0.02;
+        if (effect.alpha <= 0) {
+          splatterEffects.splice(i, 1);
+        }
+      }
+    }
+    function drawSplatterEffects() {
+      splatterEffects.forEach(({ x, y, alpha, size }) => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI*0.5);
+        ctx.fill();
+      });
+    }
+
+    const attackButton = document.getElementById('attack');
+    attackButton.addEventListener('touchstart', () => {
+      if (!player.isDead) {
+        player.isAttacking = true;
+        player.attackFrame = 0;
+      }
+    });
+
+    function applyScreenShake(intensity, duration) {
+      screenShake.intensity = intensity;
+      screenShake.duration = duration;
+    }
+    function updateScreenShake() {
+      if (screenShake.duration > 0) {
+        screenShake.x = (Math.random() - 0.5)*screenShake.intensity;
+        screenShake.y = (Math.random() - 0.5)*screenShake.intensity;
+        screenShake.duration--;
+      } else {
+        screenShake.x = 0;
+        screenShake.y = 0;
+      }
+    }
+
+    function addPunchEffect(x, y) {
+      punchEffects.push({ x, y, alpha: 1 });
+    }
+    function updatePunchEffects() {
+      for (let i = punchEffects.length - 1; i >= 0; i--) {
+        const effect = punchEffects[i];
+        effect.alpha -= 0.05;
+        if (effect.alpha <= 0) {
+          punchEffects.splice(i, 1);
+        }
+      }
+    }
+    function drawPunchEffects() {
+      punchEffects.forEach(({ x, y, alpha }) => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI*2);
+        ctx.fill();
+
+        // Red "X" emoji
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💢', x, y);
+      });
+    }
+
+    // Spawn enemies
+    setInterval(() => {
+      if (enemies.length < 5 && !player.isDead) {
+        enemies.push({
+          x: Math.random()*canvas.width,
+          y: Math.random()*canvas.height,
+          width: 20,
+          height: 50,
+          hp: 50,
+          isAttacking: false,
+          attackFrame: 0,
+          isDead: false,
+          rotation: 0,
+          knockback: null,
+          fadeCounter: 0,
+          color: "red",
+        });
+      }
+    }, 2000);
+
+    function updatePlayer() {
+      if (player.isDead) return;
+      player.x += player.velocityX;
+      player.y += player.velocityY;
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+      // Attacking frames
+      if (player.isAttacking) {
+        player.attackFrame++;
+        if (player.attackFrame > 10) {
+          player.isAttacking = false;
+          player.attackFrame = 0;
+        }
+      }
+
+      // Check death
+      if (player.hp <= 0 && !player.isDead) {
+        player.isDead = true;
+        player.rotation = Math.PI / 2;
+        deadBodies.push({ ...player });
+      }
+    }
+
+    function updateEnemies() {
+      enemies.forEach((enemy, index) => {
+        if (enemy.isDead) {
+          enemy.fadeCounter++;
+          if (enemy.fadeCounter > 600) enemies.splice(index, 1);
+          return;
+        }
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+
+        // Move enemy
+        if (distance > 10) {
+          enemy.x += (dx / distance)*2;
+          enemy.y += (dy / distance)*2;
+        } else if (!player.isDead) {
+          enemy.isAttacking = true;
+          enemy.attackFrame++;
+          if (enemy.attackFrame > 10) {
+            enemy.attackFrame = 0;
+            player.hp -= 5;
+            addPunchEffect(player.x, player.y - 25);
+            applyScreenShake(10, 10);
+          }
+        }
+        // Player attack hits enemy
+        if (
+          player.isAttacking &&
+          player.attackFrame < 5 &&
+          Math.abs(player.x - enemy.x) < 50 &&
+          Math.abs(player.y - enemy.y) < 50
+        ) {
+          enemy.hp -= 10;
+          enemy.knockback = {
+            x: (enemy.x - player.x)*0.5,
+            y: (enemy.y - player.y)*0.5,
+            frames: 10,
+          };
+          addPunchEffect(enemy.x, enemy.y - 25);
+          addSplatterEffect(enemy.x, enemy.y);
+          applyScreenShake(10, 10);
+        }
+
+        // Knockback
+        if (enemy.knockback) {
+          enemy.x += enemy.knockback.x;
+          enemy.y += enemy.knockback.y;
+          enemy.knockback.frames--;
+          if (enemy.knockback.frames <= 0) enemy.knockback = null;
+        }
+
+        if (enemy.hp <= 0 && !enemy.isDead) {
+          enemy.isDead = true;
+          enemy.rotation = Math.PI / 2;
+          enemy.fadeCounter = 0;
+          deadBodies.push({ ...enemy });
+        }
+      });
+    }
+
+    function drawStickman({
+      x, y, width, height, rotation, isAttacking, attackFrame,
+      color, fadeCounter
+    }) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.strokeStyle = color || "black";
+      ctx.fillStyle = color || "black";
+      ctx.globalAlpha = fadeCounter ? 1 - fadeCounter / 600 : 1;
+      ctx.lineWidth = 2;
+
+      // Head
+      ctx.beginPath();
+      ctx.arc(0, -height / 2, 10, 0, Math.PI*2);
+      ctx.fill();
+
+      // Body
+      ctx.beginPath();
+      ctx.moveTo(0, -height / 2);
+      ctx.lineTo(0, height / 2);
+      ctx.stroke();
+
+      // Arms
+      ctx.beginPath();
+      if (isAttacking && attackFrame < 5) {
+        ctx.moveTo(0, -10);
+        ctx.lineTo(30, -10);
+      } else {
+        ctx.moveTo(0, -10);
+        ctx.lineTo(-15, 10);
+        ctx.moveTo(0, -10);
+        ctx.lineTo(15, 10);
+      }
+      ctx.stroke();
+
+      // Legs
+      ctx.beginPath();
+      ctx.moveTo(0, 20);
+      ctx.lineTo(-10, 40);
+      ctx.moveTo(0, 20);
+      ctx.lineTo(10, 40);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // FIRESTORE MULTIPLAYER LOGIC
+    // -----------------------------------------------------------------------------------------
+    // Update this player's data in Firestore
+    async function syncPlayerData() {
+      await setDoc(playerDoc, {
         x: player.x,
         y: player.y,
         hp: player.hp,
         isAttacking: player.isAttacking,
-        lastUpdated: Date.now()
-    });
-}
+        attackFrame: player.attackFrame,
+        isDead: player.isDead,
+        rotation: player.rotation,
+        color: player.color
+      }, { merge: true });
+    }
 
-// Debounce updates to Firestore (to reduce write frequency)
-setInterval(() => {
-    updatePlayerInFirestore();
-}, 100); // Update every 100ms
-
-// Call this when the user opens the game
-initializePlayer();
-
-// Handle Player Disconnects
-        window.addEventListener('beforeunload', async () => {
-    await playerRef.delete();
-});
-
-// sync other players
-        db.collection('players').onSnapshot((snapshot) => {
-    snapshot.docChanges().forEach((change) => {
+    // Listen for changes to all player docs
+    onSnapshot(playersRef, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
         const data = change.doc.data();
-        if (change.type === "added") {
-            // Add new player
-            enemies.push({ id: change.doc.id, ...data, color: "blue" }); // Treat them as friendly entities
-        } else if (change.type === "modified") {
-            // Update existing player
-            const existingPlayer = enemies.find((p) => p.id === change.doc.id);
-            if (existingPlayer) {
-                existingPlayer.x = data.x;
-                existingPlayer.y = data.y;
-                existingPlayer.hp = data.hp;
-            }
-        } else if (change.type === "removed") {
-            // Remove player
-            const index = enemies.findIndex((p) => p.id === change.doc.id);
-            if (index !== -1) {
-                enemies.splice(index, 1);
-            }
+        const docId = change.doc.id;
+
+        // If it's another player
+        if (docId !== playerId) {
+          if (change.type === "added" || change.type === "modified") {
+            otherPlayers[docId] = {
+              id: docId,
+              x: data.x,
+              y: data.y,
+              hp: data.hp,
+              isAttacking: data.isAttacking,
+              attackFrame: data.attackFrame,
+              isDead: data.isDead,
+              rotation: data.rotation,
+              width: 20,
+              height: 50,
+              color: data.color || "green"
+            };
+          }
+          if (change.type === "removed") {
+            delete otherPlayers[docId];
+          }
         }
+      });
     });
-});
-function detectCollisions() {
-    enemies.forEach((enemy, index) => {
-        if (
-            player.isAttacking &&
-            Math.abs(player.x - enemy.x) < 50 &&
-            Math.abs(player.y - enemy.y) < 50
-        ) {
-            // Damage the enemy
-            enemy.hp -= 10;
 
-            // Update enemy in Firestore
-            gameStateRef.update({
-                enemies: firebase.firestore.FieldValue.arrayUnion({
-                    ...enemy,
-                    hp: enemy.hp
-                })
-            });
-
-            // Remove enemy if dead
-            if (enemy.hp <= 0) {
-                enemies.splice(index, 1);
-            }
+    // Draw all other players
+    function drawOtherPlayers() {
+      Object.values(otherPlayers).forEach((p) => {
+        if (!p.isDead) {
+          drawStickman(p);
+        } else {
+          // Optionally remove or fade them out
         }
-    });
-}
-attackButton.addEventListener('touchstart', () => {
-    player.isAttacking = true;
-    updatePlayerInFirestore();
-    detectCollisions(); // Check for hits
-});
+      });
+    }
 
-</script>
-<body>
-    <canvas id="gameCanvas"></canvas>
+    // -----------------------------------------------------------------------------------------
+    // GAME LOOP
+    // -----------------------------------------------------------------------------------------
+    function gameLoop() {
+      updateScreenShake();
+      updatePunchEffects();
+      updateSplatterEffects();
 
-    <!-- Onscreen Controls -->
-    <div class="joystick-container" id="joystickContainer">
-        <div class="joystick" id="joystick"></div>
-    </div>
-    <div class="attack" id="attack">Punch</div>
+      ctx.save();
+      ctx.translate(screenShake.x, screenShake.y);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+      // Dead bodies
+      deadBodies.forEach(drawStickman);
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+      // Local player
+      updatePlayer();
+      if (!player.isDead) {
+        drawStickman(player);
+      }
 
-        const punchEffects = [];
-        const splatterEffects = [];
-        const deadBodies = [];
-        const enemies = [];
-        let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+      // Enemies
+      updateEnemies();
+      enemies.forEach((enemy) => drawStickman(enemy));
 
-        const player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            width: 20,
-            height: 50,
-            hp: 100,
-            velocityX: 0,
-            velocityY: 0,
-            speed: 5,
-            isAttacking: false,
-            attackFrame: 0,
-            isDead: false,
-            rotation: 0,
-        };
+      // Effects
+      drawPunchEffects();
+      drawSplatterEffects();
 
-        const joystickContainer = document.getElementById('joystickContainer');
-        const joystick = document.getElementById('joystick');
-        const center = { x: joystickContainer.offsetWidth / 2, y: joystickContainer.offsetHeight / 2 };
-        let joystickPosition = { x: center.x, y: center.y };
-        let isDragging = false;
+      // Other remote players
+      drawOtherPlayers();
 
-        joystick.addEventListener('touchstart', () => (isDragging = true));
-        joystick.addEventListener('touchmove', (e) => {
-            if (isDragging && !player.isDead) {
-                const rect = joystickContainer.getBoundingClientRect();
-                const touch = e.touches[0];
-                const x = touch.clientX - rect.left;
-                const y = touch.clientY - rect.top;
+      ctx.restore();
 
-                const dx = x - center.x;
-                const dy = y - center.y;
-                const distance = Math.min(Math.sqrt(dx * dx + dy * dy), center.x);
+      // Sync local player data to Firestore
+      syncPlayerData();
 
-                const angle = Math.atan2(dy, dx);
-                joystickPosition.x = center.x + Math.cos(angle) * distance;
-                joystickPosition.y = center.y + Math.sin(angle) * distance;
-
-                player.velocityX = Math.cos(angle) * (distance / center.x) * player.speed;
-                player.velocityY = Math.sin(angle) * (distance / center.y) * player.speed;
-
-                joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
-            }
-        });
-
-        joystick.addEventListener('touchend', () => {
-            isDragging = false;
-            joystickPosition = { x: center.x, y: center.y };
-            player.velocityX = 0;
-            player.velocityY = 0;
-            joystick.style.transform = 'translate(-50%, -50%)';
-        });
-function addSplatterEffect(x, y) {
-            for (let i = 0; i < 10; i++) {
-                splatterEffects.push({
-                    x,
-                    y,
-                    dx: (Math.random() - 0.5) * 10,
-                    dy: (Math.random() - 0.5) * 10,
-                    alpha: 1,
-                    size: Math.random() * 3 + 2,
-                });
-            }
-        }
-
-        function updateSplatterEffects() {
-            for (let i = splatterEffects.length - 1; i >= 0; i--) {
-                const effect = splatterEffects[i];
-                effect.x += effect.dx;
-                effect.y += effect.dy;
-                effect.alpha -= 0.02;
-                if (effect.alpha <= 0) {
-                    splatterEffects.splice(i, 1);
-                }
-            }
-        }
-
-        function drawSplatterEffects() {
-            splatterEffects.forEach(({ x, y, alpha, size }) => {
-                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * .5);
-                ctx.fill();
-            });
-        }
-        const attackButton = document.getElementById('attack');
-        attackButton.addEventListener('touchstart', () => {
-            if (!player.isDead) {
-                player.isAttacking = true;
-                player.attackFrame = 0;
-            }
-        });
-
-        function applyScreenShake(intensity, duration) {
-            screenShake.intensity = intensity;
-            screenShake.duration = duration;
-        }
-
-        function updateScreenShake() {
-            if (screenShake.duration > 0) {
-                screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
-                screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
-                screenShake.duration--;
-            } else {
-                screenShake.x = 0;
-                screenShake.y = 0;
-            }
-        }
-
-        function addPunchEffect(x, y) {
-            punchEffects.push({ x, y, alpha: 1 });
-        }
-
-        function updatePunchEffects() {
-            for (let i = punchEffects.length - 1; i >= 0; i--) {
-                const effect = punchEffects[i];
-                effect.alpha -= 0.05;
-                if (effect.alpha <= 0) {
-                    punchEffects.splice(i, 1);
-                }
-            }
-        }
-
-        function drawPunchEffects() {
-            punchEffects.forEach(({ x, y, alpha }) => {
-                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(x, y, 2, 0, Math.PI * 2);
-                ctx.fill();
-                // Draw the red "X" emoji
-        ctx.font = '10px Arial'; // Set font size and style
-        ctx.textAlign = 'center'; // Center the emoji horizontally
-        ctx.textBaseline = 'middle'; // Center the emoji vertically
-        ctx.fillText('💢', x, y); // Draw the emoji
-            });
-        }
-
-        setInterval(() => {
-            if (enemies.length < 5 && !player.isDead) {
-                enemies.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    width: 20,
-                    height: 50,
-                    hp: 50,
-                    isAttacking: false,
-                    attackFrame: 0,
-                    isDead: false,
-                    rotation: 0,
-                    knockback: null,
-                    fadeCounter: 0,
-                });
-            }
-        }, 2000);
-
-        function updatePlayer() {
-            if (player.isDead) return;
-
-            player.x += player.velocityX;
-            player.y += player.velocityY;
-
-            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
-            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
-
-            if (player.isAttacking) {
-                player.attackFrame++;
-                if (player.attackFrame > 10) {
-                    player.isAttacking = false;
-                    player.attackFrame = 0;
-                }
-            }
-
-            if (player.hp <= 0 && !player.isDead) {
-                player.isDead = true;
-                player.rotation = Math.PI / 2;
-                deadBodies.push({ ...player });
-            }
-        }
-
-        function updateEnemies() {
-            enemies.forEach((enemy, index) => {
-                if (enemy.isDead) {
-                    enemy.fadeCounter++;
-                    if (enemy.fadeCounter > 600) {
-                        enemies.splice(index, 1);
-                    }
-                    return;
-                }
-
-                const dx = player.x - enemy.x;
-                const dy = player.y - enemy.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance > 10) {
-                    enemy.x += (dx / distance) * 2;
-                    enemy.y += (dy / distance) * 2;
-                } else if (!player.isDead) {
-                    enemy.isAttacking = true;
-                    enemy.attackFrame++;
-                    if (enemy.attackFrame > 10) {
-                        enemy.attackFrame = 0;
-                        player.hp -= 5;
-                        addPunchEffect(player.x, player.y - 25);
-                        applyScreenShake(10, 10);
-                    }
-                }
-
-                if (
-                    player.isAttacking &&
-                    player.attackFrame < 5 &&
-                    Math.abs(player.x - enemy.x) < 50 &&
-                    Math.abs(player.y - enemy.y) < 50
-                ) {
-                    enemy.hp -= 10;
-                    enemy.knockback = {
-                        x: (enemy.x - player.x) * 0.5,
-                        y: (enemy.y - player.y) * 0.5,
-                        frames: 10,
-                    };
-                    addPunchEffect(enemy.x, enemy.y - 25);
-                    addSplatterEffect(enemy.x, enemy.y); // Add splatter effect on hit
-                    applyScreenShake(10, 10);
-                    applyScreenShake(10, 10);
-                }
-
-                if (enemy.knockback) {
-                    enemy.x += enemy.knockback.x;
-                    enemy.y += enemy.knockback.y;
-                    enemy.knockback.frames--;
-                    if (enemy.knockback.frames <= 0) {
-                        enemy.knockback = null;
-                    }
-                }
-
-       if (enemy.hp <= 0 && !enemy.isDead) {
-                    enemy.isDead = true;
-                    enemy.rotation = Math.PI / 2;
-                    enemy.fadeCounter = 0; // Start fade counter
-                    deadBodies.push({ ...enemy });
-                }
-            });
-        }
-
-        function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.strokeStyle = color || "black";
-            ctx.fillStyle = color || "black";
-            ctx.globalAlpha = fadeCounter ? 1 - fadeCounter / 600 : 1; // Adjust opacity for fading enemies
-
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(0, -height / 2, 10, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.moveTo(0, -height / 2);
-            ctx.lineTo(0, height / 2);
-            ctx.stroke();
-
-            ctx.beginPath();
-            if (isAttacking && attackFrame < 5) {
-                ctx.moveTo(0, -10);
-                ctx.lineTo(30, -10);
-            } else {
-                ctx.moveTo(0, -10);
-                ctx.lineTo(-15, 10);
-                ctx.moveTo(0, -10);
-                ctx.lineTo(15, 10);
-            }
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(0, 20);
-            ctx.lineTo(-10, 40);
-            ctx.moveTo(0, 20);
-            ctx.lineTo(10, 40);
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        function gameLoop() {
-    updateScreenShake();
-    updatePunchEffects();
-    updateSplatterEffects();
-
-    ctx.save();
-    ctx.translate(screenShake.x, screenShake.y);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    deadBodies.forEach(drawStickman);
-    updatePlayer();
-    if (!player.isDead) drawStickman(player);
-
-    updateEnemies();
-    enemies.forEach((enemy) => drawStickman({ ...enemy, color: enemy.isDead ? "gray" : "red" }));
-
-    drawPunchEffects();
-    drawSplatterEffects();
-
-    ctx.restore();
-    requestAnimationFrame(gameLoop);
-}
-gameLoop();
-
-    </script>
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+  </script>
 </body>
 </html>
