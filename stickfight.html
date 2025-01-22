@@ -1,6 +1,8 @@
 
 <!DOCTYPE html>
 <html lang="en">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -100,33 +102,42 @@ const center = { x: radius, y: radius };
         let isDragging = false;
 let killCount = 0;
         joystick.addEventListener('touchstart', () => (isDragging = true));
-     joystick.addEventListener('touchmove', (e) => {
+    joystick.addEventListener('touchmove', (e) => {
     if (isDragging && !player.isDead) {
         const rect = joystickContainer.getBoundingClientRect();
         const touch = e.touches[0];
-        // Calculate touch position relative to container
+
+        // Get touch position relative to joystick container
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
 
-        // Compute difference from center
+        // Calculate vector from center to touch
         const dx = x - center.x;
         const dy = y - center.y;
-        // Use uniform radius for distance limiting
-        const distance = Math.min(Math.sqrt(dx * dx + dy * dy), radius);
+        
+        // Compute distance from center to touch point
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+        
+        // Clamp distance so joystick never goes beyond container edge
+        const distance = Math.min(distanceFromCenter, radius);
 
+        // Determine angle of touch relative to center
         const angle = Math.atan2(dy, dx);
-        // Compute joystick position constrained within circle
+
+        // Update joystick position, restricted within circle
         joystickPosition.x = center.x + Math.cos(angle) * distance;
         joystickPosition.y = center.y + Math.sin(angle) * distance;
 
-        // Normalize velocity by radius to get consistent speeds
+        // Normalize velocity based on clamped distance
         player.velocityX = Math.cos(angle) * (distance / radius) * player.speed;
         player.velocityY = Math.sin(angle) * (distance / radius) * player.speed;
 
-        // Apply transform based on adjusted position relative to container's center
+        // Apply the new position to the joystick element
+        // Translate relative to the center so that (0,0) corresponds to the center of the container
         joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
     }
 });
+
 
 
         joystick.addEventListener('touchend', () => {10
