@@ -230,7 +230,14 @@
       const y = Math.random() * (canvas.height - 20);
       items.push({ type, emoji, x, y });
     }
+function moveTamagotchi() {
+      tamagotchi.x += tamagotchi.dx;
+      tamagotchi.y += tamagotchi.dy;
 
+      // Bounce back if it hits canvas edges
+      if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
+      if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
+    }
     if (tamagotchi.target) {
         const target = tamagotchi.target;
         const dx = target.x - tamagotchi.x;
