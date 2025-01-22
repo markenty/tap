@@ -53,9 +53,41 @@
             cursor: pointer;
             user-select: none;
         }
+        #startScreen, #gameOverScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8); /* semi-transparent dark background */
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 1000; /* Ensure overlays are on top */
+}
+
+#startScreen button,
+#gameOverScreen button {
+  padding: 15px 30px;
+  font-size: 24px;
+  cursor: pointer;
+}
     </style>
 </head>
-<body>
+<body> <!-- Start Screen Overlay -->
+  <div id="startScreen">
+    <button id="fightButton">Fight!</button>
+  </div>
+
+  <!-- Game Over Overlay (initially hidden) -->
+  <div id="gameOverScreen" style="display: none;">
+    <div>
+      <h1>You were defeated</h1>
+      <button id="tryAgainButton">Try again?</button>
+    </div>
+  </div>
     <canvas id="gameCanvas"></canvas>
 
     <!-- Onscreen Controls -->
@@ -65,6 +97,9 @@
     <div class="attack" id="attack">Punch</div>
 
     <script>
+        let gameStarted = false;  // Is the game currently active?
+let gameOver = false;     // Is the game currently in a game-over state?
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -91,6 +126,90 @@
             isDead: false,
             rotation: 0,
         };
+const rankThresholds = [
+  { name: "Novice",       requiredKills: 0 },
+  { name: "Apprentice",   requiredKills: 10 },
+  { name: "Fighter",      requiredKills: 25 },
+  { name: "Warrior",      requiredKills: 50 },
+  { name: "Veteran",      requiredKills: 100 },
+  { name: "Elite",        requiredKills: 250 },
+  { name: "Master",       requiredKills: 500 },
+  { name: "Legend",       requiredKills: 1000 },
+  { name: "Stick Assassin", requiredKills: 2000 },
+  // Add more ranks as desired
+];
+        function getCurrentRank(kills) {
+  let currentRank = rankThresholds[0].name;
+  for (let i = 0; i < rankThresholds.length; i++) {
+    if (kills >= rankThresholds[i].requiredKills) {
+      currentRank = rankThresholds[i].name;
+    } else {
+      break;
+    }
+  }
+  return currentRank;
+}
+let gamepadIndex = null;
+
+window.addEventListener('gamepadconnected', (e) => {
+  gamepadIndex = e.gamepad.index;
+  console.log("Gamepad connected at index", gamepadIndex);
+});
+
+window.addEventListener('gamepaddisconnected', (e) => {
+  if (gamepadIndex === e.gamepad.index) {
+    gamepadIndex = null;
+    console.log("Gamepad disconnected.");
+  }
+});
+function updateGamepadInput() {
+  // Handle overlay interactions if game isn't active
+  if (!gameStarted) {
+    if (gamepadIndex !== null) {
+      const gamepads = navigator.getGamepads();
+      const gp = gamepads[gamepadIndex];
+
+      if (gp && gp.buttons[0] && gp.buttons[0].pressed) {  // "A" button
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+
+        // If start screen is visible, start the game
+        if (startScreen.style.display !== 'none') {
+          console.log("A pressed: Starting game");
+          startScreen.style.display = 'none';
+          gameOverScreen.style.display = 'none';
+          gameStarted = true;
+        }
+
+        // If game over screen is visible, simulate Try again button click
+        if (gameOverScreen.style.display !== 'none') {
+          window.location.reload(); return;
+        }
+      }
+    }
+    return; // Skip further gamepad processing until the game starts
+  }
+
+  // Regular gamepad input processing when gameStarted is true
+  if (gamepadIndex === null) return;
+
+  const gamepads = navigator.getGamepads();
+  const gp = gamepads[gamepadIndex];
+  if (!gp || !gp.buttons) return;
+
+  // Movement and attack handling...
+  const deadzone = 0.2;
+  let axisX = Math.abs(gp.axes[0]) > deadzone ? gp.axes[0] : 0;
+  let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
+  player.velocityX = axisX * player.speed;
+  player.velocityY = axisY * player.speed;
+
+  if (gp.buttons[0].pressed && !player.isAttacking && !player.isDead) {
+    player.isAttacking = true;
+    player.attackFrame = 0;
+    // Additional attack logic...
+  }
+}
 
         const joystickContainer = document.getElementById('joystickContainer');
 const joystick = document.getElementById('joystick');
@@ -147,6 +266,20 @@ let killCount = 0;
             player.velocityY = 0;
             joystick.style.transform = 'translate(-50%, -50%)';
         });
+        
+document.getElementById('fightButton').addEventListener('click', () => {
+  const startScreen = document.getElementById('startScreen');
+  const gameOverScreen = document.getElementById('gameOverScreen');
+    gameStarted = true;
+  // Hide both overlays
+  startScreen.style.display = 'none';
+  gameOverScreen.style.display = 'none';
+  // Mark the game as started
+
+  // Initialize or restart game state as needed
+  // For example, reset player stats, clear enemies, etc.
+});
+                
 function addSplatterEffect(x, y) {
             for (let i = 0; i < 10; i++) {
                 splatterEffects.push({
@@ -269,6 +402,14 @@ function addSplatterEffect(x, y) {
 
            if (player.hp <= 0 && !player.isDead) {
     player.isDead = true;
+            // Hide start screen if visible
+    document.getElementById('startScreen').style.display = 'none';
+
+    // Show the game over screen
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    gameOverScreen.style.display = 'flex';
+                gameStarted = false;
+    gameOver = true;
     player.rotation = Math.PI / 2;
     player.fadeCounter = 0;
     // Initialize physics properties for ragdoll effect
@@ -282,7 +423,9 @@ function addSplatterEffect(x, y) {
     deadBodies.push({ ...player });
 }
         }
-
+document.getElementById('tryAgainButton').addEventListener('click', () => {
+  window.location.reload();
+});
         function updateEnemies() {
             enemies.forEach((enemy, index) => {
                 if (enemy.isDead) {
@@ -370,9 +513,12 @@ const randomXOffset = (Math.random() - .1) * 10;
     ctx.textBaseline = "top";       // Align text to the top
 
     // Position text with some padding from the top-right corner
-    const padding = 20;
+    const padding = 20;const currentRank = getCurrentRank(killCount);
     ctx.fillText(`${killCount} Enemies Killed`, canvas.width - padding, padding);
-    ctx.restore();
+ // Determine and display current rank below kill count
+  ctx.fillText(`Rank: ${currentRank}`, canvas.width - padding, padding + 25);  // 25px below the kill count line
+
+  ctx.restore();
 }
 function updateDeadBodies() {
     const gravity = 0.5;
@@ -452,6 +598,8 @@ function updateDeadBodies() {
             ctx.save();
             ctx.translate(screenShake.x, screenShake.y);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+             // Handle gamepad input
+  updateGamepadInput();
               updateScreenShake();
      updatePunchEffects();
             updateSplatterEffects();
