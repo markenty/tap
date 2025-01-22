@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamagotchi with Responsive Buttons</title>
+  <style>
+    @font-face {
+      font-family: "8bit";
+      src: url("https://fonts.cdnfonts.com/s/18139/PressStart2P-Regular.woff") format("woff");
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: "8bit", Arial, sans-serif;
+    }
+
+    .meters-container {
+      width: 90%;
+      max-width: 400px;
+      margin-top: 10px;
+    }
+
+    .meter {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .meter-label {
+      flex: 1;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .meter-bar {
+      flex: 4;
+      height: 20px;
+      background: red;
+      position: relative;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      background: green;
+      width: 100%;
+      transition: width 0.2s ease-out;
+    }
+
+    canvas {
+      background: #161b22;
+      border: 2px solid #58a6ff;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: 2px solid #58a6ff;
+      background: #161b22;
+      color: white;
+      font-size: 1rem;
+      font-family: "8bit", Arial, sans-serif;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      flex: 1;
+      min-width: 100px;
+    }
+
+    button:hover {
+      background: #58a6ff;
+      color: black;
+      border-color: #1f6feb;
+    }
+  </style>
+</head>
+<body>
+  <div class="meters-container">
+    <div class="meter">
+      <div class="meter-label">Hunger</div>
+      <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label">Happiness</div>
+      <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label">Cleanliness</div>
+      <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
+    </div>
+  </div>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div class="controls">
+    <button id="feedBtn">Feed</button>
+    <button id="playBtn">Play</button>
+    <button id="cleanBtn">Clean</button>
+  </div>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Tamagotchi States
+    const tamagotchi = {
+      hunger: 100,
+      happiness: 100,
+      cleanliness: 100,
+      alive: true,
+      x: canvas.width / 2,
+      y: canvas.height / 2 - 50,
+      dx: 2,
+      dy: 1,
+      bounce: 0,
+      target: null,
+      movementTimer: 0,
+      mealsEaten: 0,
+      speedDecayMultiplier: 1 // Multiplier to increase cleanliness decay with too many items
+    };
+
+    const items = [];
+    const poops = [];
+    const cleanupAnimations = [];
+    const itemEmojis = {
+      feed: ["🍎", "🍔", "🍕", "🍇", "🍗"],
+      play: ["⚽", "🏀", "🎾", "🎲", "🪁"],
+      clean: ["🧼", "🧽", "🪣", "🚿", "🪥"],
+      poop: "💩"
+    };
+
+    const spriteSize = 32;
+
+    // Update meters
+    function updateMeters() {
+      const hungerFill = document.getElementById("hungerFill");
+      const happinessFill = document.getElementById("happinessFill");
+      const cleanlinessFill = document.getElementById("cleanlinessFill");
+
+      hungerFill.style.width = `${tamagotchi.hunger}%`;
+      happinessFill.style.width = `${tamagotchi.happiness}%`;
+      cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
+    }
+
+    // Draw Tamagotchi
+    function drawTamagotchi() {
+      const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
+
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(tamagotchi.x + spriteSize / 2, tamagotchi.y + spriteSize / 2 + bounceOffset, spriteSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Face emoji enlarged to 2x sprite size
+      const emoji = tamagotchi.happiness > 70 ? "😊" : tamagotchi.happiness > 30 ? "😐" : "😢";
+      ctx.font = `${spriteSize * 2}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "black";
+      ctx.fillText(
+        emoji,
+        tamagotchi.x + spriteSize / 2,
+        tamagotchi.y + spriteSize / 2 + bounceOffset
+      );
+    }
+
+    // Draw environment with items and cleanup animations
+    function drawEnvironment() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!tamagotchi.alive) {
+        ctx.fillStyle = "red";
+        ctx.font = "30px Arial";
+        ctx.fillText("Game Over", canvas.width / 2 - 90, canvas.height / 2);
+        return;
+      }
+
+      // Draw items
+      items.forEach(item => {
+        ctx.font = "20px Arial";
+        ctx.fillText(item.emoji, item.x, item.y);
+      });
+
+      // Draw poop
+      poops.forEach(poop => {
+        ctx.font = "20px Arial";
+        ctx.fillText(itemEmojis.poop, poop.x, poop.y);
+      });
+
+      // Draw cleanup animations
+      cleanupAnimations.forEach((cleanup, index) => {
+        ctx.font = "20px Arial";
+        ctx.fillText(cleanup.emoji, cleanup.x, cleanup.y);
+        cleanup.frames--;
+        if (cleanup.frames <= 0) {
+          cleanupAnimations.splice(index, 1);
+        }
+      });
+
+      drawTamagotchi();
+    }
+
+    // Update Tamagotchi movement
+    function moveTamagotchi() {
+      tamagotchi.bounce += 0.1;
+
+      if (tamagotchi.target) {
+        const target = tamagotchi.target;
+        const dx = target.x - tamagotchi.x;
+        const dy = target.y - tamagotchi.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = 4; // Increased speed for target
+        if (dist > 1) {
+          tamagotchi.x += (dx / dist) * speed;
+          tamagotchi.y += (dy / dist) * speed;
+        } else {
+          tamagotchi.target = null;
+          items.splice(items.indexOf(target), 1);
+        }
+      } else {
+        tamagotchi.movementTimer--;
+        if (tamagotchi.movementTimer <= 0) {
+          tamagotchi.dx = (Math.random() - 0.5) * 4;
+          tamagotchi.dy = (Math.random() - 0.5) * 4;
+          tamagotchi.movementTimer = Math.random() * 100 + 50;
+        }
+        tamagotchi.x += tamagotchi.dx;
+        tamagotchi.y += tamagotchi.dy;
+
+        if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
+        if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
+      }
+    }
+
+    // Update stats, applying cleanliness decay multiplier
+    function updateStats() {
+      if (!tamagotchi.alive) return;
+
+      tamagotchi.hunger -= 0.1;
+      tamagotchi.happiness -= 0.05;
+      tamagotchi.cleanliness -= 0.07 * tamagotchi.speedDecayMultiplier;
+
+      // Adjust decay multiplier based on the number of items and poops on the screen
+      tamagotchi.speedDecayMultiplier = 1 + (items.length + poops.length) * 0.1;
+
+      if (tamagotchi.hunger <= 0 || tamagotchi.happiness <= 0 || tamagotchi.cleanliness <= 0) {
+        tamagotchi.alive = false;
+        alert("Your Tamagotchi has passed away 😢");
+      }
+
+      updateMeters();
+    }
+
+    // Spawn item
+    function spawnItem(type) {
+      const emoji = itemEmojis[type][Math.floor(Math.random() * itemEmojis[type].length)];
+      const x = Math.random() * (canvas.width - 20);
+      const y = Math.random() * (canvas.height - 20);
+      const item = { type, emoji, x, y };
+      items.push(item);
+      tamagotchi.target = item;
+    }
+
+    // Cleanup items and animate cleaning
+    function cleanup() {
+      items.length = 0;
+      poops.forEach(poop => {
+        const cleanupEmoji = itemEmojis.clean[Math.floor(Math.random() * itemEmojis.clean.length)];
+        cleanupAnimations.push({ emoji: cleanupEmoji, x: poop.x, y: poop.y, frames: 50 });
+      });
+      poops.length = 0;
+    }
+
+    // Button actions
+    document.getElementById("feedBtn").addEventListener("click", () => {
+      if (tamagotchi.alive) {
+        tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
+        spawnItem("feed");
+        tamagotchi.mealsEaten++;
+        if (tamagotchi.mealsEaten >= 3) {
+          poops.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+          tamagotchi.mealsEaten = 0;
+        }
+      }
+    });
+
+    document.getElementById("playBtn").addEventListener("click", () => {
+      if (tamagotchi.alive) {
+        tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
+        spawnItem("play");
+      }
+    });
+
+    document.getElementById("cleanBtn").addEventListener("click", () => {
+      if (tamagotchi.alive) {
+        tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
+        cleanup();
+      }
+    });
+
+    // Main game loop
+    function gameLoop() {
+      if (tamagotchi.alive) {
+        moveTamagotchi();
+        updateStats();
+        drawEnvironment();
+      }
+    }
+
+    // Start game loop
+    setInterval(gameLoop, 100);
+  </script>
+</body>
+</html>
