@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zoomable Conifer Tree Animation with Person</title>
+  <title>treegrowthsim</title>
   <style>
     body {
       margin: 0;
@@ -99,86 +99,98 @@
     </div>
   </div>
   <script>
-    let years = 0;
-    let growthState = "Seedling";
-    let dbh = 0.0;
-    let growthInterval;
-    let isPaused = false;
+  let years = 0;
+  let growthState = "Seedling";
+  let dbh = 0.0;
+  let growthInterval;
+  let isPaused = false;
 
-    const tree = document.getElementById("tree");
-    const foliage = document.getElementById("foliage");
-    const treeContainer = document.getElementById("tree-container");
-    const speedControl = document.getElementById("speed");
-    const zoomControl = document.getElementById("zoom");
-    const hudYear = document.getElementById("hud-year");
-    const hudState = document.getElementById("hud-state");
-    const hudDbh = document.getElementById("hud-dbh");
+  const tree = document.getElementById("tree");
+  const foliage = document.getElementById("foliage");
+  const treeContainer = document.getElementById("tree-container");
+  const speedControl = document.getElementById("speed");
+  const zoomControl = document.getElementById("zoom");
+  const hudYear = document.getElementById("hud-year");
+  const hudState = document.getElementById("hud-state");
+  const hudDbh = document.getElementById("hud-dbh");
 
-    const TREE_BASE_HEIGHT = 50; // Initial trunk height in pixels
-    const TREE_BASE_WIDTH = 20; // Initial trunk width in pixels
+  const TREE_BASE_HEIGHT = 50; // Initial trunk height in pixels
+  const TREE_BASE_WIDTH = 20; // Initial trunk width in pixels
 
-    let growthSpeed = parseInt(speedControl.value); // Initial growth speed
-    let zoomLevel = parseFloat(zoomControl.value); // Initial zoom level
+  const MIN_DELAY = 50;   // Fastest growth (shortest interval)
+  const MAX_DELAY = 1000; // Slowest growth (longest interval)
 
-    // Start growth simulation
-    function startGrowth() {
-      growthInterval = setInterval(() => {
-        if (!isPaused) {
-          years += 1;
-          updateGrowth();
-        }
-      }, growthSpeed); // Increment every growthSpeed milliseconds
-    }
+  function calculateGrowthSpeed(value) {
+    // Clamp the slider value within the min and max
+    const clampedValue = Math.min(Math.max(value, parseInt(speedControl.min)), parseInt(speedControl.max));
+    // Invert the value: higher slider value -> shorter delay
+    return MAX_DELAY - (clampedValue - parseInt(speedControl.min)) * (MAX_DELAY - MIN_DELAY) / (parseInt(speedControl.max) - parseInt(speedControl.min));
+  }
 
-    // Update tree growth
-    function updateGrowth() {
-      // Determine growth stage and DBH based on years
-      if (years < 10) {
-        growthState = "Seedling";
-        dbh = (years * 0.2).toFixed(1);
-      } else if (years < 50) {
-        growthState = "Sapling";
-        dbh = (years * 0.5).toFixed(1);
-      } else {
-        growthState = "Mature Tree";
-        dbh = (years * 0.8).toFixed(1);
+  let growthSpeed = calculateGrowthSpeed(parseInt(speedControl.value)); // Initial growth speed
+  let zoomLevel = parseFloat(zoomControl.value); // Initial zoom level
+
+  // Start growth simulation
+  function startGrowth() {
+    growthInterval = setInterval(() => {
+      if (!isPaused) {
+        years += 1;
+        updateGrowth();
       }
+    }, growthSpeed); // Increment every growthSpeed milliseconds
+  }
 
-      // Dynamically update tree size
-      const height = TREE_BASE_HEIGHT + years * 5; // Height grows with years
-      const width = TREE_BASE_WIDTH + dbh * 2; // Width grows with DBH
-
-      tree.style.height = `${height}px`;
-      tree.style.width = `${width}px`;
-
-      // Dynamically update foliage (emoji) size and position
-      const foliageScale = height / 50; // Scale the emoji based on tree height
-      foliage.style.transform = `translateX(-50%) scale(${foliageScale})`;
-
-      // Center tree dynamically based on zoom level
-      treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
-
-      // Update HUD with growth data
-      hudYear.textContent = `Year: ${years}`;
-      hudState.textContent = `Growth State: ${growthState}`;
-      hudDbh.textContent = `DBH (cm): ${dbh}`;
+  // Update tree growth
+  function updateGrowth() {
+    // Determine growth stage and DBH based on years
+    if (years < 10) {
+      growthState = "Seedling";
+      dbh = (years * 0.2).toFixed(1);
+    } else if (years < 50) {
+      growthState = "Sapling";
+      dbh = (years * 0.5).toFixed(1);
+    } else {
+      growthState = "Mature Tree";
+      dbh = (years * 0.8).toFixed(1);
     }
 
-    // Adjust growth speed
-    speedControl.addEventListener("input", (e) => {
-      growthSpeed = parseInt(e.target.value);
-      clearInterval(growthInterval);
-      startGrowth();
-    });
+    // Dynamically update tree size
+    const height = TREE_BASE_HEIGHT + years * 5; // Height grows with years
+    const width = TREE_BASE_WIDTH + dbh * 2; // Width grows with DBH
 
-    // Adjust zoom level
-    zoomControl.addEventListener("input", (e) => {
-      zoomLevel = parseFloat(e.target.value);
-      treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
-    });
+    tree.style.height = `${height}px`;
+    tree.style.width = `${width}px`;
 
-    // Initialize growth
+    // Dynamically update foliage (emoji) size and position
+    const foliageScale = height / 50; // Scale the emoji based on tree height
+    foliage.style.transform = `translateX(-50%) scale(${foliageScale})`;
+
+    // Center tree dynamically based on zoom level
+    treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+
+    // Update HUD with growth data
+    hudYear.textContent = `Year: ${years}`;
+    hudState.textContent = `Growth State: ${growthState}`;
+    hudDbh.textContent = `DBH (cm): ${dbh}`;
+  }
+
+  // Adjust growth speed
+  speedControl.addEventListener("input", (e) => {
+    const sliderValue = parseInt(e.target.value);
+    growthSpeed = calculateGrowthSpeed(sliderValue);
+    clearInterval(growthInterval);
     startGrowth();
-  </script>
+  });
+
+  // Adjust zoom level
+  zoomControl.addEventListener("input", (e) => {
+    zoomLevel = parseFloat(e.target.value);
+    treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+  });
+
+  // Initialize growth
+  startGrowth();
+</script>
+
 </body>
 </html>
