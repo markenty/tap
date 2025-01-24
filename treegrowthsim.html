@@ -100,23 +100,25 @@
     </div>
   </div>
   <script>
-  let years = 0;
-  let growthState = "Seedling";
-  let dbh = 0.0;
-  let growthInterval;
-  let isPaused = false;
+ let years = 0;
+    let growthState = "Seedling";
+    let dbh = 0.0;
+    let height = 0.0; // Initialize height
+    let growthInterval;
+    let isPaused = false;
 
-  const tree = document.getElementById("tree");
-  const foliage = document.getElementById("foliage");
-  const treeContainer = document.getElementById("tree-container");
-  const speedControl = document.getElementById("speed");
-  const zoomControl = document.getElementById("zoom");
-  const hudYear = document.getElementById("hud-year");
-  const hudState = document.getElementById("hud-state");
-  const hudDbh = document.getElementById("hud-dbh");
+    const tree = document.getElementById("tree");
+    const foliage = document.getElementById("foliage");
+    const treeContainer = document.getElementById("tree-container");
+    const speedControl = document.getElementById("speed");
+    const zoomControl = document.getElementById("zoom");
+    const hudYear = document.getElementById("hud-year");
+    const hudState = document.getElementById("hud-state");
+    const hudDbh = document.getElementById("hud-dbh");
+    const hudHeight = document.getElementById("hud-height"); // Height display in HUD
 
-  const TREE_BASE_HEIGHT = 50; // Initial trunk height in pixels
-  const TREE_BASE_WIDTH = 20; // Initial trunk width in pixels
+    const TREE_BASE_HEIGHT = 50; // Initial trunk height in pixels
+    const TREE_BASE_WIDTH = 20; // Initial trunk width in pixels
 
   const MIN_DELAY = 50;   // Fastest growth (shortest interval)
   const MAX_DELAY = 1000; // Slowest growth (longest interval)
@@ -169,11 +171,13 @@
     // Center tree dynamically based on zoom level
     treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
 
-    // Update HUD with growth data
-    hudYear.textContent = `Year: ${years}`;
-    hudState.textContent = `Growth State: ${growthState}`;
-    hudDbh.textContent = `DBH (cm): ${dbh}`;
-  }
+ // Update HUD with growth data
+      hudYear.textContent = `Year: ${years}`;
+      hudState.textContent = `Growth State: ${growthState}`;
+      hudDbh.textContent = `DBH (cm): ${dbh}`;
+      hudHeight.textContent = `Height (m): ${height}`; // Update height in HUD
+    }
+
 
   // Adjust growth speed
   speedControl.addEventListener("input", (e) => {
