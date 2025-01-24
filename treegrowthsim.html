@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>treegrowthsim</title>
+  <title>Tree Growth Sim with Accurate Height</title>
   <style>
     body {
       margin: 0;
@@ -101,7 +100,7 @@
     </div>
   </div>
   <script>
- let years = 0;
+    let years = 0;
     let growthState = "Seedling";
     let dbh = 0.0;
     let height = 0.0; // Initialize height
@@ -121,82 +120,85 @@
     const TREE_BASE_HEIGHT = 50; // Initial trunk height in pixels
     const TREE_BASE_WIDTH = 20; // Initial trunk width in pixels
 
-  const MIN_DELAY = 50;   // Fastest growth (shortest interval)
-  const MAX_DELAY = 1000; // Slowest growth (longest interval)
+    // Coefficients for Height-Diameter Model (Douglas-fir example)
+    const HEIGHT_MODEL_A = 10;
+    const HEIGHT_MODEL_B = 5;
 
-  function calculateGrowthSpeed(value) {
-    // Clamp the slider value within the min and max
-    const clampedValue = Math.min(Math.max(value, parseInt(speedControl.min)), parseInt(speedControl.max));
-    // Invert the value: higher slider value -> shorter delay
-    return MAX_DELAY - (clampedValue - parseInt(speedControl.min)) * (MAX_DELAY - MIN_DELAY) / (parseInt(speedControl.max) - parseInt(speedControl.min));
-  }
+    const MIN_DELAY = 50;   // Fastest growth (shortest interval)
+    const MAX_DELAY = 1000; // Slowest growth (longest interval)
 
-  let growthSpeed = calculateGrowthSpeed(parseInt(speedControl.value)); // Initial growth speed
-  let zoomLevel = parseFloat(zoomControl.value); // Initial zoom level
-
-  // Start growth simulation
-  function startGrowth() {
-    growthInterval = setInterval(() => {
-      if (!isPaused) {
-        years += 1;
-        updateGrowth();
-      }
-    }, growthSpeed); // Increment every growthSpeed milliseconds
-  }
-
-  // Update tree growth
-  function updateGrowth() {
-    // Determine growth stage and DBH based on years
-    if (years < 10) {
-      growthState = "Seedling";
-      dbh = (years * 0.2).toFixed(1);
-    } else if (years < 50) {
-      growthState = "Sapling";
-      dbh = (years * 0.5).toFixed(1);
-    } else {
-      growthState = "Mature Tree";
-      dbh = (years * 0.8).toFixed(1);
+    function calculateGrowthSpeed(value) {
+      const clampedValue = Math.min(Math.max(value, parseInt(speedControl.min)), parseInt(speedControl.max));
+      return MAX_DELAY - (clampedValue - parseInt(speedControl.min)) * (MAX_DELAY - MIN_DELAY) / (parseInt(speedControl.max) - parseInt(speedControl.min));
     }
 
-    // Dynamically update tree size
-    const height = TREE_BASE_HEIGHT + years * 5; // Height grows with years
-    const width = TREE_BASE_WIDTH + dbh * 2; // Width grows with DBH
+    let growthSpeed = calculateGrowthSpeed(parseInt(speedControl.value)); // Initial growth speed
+    let zoomLevel = parseFloat(zoomControl.value); // Initial zoom level
 
-    tree.style.height = `${height}px`;
-    tree.style.width = `${width}px`;
+    // Start growth simulation
+    function startGrowth() {
+      growthInterval = setInterval(() => {
+        if (!isPaused) {
+          years += 1;
+          updateGrowth();
+        }
+      }, growthSpeed); // Increment every growthSpeed milliseconds
+    }
 
-    // Dynamically update foliage (emoji) size and position
-    const foliageScale = height / 50; // Scale the emoji based on tree height
-    foliage.style.transform = `translateX(-50%) scale(${foliageScale})`;
+    // Update tree growth
+    function updateGrowth() {
+      // Determine growth stage and DBH based on years
+      if (years < 10) {
+        growthState = "Seedling";
+        dbh = (years * 0.2).toFixed(1);
+      } else if (years < 50) {
+        growthState = "Sapling";
+        dbh = (years * 0.5).toFixed(1);
+      } else {
+        growthState = "Mature Tree";
+        dbh = (years * 0.8).toFixed(1);
+      }
 
-    // Center tree dynamically based on zoom level
-    treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+      // Calculate height using the Height-Diameter Model
+      height = (HEIGHT_MODEL_A * Math.log(dbh) + HEIGHT_MODEL_B).toFixed(1);
 
- // Update HUD with growth data
+      // Dynamically update tree size
+      const treeHeight = TREE_BASE_HEIGHT + years * 5; // Height grows with years
+      const treeWidth = TREE_BASE_WIDTH + dbh * 2; // Width grows with DBH
+
+      tree.style.height = `${treeHeight}px`;
+      tree.style.width = `${treeWidth}px`;
+
+      // Dynamically update foliage (emoji) size and position
+      const foliageScale = treeHeight / 50; // Scale the emoji based on tree height
+      foliage.style.transform = `translateX(-50%) scale(${foliageScale})`;
+
+      // Center tree dynamically based on zoom level
+      treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+
+      // Update HUD with growth data
       hudYear.textContent = `Year: ${years}`;
       hudState.textContent = `Growth State: ${growthState}`;
       hudDbh.textContent = `DBH (cm): ${dbh}`;
       hudHeight.textContent = `Height (m): ${height}`; // Update height in HUD
     }
 
+    // Adjust growth speed
+    speedControl.addEventListener("input", (e) => {
+      const sliderValue = parseInt(e.target.value);
+      growthSpeed = calculateGrowthSpeed(sliderValue);
+      clearInterval(growthInterval);
+      startGrowth();
+    });
 
-  // Adjust growth speed
-  speedControl.addEventListener("input", (e) => {
-    const sliderValue = parseInt(e.target.value);
-    growthSpeed = calculateGrowthSpeed(sliderValue);
-    clearInterval(growthInterval);
+    // Adjust zoom level
+    zoomControl.addEventListener("input", (e) => {
+      zoomLevel = parseFloat(e.target.value);
+      treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+    });
+
+    // Initialize growth
     startGrowth();
-  });
-
-  // Adjust zoom level
-  zoomControl.addEventListener("input", (e) => {
-    zoomLevel = parseFloat(e.target.value);
-    treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
-  });
-
-  // Initialize growth
-  startGrowth();
-</script>
-
+  </script>
 </body>
 </html>
