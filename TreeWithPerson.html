@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zoomable Conifer Tree Animation with Person</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      overflow: hidden; /* Prevent scrolling */
+      background: #87ceeb; /* Sky blue background */
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    #tree-container {
+      position: absolute;
+      bottom: 0; /* Start tree at the base of the viewport */
+      left: 50%; /* Center tree horizontally */
+      transform: translateX(-50%) scale(1);
+      transform-origin: bottom center;
+      transition: transform 0.5s ease-in-out;
+    }
+
+    #tree {
+      background: rgba(0, 0, 0, 0); /* Invisible log portion */
+      width: 20px;
+      height: 50px;
+      border-radius: 2px;
+      transform-origin: bottom center;
+      z-index: 1;
+    }
+
+    #foliage {
+      position: absolute;
+      bottom: 100%; /* Align foliage perfectly with the top of the trunk */
+      left: 50%;
+      transform: translateX(-50%) scale(1);
+      font-size: 100px; /* Initial size */
+      transition: transform 0.5s ease-in-out;
+    }
+
+    #person {
+      position: absolute;
+      bottom: 0; /* Lock person emoji at the base */
+      left: 50%; /* Center person horizontally */
+      transform: translateX(-50%);
+      font-size: 50px; /* Fixed size for person */
+      z-index: 2; /* Higher z-index to appear on top of tree */
+    }
+
+    #hud {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 10;
+    }
+
+    #hud label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    #hud p {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="tree-container">
+      <div id="foliage">🌲</div>
+      <div id="tree"></div>
+      <div id="person">🧍🏻‍♂️</div>
+    </div>
+    <div id="hud">
+      <label for="speed">Growth Speed:</label>
+      <input id="speed" type="range" min="50" max="1000" step="50" value="100">
+      <label for="zoom">Zoom:</label>
+      <input id="zoom" type="range" min="0.1" max="1" step="0.1" value="1">
+      <p id="hud-year">Year: 0</p>
+      <p id="hud-state">Growth State: Seedling</p>
+      <p id="hud-dbh">DBH (cm): 0.0</p>
+    </div>
+  </div>
+  <script>
+    let years = 0;
+    let growthState = "Seedling";
+    let dbh = 0.0;
+    let growthInterval;
+    let isPaused = false;
+
+    const tree = document.getElementById("tree");
+    const foliage = document.getElementById("foliage");
+    const treeContainer = document.getElementById("tree-container");
+    const speedControl = document.getElementById("speed");
+    const zoomControl = document.getElementById("zoom");
+    const hudYear = document.getElementById("hud-year");
+    const hudState = document.getElementById("hud-state");
+    const hudDbh = document.getElementById("hud-dbh");
+
+    const TREE_BASE_HEIGHT = 50; // Initial trunk height in pixels
+    const TREE_BASE_WIDTH = 20; // Initial trunk width in pixels
+
+    let growthSpeed = parseInt(speedControl.value); // Initial growth speed
+    let zoomLevel = parseFloat(zoomControl.value); // Initial zoom level
+
+    // Start growth simulation
+    function startGrowth() {
+      growthInterval = setInterval(() => {
+        if (!isPaused) {
+          years += 1;
+          updateGrowth();
+        }
+      }, growthSpeed); // Increment every growthSpeed milliseconds
+    }
+
+    // Update tree growth
+    function updateGrowth() {
+      // Determine growth stage and DBH based on years
+      if (years < 10) {
+        growthState = "Seedling";
+        dbh = (years * 0.2).toFixed(1);
+      } else if (years < 50) {
+        growthState = "Sapling";
+        dbh = (years * 0.5).toFixed(1);
+      } else {
+        growthState = "Mature Tree";
+        dbh = (years * 0.8).toFixed(1);
+      }
+
+      // Dynamically update tree size
+      const height = TREE_BASE_HEIGHT + years * 5; // Height grows with years
+      const width = TREE_BASE_WIDTH + dbh * 2; // Width grows with DBH
+
+      tree.style.height = `${height}px`;
+      tree.style.width = `${width}px`;
+
+      // Dynamically update foliage (emoji) size and position
+      const foliageScale = height / 50; // Scale the emoji based on tree height
+      foliage.style.transform = `translateX(-50%) scale(${foliageScale})`;
+
+      // Center tree dynamically based on zoom level
+      treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+
+      // Update HUD with growth data
+      hudYear.textContent = `Year: ${years}`;
+      hudState.textContent = `Growth State: ${growthState}`;
+      hudDbh.textContent = `DBH (cm): ${dbh}`;
+    }
+
+    // Adjust growth speed
+    speedControl.addEventListener("input", (e) => {
+      growthSpeed = parseInt(e.target.value);
+      clearInterval(growthInterval);
+      startGrowth();
+    });
+
+    // Adjust zoom level
+    zoomControl.addEventListener("input", (e) => {
+      zoomLevel = parseFloat(e.target.value);
+      treeContainer.style.transform = `translateX(-50%) scale(${zoomLevel})`;
+    });
+
+    // Initialize growth
+    startGrowth();
+  </script>
+</body>
+</html>
