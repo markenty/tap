@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Coin Mining</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #121212;
+        }
+
+        canvas {
+            display: block;
+            background-color: #1e1e1e;
+        }
+
+        #wallet-section {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+        }
+
+        .arcade-button {
+            background-color: green;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        #logout-button {
+            background-color: red;
+            color: white;
+            padding: 10px;
+            margin-top: 0px;
+            cursor: pointer;
+            right: 400x;
+        }
+    </style>
+</head>
+<body>
+    <!-- Wallet Section -->
+    <div id="wallet-section" class="hidden">
+        
+        <p><button id="logout-button">Logout</button> Your balance: <span id="wallet-balance">0</span> coins   </p>
+        <button class="arcade-button" id="mine-coin-button" style="visibility: hidden;">Mine 1 Coin</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD2zSE_R3oQEOJST7BH0e5OAsDsPV0JzW8",
+            authDomain: "wallet-18aba.firebaseapp.com",
+            projectId: "wallet-18aba",
+            storageBucket: "wallet-18aba.appspot.com",
+            messagingSenderId: "926434300165",
+            appId: "1:926434300165:web:0b5d3ba8f32de4d8cbe76c",
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let player = { x: 50, y: 100, width: 50, height: 50, speed: 5, dx: 0, dy: 0, direction: 'right' };
+        let bullets = [];
+        let enemies = [];
+
+        // Canvas setup
+        const gameCanvas = document.getElementById("gameCanvas");
+        const ctx = gameCanvas.getContext("2d");
+        gameCanvas.width = window.innerWidth;
+        gameCanvas.height = window.innerHeight;
+
+        // Wallet Section
+        const walletSection = document.getElementById("wallet-section");
+        const walletBalanceSpan = document.getElementById("wallet-balance");
+
+        // Show wallet on login
+        function showWallet() {
+            if (currentUser) {
+                walletSection.classList.remove("hidden");
+                fetchWalletBalance(currentUser.uid);
+            } else {
+                walletSection.classList.add("hidden");
+            }
+        }
+
+        // Fetch wallet balance from Firebase
+        async function fetchWalletBalance(uid) {
+            const userDocRef = doc(db, "users", uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                walletBalanceSpan.innerText = userData.balance;
+            } else {
+                console.error("User data not found.");
+            }
+        }
+
+        // Update wallet balance in Firebase
+        async function updateWalletBalance(uid, newBalance) {
+            const userDocRef = doc(db, "users", uid);
+            await updateDoc(userDocRef, { balance: newBalance });
+            walletBalanceSpan.innerText = newBalance;
+        }
+
+        // Monitor authentication state
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                showWallet();
+            } else {
+                currentUser = null;
+                walletSection.classList.add("hidden");
+            }
+        });
+
+        // Mine 1 Coin button logic
+        document.getElementById("mine-coin-button").addEventListener("click", async () => {
+            if (currentUser) {
+                const userDocRef = doc(db, "users", currentUser.uid);
+                const userDoc = await getDoc(userDocRef);
+                const userData = userDoc.data();
+                const newBalance = userData.balance + 1;
+                updateWalletBalance(currentUser.uid, newBalance);
+            }
+        });
+
+        // Game logic
+        function startGame() {
+            updateGameArea();
+            setInterval(spawnEnemy, 2000);  // Start spawning enemies every 2 seconds
+        }
+
+        function updateGameArea() {
+            ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+            // Update player position
+            player.x += player.dx;
+            player.y += player.dy;
+
+            // Boundaries check
+            if (player.x < 0) player.x = 0;
+            if (player.x > gameCanvas.width - player.width) player.x = gameCanvas.width - player.width;
+            if (player.y < 0) player.y = 0;
+            if (player.y > gameCanvas.height - player.height) player.y = gameCanvas.height - player.height;
+
+            // Draw Player
+            ctx.fillStyle = '#00d1b2';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // Draw Bullets
+            bullets.forEach((bullet, index) => {
+                bullet.x += bullet.dx;
+                bullet.y += bullet.dy;
+
+                // Collision detection with enemies
+                enemies.forEach((enemy, enemyIndex) => {
+                    if (bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y) {
+                        // Bullet hit enemy
+                        enemies.splice(enemyIndex, 1);
+                        bullets.splice(index, 1);
+                        // Coin collection can happen here
+                        if (currentUser) {
+                            const userDocRef = doc(db, "users", currentUser.uid);
+                            getDoc(userDocRef).then(doc => {
+                                const userData = doc.data();
+                                const newBalance = userData.balance + 1;
+                                updateWalletBalance(currentUser.uid, newBalance);
+                            });
+                        }
+                    }
+                });
+
+                // Remove bullets off-screen
+                if (bullet.x < 0 || bullet.x > gameCanvas.width || bullet.y < 0 || bullet.y > gameCanvas.height) {
+                    bullets.splice(index, 1);
+                } else {
+                    ctx.fillStyle = '#ff5733'; // Bullet color
+                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                }
+            });
+
+            // Move enemies (right to left)
+            enemies.forEach((enemy, index) => {
+                enemy.x -= enemy.speed; // Move enemy to the left
+                ctx.fillStyle = '#3498db'; // Enemy color
+                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+                // Remove enemy if it goes off-screen
+                if (enemy.x + enemy.width < 0) {
+                    enemies.splice(index, 1);
+                }
+            });
+
+            requestAnimationFrame(updateGameArea);
+        }
+
+        function shootBullet() {
+            // Direction for bullet depends on player movement
+            let bulletDx = 0, bulletDy = 0;
+
+            // Set bullet direction based on player movement
+            if (player.direction === 'up') {
+                bulletDy = -10;
+            } else if (player.direction === 'down') {
+                bulletDy = 10;
+            } else if (player.direction === 'left') {
+                bulletDx = -10;
+            } else if (player.direction === 'right') {
+                bulletDx = 10;
+            }
+
+            const bullet = {
+                x: player.x + player.width / 2,
+                y: player.y + player.height / 2,
+                width: 20,
+                height: 5,
+                dx: bulletDx,
+                dy: bulletDy
+            };
+            bullets.push(bullet);
+        }
+
+        // Enemy movement logic (right to left)
+        function spawnEnemy() {
+            const enemy = { 
+                x: gameCanvas.width,  // Spawn the enemy on the right side of the canvas
+                y: Math.random() * (gameCanvas.height - 50), // Random y position within the canvas height
+                width: 50,  // Set the width of the enemy
+                height: 50, // Set the height of the enemy
+                speed: 2     // Speed at which the enemy moves to the left
+            };
+            enemies.push(enemy);
+        }
+
+        // Event listeners for movement
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowUp') {
+                player.dy = -player.speed;
+                player.direction = 'up';
+            }
+            if (event.key === 'ArrowDown') {
+                player.dy = player.speed;
+                player.direction = 'down';
+            }
+            if (event.key === 'ArrowLeft') {
+                player.dx = -player.speed;
+                player.direction = 'left';
+            }
+            if (event.key === 'ArrowRight') {
+                player.dx = player.speed;
+                player.direction = 'right';
+            }
+            if (event.key === ' ') shootBullet();  // Spacebar for shooting
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') player.dy = 0;
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') player.dx = 0;
+        });
+
+        // Gamepad support: Detect button presses and analog stick movement
+        let gamepadConnected = false;
+
+        function handleGamepadInput() {
+            const gamepads = navigator.getGamepads();
+            if (gamepads[0]) {
+                const gamepad = gamepads[0];
+
+                // Use analog sticks for movement
+                player.dx = gamepad.axes[0] * player.speed;  // Left stick horizontal
+                player.dy = gamepad.axes[1] * player.speed;  // Left stick vertical
+
+                // Use button 0 (A or Cross on most controllers) to shoot
+                if (gamepad.buttons[0].pressed) {
+                    shootBullet();
+                }
+
+                requestAnimationFrame(handleGamepadInput);
+            }
+        }
+
+        window.addEventListener('gamepadconnected', () => {
+            gamepadConnected = true;
+            handleGamepadInput();
+        });
+
+        window.addEventListener('gamepaddisconnected', () => {
+            gamepadConnected = false;
+        });
+
+        document.getElementById("logout-button").addEventListener("click", async () => {
+            try {
+                await signOut(auth);
+                currentUser = null;
+                walletSection.classList.add("hidden");
+            } catch (error) {
+                alert("Logout failed: " + error.message);
+            }
+        });
+
+        // Initialize the game
+        startGame();
+    </script>
+</body>
+</html>
