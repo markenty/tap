@@ -76,12 +76,14 @@
         const db = getFirestore(app);
 
         let currentUser = null;
-        let player = { x: 50, y: 100, width: 50, height: 50, speed: 5, dx: 0, dy: 0, direction: 'right' };
+        let player = { x: 50, y: 100, width: 50, height: 50, speed: 10, dx: 0, dy: 0, direction: 'right' };
         let bullets = [];
         let enemies = [];
         let touchStartX = 0;
         let touchStartY = 0;
         let touchMoving = false;
+        let shakeIntensity = 0;
+        let shakeDuration = 0;
 
         // Canvas setup
         const gameCanvas = document.getElementById("gameCanvas");
@@ -153,13 +155,19 @@
         function updateGameArea() {
             ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-            // Update player position
-            player.x += player.dx;
+            // Apply screen shake
+            if (shakeDuration > 0) {
+                shakeDuration--;
+                const shakeX = Math.random() * shakeIntensity - shakeIntensity / 2;
+                const shakeY = Math.random() * shakeIntensity - shakeIntensity / 2;
+                ctx.translate(shakeX, shakeY);
+            }
+
+            // Update player position (locked to left side)
+            player.x = 50; // Keep player at left side of screen
             player.y += player.dy;
 
-            // Boundaries check
-            if (player.x < 0) player.x = 0;
-            if (player.x > gameCanvas.width - player.width) player.x = gameCanvas.width - player.width;
+            // Boundaries check (only vertical movement)
             if (player.y < 0) player.y = 0;
             if (player.y > gameCanvas.height - player.height) player.y = gameCanvas.height - player.height;
 
@@ -190,6 +198,8 @@
                                 updateWalletBalance(currentUser.uid, newBalance);
                             });
                         }
+                        // Add death effect (screen shake and enemy explosion)
+                        shakeScreen(10, 10);
                     }
                 });
 
@@ -268,8 +278,7 @@
             const touchEndX = event.touches[0].clientX;
             const touchEndY = event.touches[0].clientY;
 
-            player.dx = (touchEndX - touchStartX) / 10;  // Adjust movement speed
-            player.dy = (touchEndY - touchStartY) / 10;  // Adjust movement speed
+            player.dy = (touchEndY - touchStartY) / 10;  // Adjust vertical movement speed
             touchStartX = touchEndX;
             touchStartY = touchEndY;
         });
@@ -291,6 +300,12 @@
                 alert("Logout failed: " + error.message);
             }
         });
+
+        // Screen shake effect
+        function shakeScreen(intensity, duration) {
+            shakeIntensity = intensity;
+            shakeDuration = duration;
+        }
 
         // Initialize the game
         startGame();
