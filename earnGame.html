@@ -76,7 +76,7 @@
         const db = getFirestore(app);
 
         let currentUser = null;
-        let player = { x: 50, y: 100, width: 50, height: 50, speed: 10, dx: 0, dy: 0, direction: 'right' };
+        let player = { x: 50, y: 100, width: 50, height: 50, speed: 12, dx: 0, dy: 0, direction: 'right' };
         let bullets = [];
         let enemies = [];
         let touchStartX = 0;
@@ -84,6 +84,7 @@
         let touchMoving = false;
         let shakeIntensity = 0;
         let shakeDuration = 0;
+        let lastFrameTime = 0;
 
         // Canvas setup
         const gameCanvas = document.getElementById("gameCanvas");
@@ -153,6 +154,10 @@
         }
 
         function updateGameArea() {
+            const now = Date.now();
+            const deltaTime = (now - lastFrameTime) / 1000;  // Time in seconds between frames
+            lastFrameTime = now;
+
             // Apply screen shake
             if (shakeDuration > 0) {
                 shakeDuration--;
@@ -177,8 +182,8 @@
 
             // Draw Bullets
             bullets.forEach((bullet, index) => {
-                bullet.x += bullet.dx;
-                bullet.y += bullet.dy;
+                bullet.x += bullet.dx * deltaTime;
+                bullet.y += bullet.dy * deltaTime;
 
                 // Collision detection with enemies
                 enemies.forEach((enemy, enemyIndex) => {
@@ -214,7 +219,7 @@
 
             // Move enemies (right to left)
             enemies.forEach((enemy, index) => {
-                enemy.x -= enemy.speed; // Move enemy to the left
+                enemy.x -= enemy.speed * deltaTime; // Move enemy to the left
                 ctx.fillStyle = '#3498db'; // Enemy color
                 ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
 
