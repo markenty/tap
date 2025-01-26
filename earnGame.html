@@ -43,15 +43,13 @@
             padding: 10px;
             margin-top: 0px;
             cursor: pointer;
-            right: 400x;
         }
     </style>
 </head>
 <body>
     <!-- Wallet Section -->
     <div id="wallet-section" class="hidden">
-        
-        <p><button id="logout-button">Logout</button> Your balance: <span id="wallet-balance">0</span> coins   </p>
+        <p><button id="logout-button">Logout</button> Your balance: <span id="wallet-balance">0</span> coins</p>
         <button class="arcade-button" id="mine-coin-button" style="visibility: hidden;">Mine 1 Coin</button>
     </div>
 
@@ -81,6 +79,9 @@
         let player = { x: 50, y: 100, width: 50, height: 50, speed: 5, dx: 0, dy: 0, direction: 'right' };
         let bullets = [];
         let enemies = [];
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchMoving = false;
 
         // Canvas setup
         const gameCanvas = document.getElementById("gameCanvas");
@@ -196,7 +197,7 @@
                 if (bullet.x < 0 || bullet.x > gameCanvas.width || bullet.y < 0 || bullet.y > gameCanvas.height) {
                     bullets.splice(index, 1);
                 } else {
-                    ctx.fillStyle = '#ff5733'; // Bullet color
+                    ctx.fillStyle = '#ff5733'; // Bullet color (8-bit feel)
                     ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
                 }
             });
@@ -254,60 +255,31 @@
             enemies.push(enemy);
         }
 
-        // Event listeners for movement
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowUp') {
-                player.dy = -player.speed;
-                player.direction = 'up';
-            }
-            if (event.key === 'ArrowDown') {
-                player.dy = player.speed;
-                player.direction = 'down';
-            }
-            if (event.key === 'ArrowLeft') {
-                player.dx = -player.speed;
-                player.direction = 'left';
-            }
-            if (event.key === 'ArrowRight') {
-                player.dx = player.speed;
-                player.direction = 'right';
-            }
-            if (event.key === ' ') shootBullet();  // Spacebar for shooting
+        // Touch events for drag-to-move and tap-to-fire
+        gameCanvas.addEventListener("touchstart", (event) => {
+            event.preventDefault();
+            touchStartX = event.touches[0].clientX;
+            touchStartY = event.touches[0].clientY;
         });
 
-        document.addEventListener('keyup', (event) => {
-            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') player.dy = 0;
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') player.dx = 0;
+        gameCanvas.addEventListener("touchmove", (event) => {
+            event.preventDefault();
+            touchMoving = true;
+            const touchEndX = event.touches[0].clientX;
+            const touchEndY = event.touches[0].clientY;
+
+            player.dx = (touchEndX - touchStartX) / 10;  // Adjust movement speed
+            player.dy = (touchEndY - touchStartY) / 10;  // Adjust movement speed
+            touchStartX = touchEndX;
+            touchStartY = touchEndY;
         });
 
-        // Gamepad support: Detect button presses and analog stick movement
-        let gamepadConnected = false;
-
-        function handleGamepadInput() {
-            const gamepads = navigator.getGamepads();
-            if (gamepads[0]) {
-                const gamepad = gamepads[0];
-
-                // Use analog sticks for movement
-                player.dx = gamepad.axes[0] * player.speed;  // Left stick horizontal
-                player.dy = gamepad.axes[1] * player.speed;  // Left stick vertical
-
-                // Use button 0 (A or Cross on most controllers) to shoot
-                if (gamepad.buttons[0].pressed) {
-                    shootBullet();
-                }
-
-                requestAnimationFrame(handleGamepadInput);
+        gameCanvas.addEventListener("touchend", (event) => {
+            event.preventDefault();
+            if (!touchMoving) {
+                shootBullet();  // Tap to fire
             }
-        }
-
-        window.addEventListener('gamepadconnected', () => {
-            gamepadConnected = true;
-            handleGamepadInput();
-        });
-
-        window.addEventListener('gamepaddisconnected', () => {
-            gamepadConnected = false;
+            touchMoving = false;
         });
 
         document.getElementById("logout-button").addEventListener("click", async () => {
