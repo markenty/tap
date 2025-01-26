@@ -153,8 +153,6 @@
         }
 
         function updateGameArea() {
-            ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-
             // Apply screen shake
             if (shakeDuration > 0) {
                 shakeDuration--;
@@ -162,6 +160,8 @@
                 const shakeY = Math.random() * shakeIntensity - shakeIntensity / 2;
                 ctx.translate(shakeX, shakeY);
             }
+
+            ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
             // Update player position (locked to left side)
             player.x = 50; // Keep player at left side of screen
@@ -189,7 +189,7 @@
                         // Bullet hit enemy
                         enemies.splice(enemyIndex, 1);
                         bullets.splice(index, 1);
-                        // Coin collection can happen here
+                        // Coin collection
                         if (currentUser) {
                             const userDocRef = doc(db, "users", currentUser.uid);
                             getDoc(userDocRef).then(doc => {
@@ -198,7 +198,7 @@
                                 updateWalletBalance(currentUser.uid, newBalance);
                             });
                         }
-                        // Add death effect (screen shake and enemy explosion)
+                        // Add death effect (screen shake and explosion)
                         shakeScreen(10, 10);
                     }
                 });
@@ -228,20 +228,7 @@
         }
 
         function shootBullet() {
-            // Direction for bullet depends on player movement
-            let bulletDx = 0, bulletDy = 0;
-
-            // Set bullet direction based on player movement
-            if (player.direction === 'up') {
-                bulletDy = -10;
-            } else if (player.direction === 'down') {
-                bulletDy = 10;
-            } else if (player.direction === 'left') {
-                bulletDx = -10;
-            } else if (player.direction === 'right') {
-                bulletDx = 10;
-            }
-
+            let bulletDx = 10, bulletDy = 0; // Bullet moving to the right
             const bullet = {
                 x: player.x + player.width / 2,
                 y: player.y + player.height / 2,
