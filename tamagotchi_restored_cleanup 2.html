@@ -3,64 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Coin Mining</title>
+    <title>Tamagotchi Game</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            overflow: hidden;
-            background-color: #121212;
+            background-color: #0d1117;
+            color: white;
         }
 
         canvas {
+            background-color: #161b22;
             display: block;
-            background-color: #1e1e1e;
+            margin: 10px auto;
+            border: 2px solid #58a6ff;
         }
 
-        #wallet-section {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-size: 20px;
+        .info-section {
+            text-align: center;
+            margin: 10px 0;
         }
 
-        .arcade-button {
-            background-color: green;
-            color: white;
-            border: none;
+        .info-section span {
+            font-size: 1.2rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+            gap: 10px;
+        }
+
+        button {
             padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 12px;
+            border: none;
+            background-color: #58a6ff;
+            color: white;
+            font-size: 1rem;
+            border-radius: 5px;
             cursor: pointer;
-            margin-top: 20px;
         }
 
-        #logout-button {
-            background-color: red;
-            color: white;
-            padding: 10px;
-            margin-top: 0px;
-            cursor: pointer;
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <!-- Wallet Section -->
-    <div id="wallet-section" class="hidden">
-        <p><button id="logout-button">Logout</button> Your balance: <span id="wallet-balance">0</span> coins</p>
-        <button class="arcade-button" id="mine-coin-button" style="visibility: hidden;">Mine 1 Coin</button>
+    <div class="info-section">
+        <span>Coins: <span id="coinCount">Loading...</span></span>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="controls">
+        <button id="feedButton">Feed</button>
+        <button id="playButton">Play</button>
+        <button id="cleanButton">Clean</button>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
-
     <script type="module">
+        // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-        // Firebase configuration
+        // Firebase Configuration
+     
         const firebaseConfig = {
             apiKey: "AIzaSyD2zSE_R3oQEOJST7BH0e5OAsDsPV0JzW8",
             authDomain: "wallet-18aba.firebaseapp.com",
@@ -75,232 +85,106 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let currentUser = null;
-        let player = { x: 50, y: 100, width: 50, height: 50, speed: 12, dx: 0, dy: 0, direction: 'right' };
-        let bullets = [];
-        let enemies = [];
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchMoving = false;
-        let shakeIntensity = 0;
-        let shakeDuration = 0;
-        let lastFrameTime = 0;
-
-        // Canvas setup
+        // DOM Elements
+        const coinCountElement = document.getElementById("coinCount");
+        const feedButton = document.getElementById("feedButton");
+        const playButton = document.getElementById("playButton");
+        const cleanButton = document.getElementById("cleanButton");
         const gameCanvas = document.getElementById("gameCanvas");
         const ctx = gameCanvas.getContext("2d");
-        gameCanvas.width = window.innerWidth;
-        gameCanvas.height = window.innerHeight;
 
-        // Wallet Section
-        const walletSection = document.getElementById("wallet-section");
-        const walletBalanceSpan = document.getElementById("wallet-balance");
+        // Game State
+        let userCoins = 0;
+        let tamagotchi = {
+            hunger: 100,
+            happiness: 100,
+            cleanliness: 100,
+            x: 200,
+            y: 200,
+            alive: true
+        };
 
-        // Show wallet on login
-        function showWallet() {
-            if (currentUser) {
-                walletSection.classList.remove("hidden");
-                fetchWalletBalance(currentUser.uid);
-            } else {
-                walletSection.classList.add("hidden");
-            }
-        }
-
-        // Fetch wallet balance from Firebase
-        async function fetchWalletBalance(uid) {
-            const userDocRef = doc(db, "users", uid);
-            const userDoc = await getDoc(userDocRef);
+        // Fetch Coin Balance
+        async function fetchUserCoins(uid) {
+            const userDoc = await getDoc(doc(db, "users", uid));
             if (userDoc.exists()) {
-                const userData = userDoc.data();
-                walletBalanceSpan.innerText = userData.balance;
-            } else {
-                console.error("User data not found.");
+                return userDoc.data().balance;
             }
+            return 0;
         }
 
-        // Update wallet balance in Firebase
-        async function updateWalletBalance(uid, newBalance) {
-            const userDocRef = doc(db, "users", uid);
-            await updateDoc(userDocRef, { balance: newBalance });
-            walletBalanceSpan.innerText = newBalance;
+        // Update Coin Balance
+        async function updateUserCoins(uid, newBalance) {
+            await updateDoc(doc(db, "users", uid), { balance: newBalance });
+            userCoins = newBalance;
+            coinCountElement.textContent = userCoins;
         }
 
-        // Monitor authentication state
-        onAuthStateChanged(auth, (user) => {
+        // Check Authentication State
+        let currentUser = null;
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
-                showWallet();
+                userCoins = await fetchUserCoins(user.uid);
+                coinCountElement.textContent = userCoins;
             } else {
                 currentUser = null;
-                walletSection.classList.add("hidden");
+                coinCountElement.textContent = "Login required!";
             }
         });
 
-        // Mine 1 Coin button logic
-        document.getElementById("mine-coin-button").addEventListener("click", async () => {
-            if (currentUser) {
-                const userDocRef = doc(db, "users", currentUser.uid);
-                const userDoc = await getDoc(userDocRef);
-                const userData = userDoc.data();
-                const newBalance = userData.balance + 1;
-                updateWalletBalance(currentUser.uid, newBalance);
-            }
-        });
-
-        // Game logic
-        function startGame() {
-            updateGameArea();
-            setInterval(spawnEnemy, 2000);  // Start spawning enemies every 2 seconds
-        }
-
-        function updateGameArea() {
-            const now = Date.now();
-            const deltaTime = (now - lastFrameTime) / 1000;  // Time in seconds between frames
-            lastFrameTime = now;
-
-            // Apply screen shake
-            if (shakeDuration > 0) {
-                shakeDuration--;
-                const shakeX = Math.random() * shakeIntensity - shakeIntensity / 2;
-                const shakeY = Math.random() * shakeIntensity - shakeIntensity / 2;
-                ctx.translate(shakeX, shakeY);
-            }
-
+        // Utility Functions
+        function drawTamagotchi() {
             ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-
-            // Update player position (locked to left side)
-            player.x = 50; // Keep player at left side of screen
-            player.y += player.dy;
-
-            // Boundaries check (only vertical movement)
-            if (player.y < 0) player.y = 0;
-            if (player.y > gameCanvas.height - player.height) player.y = gameCanvas.height - player.height;
-
-            // Draw Player
-            ctx.fillStyle = '#00d1b2';
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-
-            // Draw Bullets
-            bullets.forEach((bullet, index) => {
-                bullet.x += bullet.dx * deltaTime;
-                bullet.y += bullet.dy * deltaTime;
-
-                // Collision detection with enemies
-                enemies.forEach((enemy, enemyIndex) => {
-                    if (bullet.x < enemy.x + enemy.width &&
-                        bullet.x + bullet.width > enemy.x &&
-                        bullet.y < enemy.y + enemy.height &&
-                        bullet.y + bullet.height > enemy.y) {
-                        // Bullet hit enemy
-                        enemies.splice(enemyIndex, 1);
-                        bullets.splice(index, 1);
-                        // Coin collection
-                        if (currentUser) {
-                            const userDocRef = doc(db, "users", currentUser.uid);
-                            getDoc(userDocRef).then(doc => {
-                                const userData = doc.data();
-                                const newBalance = userData.balance + 1;
-                                updateWalletBalance(currentUser.uid, newBalance);
-                            });
-                        }
-                        // Add death effect (screen shake and explosion)
-                        shakeScreen(10, 10);
-                    }
-                });
-
-                // Remove bullets off-screen
-                if (bullet.x < 0 || bullet.x > gameCanvas.width || bullet.y < 0 || bullet.y > gameCanvas.height) {
-                    bullets.splice(index, 1);
-                } else {
-                    ctx.fillStyle = '#ff5733'; // Bullet color (8-bit feel)
-                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-                }
-            });
-
-            // Move enemies (right to left)
-            enemies.forEach((enemy, index) => {
-                enemy.x -= enemy.speed * deltaTime; // Move enemy to the left
-                ctx.fillStyle = '#3498db'; // Enemy color
-                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-
-                // Remove enemy if it goes off-screen
-                if (enemy.x + enemy.width < 0) {
-                    enemies.splice(index, 1);
-                }
-            });
-
-            requestAnimationFrame(updateGameArea);
+            ctx.fillStyle = "yellow";
+            ctx.beginPath();
+            ctx.arc(tamagotchi.x, tamagotchi.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.font = "16px Arial";
+            ctx.fillText("😊", tamagotchi.x - 10, tamagotchi.y + 5);
         }
 
-        function shootBullet() {
-            let bulletDx = 10, bulletDy = 0; // Bullet moving to the right
-            const bullet = {
-                x: player.x + player.width / 2,
-                y: player.y + player.height / 2,
-                width: 20,
-                height: 5,
-                dx: bulletDx,
-                dy: bulletDy
-            };
-            bullets.push(bullet);
-        }
+        function updateGameState() {
+            tamagotchi.hunger -= 0.1;
+            tamagotchi.happiness -= 0.05;
+            tamagotchi.cleanliness -= 0.07;
 
-        // Enemy movement logic (right to left)
-        function spawnEnemy() {
-            const enemy = { 
-                x: gameCanvas.width,  // Spawn the enemy on the right side of the canvas
-                y: Math.random() * (gameCanvas.height - 50), // Random y position within the canvas height
-                width: 50,  // Set the width of the enemy
-                height: 50, // Set the height of the enemy
-                speed: 2     // Speed at which the enemy moves to the left
-            };
-            enemies.push(enemy);
-        }
-
-        // Touch events for drag-to-move and tap-to-fire
-        gameCanvas.addEventListener("touchstart", (event) => {
-            event.preventDefault();
-            touchStartX = event.touches[0].clientX;
-            touchStartY = event.touches[0].clientY;
-        });
-
-        gameCanvas.addEventListener("touchmove", (event) => {
-            event.preventDefault();
-            touchMoving = true;
-            const touchEndX = event.touches[0].clientX;
-            const touchEndY = event.touches[0].clientY;
-
-            player.dy = (touchEndY - touchStartY) / 10;  // Adjust vertical movement speed
-            touchStartX = touchEndX;
-            touchStartY = touchEndY;
-        });
-
-        gameCanvas.addEventListener("touchend", (event) => {
-            event.preventDefault();
-            if (!touchMoving) {
-                shootBullet();  // Tap to fire
+            if (tamagotchi.hunger <= 0 || tamagotchi.happiness <= 0 || tamagotchi.cleanliness <= 0) {
+                tamagotchi.alive = false;
             }
-            touchMoving = false;
-        });
 
-        document.getElementById("logout-button").addEventListener("click", async () => {
-            try {
-                await signOut(auth);
-                currentUser = null;
-                walletSection.classList.add("hidden");
-            } catch (error) {
-                alert("Logout failed: " + error.message);
-            }
-        });
-
-        // Screen shake effect
-        function shakeScreen(intensity, duration) {
-            shakeIntensity = intensity;
-            shakeDuration = duration;
+            drawTamagotchi();
         }
 
-        // Initialize the game
-        startGame();
+        function refillMeter(meter) {
+            if (userCoins > 0) {
+                tamagotchi[meter] = 100;
+                userCoins -= 1;
+                updateUserCoins(currentUser.uid, userCoins);
+            } else {
+                alert("Not enough coins!");
+            }
+        }
+
+        // Event Listeners
+        feedButton.addEventListener("click", () => refillMeter("hunger"));
+        playButton.addEventListener("click", () => refillMeter("happiness"));
+        cleanButton.addEventListener("click", () => refillMeter("cleanliness"));
+
+        // Game Loop
+        function gameLoop() {
+            if (tamagotchi.alive) {
+                updateGameState();
+                requestAnimationFrame(gameLoop);
+            } else {
+                ctx.fillStyle = "red";
+                ctx.font = "24px Arial";
+                ctx.fillText("Game Over", gameCanvas.width / 2 - 60, gameCanvas.height / 2);
+            }
+        }
+
+        gameLoop();
     </script>
 </body>
 </html>
