@@ -1,4 +1,4 @@
-
+<div class="coins" id="coinCount"><span id="coinBalance">0</span></div>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -166,7 +166,7 @@
   </div>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
-    <div class="coins" id="coinCount"><span id="coinBalance">0</span></div>
+  <div class="coins">Coins: <span id="coinBalance">Loading...</span></div>
     <div class="controls">
       <button id="feedBtn">Feed</button>
       <button id="playBtn">Play</button>
@@ -208,16 +208,6 @@
     const db       = getFirestore(app);
     let currentUser= null;
 
-    async function fetchBalance(uid) {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      return userDoc.exists() ? userDoc.data().balance : 0;
-    }
-
-    async function updateBalance(uid, newBalance) {
-      await updateDoc(doc(db, "users", uid), { balance: newBalance });
-      document.getElementById("coinBalance").textContent = newBalance;
-    }
-
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
@@ -227,20 +217,11 @@
         alert("Login required");
       }
     });
-     async function refillMeter(type) {
-      if (!currentUser) return alert("Login required!");
-      let balance = await fetchBalance(currentUser.uid);
-      if (balance < 1) return alert("Not enough coins!");
-      tamagotchi[type] = Math.min(100, tamagotchi[type] + 20);
-      await updateBalance(currentUser.uid, balance - 1);
-    }
-
-    document.getElementById("hungerMeter").addEventListener("click", () => refillMeter("hunger"));
-    document.getElementById("happinessMeter").addEventListener("click", () => refillMeter("happiness"));
-    document.getElementById("cleanlinessMeter").addEventListener("click", () => refillMeter("cleanliness"));
-
+</script>
     
-    async function refillInventory(type) {
+  <script>     document.getElementById("foodInventory").addEventListener("click", () => refillInventory("food"));
+    document.getElementById("toyInventory").addEventListener("click", () => refillInventory("toys"));
+    document.getElementById("cleaningInventory").addEventListener("click", () => refillInventory("cleaningSupplies"));async function refillInventory(type) {
       if (!currentUser) return alert("Login required!");
       let balance = await fetchBalance(currentUser.uid);
       if (balance < 1) return alert("Not enough coins!");
@@ -250,13 +231,23 @@
       updateMeters();
     }
 
-    document.getElementById("foodInventory").addEventListener("click", () => refillInventory("food"));
-    document.getElementById("toyInventory").addEventListener("click", () => refillInventory("toys"));
-    document.getElementById("cleaningInventory").addEventListener("click", () => refillInventory("cleaningSupplies"));
+   async function fetchBalance(uid) {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      return userDoc.exists() ? userDoc.data().balance : 0;
+    }
 
-    </script>
-    
-  <script>
+    async function updateBalance(uid, newBalance) {
+      await updateDoc(doc(db, "users", uid), { balance: newBalance });
+      document.getElementById("coinBalance").textContent = newBalance;
+    }
+
+  async function refillMeter(type) {
+      if (!currentUser) return alert("Login required!");
+      let balance = await fetchBalance(currentUser.uid);
+      if (balance < 1) return alert("Not enough coins!");
+      tamagotchi[type] = Math.min(100, tamagotchi[type] + 20);
+      await updateBalance(currentUser.uid, balance - 1);
+    }
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -298,7 +289,7 @@
       document.getElementById("foodFill").style.width = `${tamagotchi.food}%`;
       document.getElementById("toyFill").style.width = `${tamagotchi.toys}%`;
       document.getElementById("cleaningFill").style.width = `${tamagotchi.cleaningSupplies}%`;
-      document.getElementById("coinCount").textContent = `Coins: ${tamagotchi.coins}`;
+     
       const hungerFill = document.getElementById("hungerFill");
       const happinessFill = document.getElementById("happinessFill");
       const cleanlinessFill = document.getElementById("cleanlinessFill");
