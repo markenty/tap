@@ -267,17 +267,19 @@
       const x = Math.random() * (canvas.width - 20);
       const y = Math.random() * (canvas.height - 20);
       items.push({ type, emoji, x, y });
+tamagotchi.target = item;
     }
 
   // Cleanup items and animate cleaning
-    function cleanup() {
-      items.length = 0;
-      poops.forEach(poop => {
-        const cleanupEmoji = itemEmojis.clean[Math.floor(Math.random() * itemEmojis.clean.length)];
-        cleanupAnimations.push({ emoji: cleanupEmoji, x: poop.x, y: poop.y, frames: 50 });
-      });
-      poops.length = 0;
-    }
+function cleanup() {
+  items.length = 0; // Clear any leftover items
+  poops.forEach(poop => {
+    const cleanupEmoji = itemEmojis.clean[Math.floor(Math.random() * itemEmojis.clean.length)];
+    cleanupAnimations.push({ emoji: cleanupEmoji, x: poop.x, y: poop.y, frames: 50 });
+  });
+  poops.length = 0; // Clear all poop after spawning animations
+}
+
 
      // Draw environment with items and cleanup animations
     function drawEnvironment() {
@@ -302,16 +304,15 @@
         ctx.fillText(itemEmojis.poop, poop.x, poop.y);
       });
 
-      // Draw cleanup animations
-      cleanupAnimations.forEach((cleanup, index) => {
-        ctx.font = "20px Arial";
-        ctx.fillText(cleanup.emoji, cleanup.x, cleanup.y);
-        cleanup.frames--;
-        if (cleanup.frames <= 0) {
-          cleanupAnimations.splice(index, 1);
-        }
-      });
-
+   // Draw cleanup animations
+cleanupAnimations.forEach((cleanup, index) => {
+  ctx.font = "20px Arial";
+  ctx.fillText(cleanup.emoji, cleanup.x, cleanup.y);
+  cleanup.frames--; // Decrease the frame counter
+  if (cleanup.frames <= 0) {
+    cleanupAnimations.splice(index, 1); // Remove the animation when frames are finished
+  }
+});
       drawTamagotchi();
     }
 
@@ -327,17 +328,25 @@
       tamagotchi.hunger = Math.max(0, Math.min(100, tamagotchi.hunger));
       tamagotchi.happiness = Math.max(0, Math.min(100, tamagotchi.happiness));
       tamagotchi.cleanliness = Math.max(0, Math.min(100, tamagotchi.cleanliness));
-
-      updateMeters();
+tamagotchi.speedDecayMultiplier = 1 + (items.length + poops.length) * 0.1;
+tamagotchi.cleanliness -= 0.07 * tamagotchi.speedDecayMultiplier;      updateMeters();
     }
 
-    document.getElementById("feedBtn").addEventListener("click", () => {
-      if (tamagotchi.food > 0) {
-        tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
-        tamagotchi.food -= 10;
-        spawnItem("feed");
-      }
-    });
+ document.getElementById("feedBtn").addEventListener("click", () => {
+  if (tamagotchi.food > 0) {
+    tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
+    tamagotchi.food -= 10;
+    spawnItem("feed");
+
+    // Add pooping logic
+    tamagotchi.mealsEaten++;
+    if (tamagotchi.mealsEaten >= 3) {
+      poops.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+      tamagotchi.mealsEaten = 0;
+    }
+  }
+});
+
 
     document.getElementById("playBtn").addEventListener("click", () => {
       if (tamagotchi.toys > 0) {
@@ -365,36 +374,37 @@
 
     setInterval(gameLoop, 100);
   // Update Tamagotchi movement
-    function moveTamagotchi() {
-      tamagotchi.bounce += 0.1;
+   function moveTamagotchi() {
+  tamagotchi.bounce += 0.1;
 
-      if (tamagotchi.target) {
-        const target = tamagotchi.target;
-        const dx = target.x - tamagotchi.x;
-        const dy = target.y - tamagotchi.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const speed = 4; // Increased speed for target
-        if (dist > 1) {
-          tamagotchi.x += (dx / dist) * speed;
-          tamagotchi.y += (dy / dist) * speed;
-        } else {
-          tamagotchi.target = null;
-          items.splice(items.indexOf(target), 1);
-        }
-      } else {
-        tamagotchi.movementTimer--;
-        if (tamagotchi.movementTimer <= 0) {
-          tamagotchi.dx = (Math.random() - 0.5) * 4;
-          tamagotchi.dy = (Math.random() - 0.5) * 4;
-          tamagotchi.movementTimer = Math.random() * 100 + 50;
-        }
-        tamagotchi.x += tamagotchi.dx;
-        tamagotchi.y += tamagotchi.dy;
-
-        if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
-        if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
-      }
+  if (tamagotchi.target) {
+    const target = tamagotchi.target;
+    const dx = target.x - tamagotchi.x;
+    const dy = target.y - tamagotchi.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const speed = 4; // Speed to approach the target
+    if (dist > 1) {
+      tamagotchi.x += (dx / dist) * speed;
+      tamagotchi.y += (dy / dist) * speed;
+    } else {
+      tamagotchi.target = null; // Clear target after reaching
+      items.splice(items.indexOf(target), 1); // Remove the item
     }
+  } else {
+    tamagotchi.movementTimer--;
+    if (tamagotchi.movementTimer <= 0) {
+      tamagotchi.dx = (Math.random() - 0.5) * 4;
+      tamagotchi.dy = (Math.random() - 0.5) * 4;
+      tamagotchi.movementTimer = Math.random() * 100 + 50;
+    }
+    tamagotchi.x += tamagotchi.dx;
+    tamagotchi.y += tamagotchi.dy;
+
+    if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
+    if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
+  }
+}
+
 
 
 // Example usage in a button event:
