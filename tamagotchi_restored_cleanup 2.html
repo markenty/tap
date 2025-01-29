@@ -204,14 +204,21 @@
       food: 100,
       toys: 100,
       cleaningSupplies: 100,
+         target: null,
+      movementTimer: 0,
+      mealsEaten: 0,
+      speedDecayMultiplier: 1 // Multiplier to increase cleanliness decay with too many items
     };
 
     const spriteSize = 32;
-    const items = [];
+   const items = [];
+    const poops = [];
+    const cleanupAnimations = [];
     const itemEmojis = {
       feed: ["🍎", "🍔", "🍕", "🍇", "🍗"],
       play: ["⚽", "🏀", "🎾", "🎲", "🪁"],
       clean: ["🧼", "🧽", "🪣", "🚿", "🪥"],
+      poop: "💩"
     };
 
     function updateMeters() {
@@ -222,34 +229,15 @@
       document.getElementById("toyFill").style.width = `${tamagotchi.toys}%`;
       document.getElementById("cleaningFill").style.width = `${tamagotchi.cleaningSupplies}%`;
       document.getElementById("coinCount").textContent = `Coins: ${tamagotchi.coins}`;
+      const hungerFill = document.getElementById("hungerFill");
+      const happinessFill = document.getElementById("happinessFill");
+      const cleanlinessFill = document.getElementById("cleanlinessFill");
+
+      hungerFill.style.width = `${tamagotchi.hunger}%`;
+      happinessFill.style.width = `${tamagotchi.happiness}%`;
+      cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
-
-    function spawnItem(type) {
-      const emoji = itemEmojis[type][Math.floor(Math.random() * itemEmojis[type].length)];
-      const x = Math.random() * (canvas.width - 20);
-      const y = Math.random() * (canvas.height - 20);
-      items.push({ type, emoji, x, y });
-    }
-
-    function moveTamagotchi() {
-      tamagotchi.x += tamagotchi.dx;
-      tamagotchi.y += tamagotchi.dy;
-
-      // Bounce back if it hits canvas edges
-      if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
-      if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
-    }
-
-    function drawEnvironment() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      items.forEach(item => {
-        ctx.font = "20px Arial";
-        ctx.fillText(item.emoji, item.x, item.y);
-      });
-      drawTamagotchi();
-    }
-
-    function drawTamagotchi() {
+ function drawTamagotchi() {
       const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
 
       ctx.fillStyle = "yellow";
@@ -274,6 +262,60 @@
         tamagotchi.y + spriteSize / 2 + bounceOffset
       );
     }
+    function spawnItem(type) {
+      const emoji = itemEmojis[type][Math.floor(Math.random() * itemEmojis[type].length)];
+      const x = Math.random() * (canvas.width - 20);
+      const y = Math.random() * (canvas.height - 20);
+      items.push({ type, emoji, x, y });
+    }
+
+  // Cleanup items and animate cleaning
+    function cleanup() {
+      items.length = 0;
+      poops.forEach(poop => {
+        const cleanupEmoji = itemEmojis.clean[Math.floor(Math.random() * itemEmojis.clean.length)];
+        cleanupAnimations.push({ emoji: cleanupEmoji, x: poop.x, y: poop.y, frames: 50 });
+      });
+      poops.length = 0;
+    }
+
+     // Draw environment with items and cleanup animations
+    function drawEnvironment() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!tamagotchi.alive) {
+        ctx.fillStyle = "red";
+        ctx.font = "30px Arial";
+        ctx.fillText("Game Over", canvas.width / 2 - 90, canvas.height / 2);
+        return;
+      }
+
+      // Draw items
+      items.forEach(item => {
+        ctx.font = "20px Arial";
+        ctx.fillText(item.emoji, item.x, item.y);
+      });
+
+      // Draw poop
+      poops.forEach(poop => {
+        ctx.font = "20px Arial";
+        ctx.fillText(itemEmojis.poop, poop.x, poop.y);
+      });
+
+      // Draw cleanup animations
+      cleanupAnimations.forEach((cleanup, index) => {
+        ctx.font = "20px Arial";
+        ctx.fillText(cleanup.emoji, cleanup.x, cleanup.y);
+        cleanup.frames--;
+        if (cleanup.frames <= 0) {
+          cleanupAnimations.splice(index, 1);
+        }
+      });
+
+      drawTamagotchi();
+    }
+
+   
 
     function updateStats() {
       if (!tamagotchi.alive) return;
@@ -353,15 +395,7 @@
         if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
       }
     }
-// Cleanup items and animate cleaning
-function cleanup() {
-  items.length = 0; // Clear all items
-  poops.forEach(poop => {
-    const cleanupEmoji = itemEmojis.clean[Math.floor(Math.random() * itemEmojis.clean.length)];
-    cleanupAnimations.push({ emoji: cleanupEmoji, x: poop.x, y: poop.y, frames: 50 });
-  });
-  poops.length = 0; // Clear all poop items
-}
+
 
 // Example usage in a button event:
 document.getElementById("cleanBtn").addEventListener("click", () => {
