@@ -238,6 +238,22 @@
     document.getElementById("hungerMeter").addEventListener("click", () => refillMeter("hunger"));
     document.getElementById("happinessMeter").addEventListener("click", () => refillMeter("happiness"));
     document.getElementById("cleanlinessMeter").addEventListener("click", () => refillMeter("cleanliness"));
+
+    
+    async function refillInventory(type) {
+      if (!currentUser) return alert("Login required!");
+      let balance = await fetchBalance(currentUser.uid);
+      if (balance < 1) return alert("Not enough coins!");
+
+      tamagotchi[type] = Math.min(100, tamagotchi[type] + 20);
+      await updateBalance(currentUser.uid, balance - 1);
+      updateMeters();
+    }
+
+    document.getElementById("foodInventory").addEventListener("click", () => refillInventory("food"));
+    document.getElementById("toyInventory").addEventListener("click", () => refillInventory("toys"));
+    document.getElementById("cleaningInventory").addEventListener("click", () => refillInventory("cleaningSupplies"));
+
     </script>
     
   <script>
