@@ -166,7 +166,7 @@
   </div>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
-    <div class="coins" id="coinCount">Coins: 0</div>
+    <div class="coins">Coins: <span id="coinBalance">0</span></div>
     <div class="controls">
       <button id="feedBtn">Feed</button>
       <button id="playBtn">Play</button>
@@ -187,7 +187,51 @@
       <div class="inventory-meter"><div class="inventory-fill"><span id="cleaningFill" style="width: 100%;"></span></div></div>
     </div>
   </div>
-  <script>
+ <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+       // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD2zSE_R3oQEOJST7BH0e5OAsDsPV0JzW8",
+            authDomain: "wallet-18aba.firebaseapp.com",
+            projectId: "wallet-18aba",
+            storageBucket: "wallet-18aba.appspot.com",
+            messagingSenderId: "926434300165",
+            appId: "1:926434300165:web:0b5d3ba8f32de4d8cbe76c",
+        };
+
+const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+
+    // Fetch User Coin Balance
+    async function fetchBalance(uid) {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      return userDoc.exists() ? userDoc.data().balance : 0;
+    }
+
+    // Update User Coin Balance
+    async function updateBalance(uid, newBalance) {
+      await updateDoc(doc(db, "users", uid), { balance: newBalance });
+      document.getElementById("coinBalance").textContent = newBalance;
+    }
+
+    // Initialize UI
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        const balance = await fetchBalance(user.uid);
+        document.getElementById("coinBalance").textContent = balance;
+      } else {
+        alert("Login required");
+      }
+    });
+
+   
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -238,6 +282,9 @@
       happinessFill.style.width = `${tamagotchi.happiness}%`;
       cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
+    document.getElementById("feedBtn").addEventListener("click", () => performAction("feed"));
+    document.getElementById("playBtn").addEventListener("click", () => performAction("play"));
+    document.getElementById("cleanBtn").addEventListener("click", () => performAction("clean"));
  function drawTamagotchi() {
       const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
 
@@ -414,8 +461,22 @@ if (dist > 1) {
   }
 }
 
+ 
 
+ // Handle Actions
+    async function performAction(action) {
+      if (!currentUser) return alert("Login required!");
+      
+      let balance = await fetchBalance(currentUser.uid);
+      if (balance < 1) return alert("Not enough coins!");
 
+      if (action === "feed") tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
+      if (action === "play") tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
+      if (action === "clean") tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
+      
+      await updateBalance(currentUser.uid, balance - 1);
+      updateMeters();
+    }
 // Example usage in a button event:
 document.getElementById("cleanBtn").addEventListener("click", () => {
   if (tamagotchi.alive) {
