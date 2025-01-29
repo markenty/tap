@@ -165,7 +165,7 @@
   </div>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
-    <div class="coins" id="coinCount">Coins: 0</div>
+    <div class="coins" id="coinCount">Coins:<span id="coinBalance">Loading...</span></div>
     <div class="controls">
       <button id="feedBtn">Feed</button>
       <button id="playBtn">Play</button>
@@ -253,21 +253,22 @@
       happinessFill.style.width = `${tamagotchi.happiness}%`;
       cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
-          // Fetch user coin balance
-        async function fetchUserBalance(uid) {
-            const userDoc = await getDoc(doc(db, "users", uid));
-            if (userDoc.exists()) {
-                return userDoc.data().balance;
-            }
-            return 0;
-        }
+     
+    let currentUser = null;
+    const coinBalanceSpan = document.getElementById("coinBalance");
 
-        // Update user coin balance
-        async function updateUserBalance(uid, newBalance) {
-            const userDocRef = doc(db, "users", uid);
-            await updateDoc(userDocRef, { balance: newBalance });
-            coinBalanceSpan.textContent = newBalance;
-        }
+    // Fetch user balance
+    async function fetchUserBalance(uid) {
+        const userDoc = await getDoc(doc(db, "users", uid));
+        return userDoc.exists() ? userDoc.data().balance : 0;
+    }
+
+    // Update balance
+    async function updateUserBalance(uid, newBalance) {
+        const userDocRef = doc(db, "users", uid);
+        await updateDoc(userDocRef, { balance: newBalance });
+        coinBalanceSpan.textContent = newBalance;
+    }
       // Monitor authentication state
         onAuthStateChanged(auth, async (user) => {
             if (user) {
