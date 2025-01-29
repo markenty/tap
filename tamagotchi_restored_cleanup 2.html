@@ -208,6 +208,7 @@
       movementTimer: 0,
       mealsEaten: 0,
       speedDecayMultiplier: 1 // Multiplier to increase cleanliness decay with too many items
+      rewarded: { hunger: false, happiness: false, cleanliness: false }  // Track rewards 
     };
 
     const spriteSize = 32;
@@ -221,22 +222,15 @@
       poop: "💩"
     };
 
-    function updateMeters() {
-      document.getElementById("hungerFill").style.width = `${tamagotchi.hunger}%`;
-      document.getElementById("happinessFill").style.width = `${tamagotchi.happiness}%`;
-      document.getElementById("cleanlinessFill").style.width = `${tamagotchi.cleanliness}%`;
-      document.getElementById("foodFill").style.width = `${tamagotchi.food}%`;
-      document.getElementById("toyFill").style.width = `${tamagotchi.toys}%`;
-      document.getElementById("cleaningFill").style.width = `${tamagotchi.cleaningSupplies}%`;
-      document.getElementById("coinCount").textContent = `Coins: ${tamagotchi.coins}`;
-      const hungerFill = document.getElementById("hungerFill");
-      const happinessFill = document.getElementById("happinessFill");
-      const cleanlinessFill = document.getElementById("cleanlinessFill");
-
-      hungerFill.style.width = `${tamagotchi.hunger}%`;
-      happinessFill.style.width = `${tamagotchi.happiness}%`;
-      cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
-    }
+  function updateMeters() {
+  document.getElementById("hungerFill").style.width = `${tamagotchi.hunger}%`;
+  document.getElementById("happinessFill").style.width = `${tamagotchi.happiness}%`;
+  document.getElementById("cleanlinessFill").style.width = `${tamagotchi.cleanliness}%`;
+  document.getElementById("foodFill").style.width = `${tamagotchi.food}%`;
+  document.getElementById("toyFill").style.width = `${tamagotchi.toys}%`;
+  document.getElementById("cleaningFill").style.width = `${tamagotchi.cleaningSupplies}%`;
+  document.getElementById("coinCount").textContent = `Coins: ${tamagotchi.coins}`;  // Update coin display
+}
  function drawTamagotchi() {
       const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
 
@@ -320,68 +314,76 @@ cleanupAnimations.forEach((cleanup, index) => {
 
    
 
-    function updateStats() {
-      if (!tamagotchi.alive) return;
+function updateStats() {
+  if (!tamagotchi.alive) return;
 
-      tamagotchi.hunger -= 0.1;
-      tamagotchi.happiness -= 0.05;
-      tamagotchi.cleanliness -= 0.07;
+  tamagotchi.hunger -= 0.1;
+  tamagotchi.happiness -= 0.05;
+  tamagotchi.cleanliness -= 0.07 * tamagotchi.speedDecayMultiplier;
 
-      tamagotchi.hunger = Math.max(0, Math.min(100, tamagotchi.hunger));
-      tamagotchi.happiness = Math.max(0, Math.min(100, tamagotchi.happiness));
-      tamagotchi.cleanliness = Math.max(0, Math.min(100, tamagotchi.cleanliness));
-tamagotchi.speedDecayMultiplier = 1 + (items.length + poops.length) * 0.1;
-tamagotchi.cleanliness -= 0.07 * tamagotchi.speedDecayMultiplier;      updateMeters();
+  tamagotchi.hunger = Math.max(0, Math.min(100, tamagotchi.hunger));
+  tamagotchi.happiness = Math.max(0, Math.min(100, tamagotchi.happiness));
+  tamagotchi.cleanliness = Math.max(0, Math.min(100, tamagotchi.cleanliness));
+
+  tamagotchi.speedDecayMultiplier = 1 + (items.length + poops.length) * 0.1;
+
+  // Check for coin rewards when a meter is 90-100%
+  ["hunger", "happiness", "cleanliness"].forEach(stat => {
+    if (tamagotchi[stat] >= 90) {
+      if (!tamagotchi.rewarded[stat]) { 
+        tamagotchi.coins += 1;  // Reward a coin
+        tamagotchi.rewarded[stat] = true;  // Mark it as rewarded
+      }
+    } else {
+      tamagotchi.rewarded[stat] = false;  // Reset when stat drops below 90
     }
+  });
 
+  updateMeters();
+}
+
+// Button Click Handling
 document.getElementById("feedBtn").addEventListener("click", () => {
   if (tamagotchi.food > 0) {
     tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
     tamagotchi.food -= 10;
     spawnItem("feed");
 
-    // Correct pooping logic
     tamagotchi.mealsEaten++;
     if (tamagotchi.mealsEaten >= 3) {
-      poops.push({ 
-        x: Math.random() * canvas.width, 
-        y: Math.random() * canvas.height 
-      });
-      tamagotchi.mealsEaten = 0;  // Reset meal counter after pooping
+      poops.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+      tamagotchi.mealsEaten = 0;
     }
+  } else if (tamagotchi.coins > 0) {
+    tamagotchi.coins--;  // Spend a coin
+    tamagotchi.food = 100; // Refill food
+  }
+});
+
+document.getElementById("playBtn").addEventListener("click", () => {
+  if (tamagotchi.toys > 0) {
+    tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
+    tamagotchi.toys -= 10;
+    spawnItem("play");
+  } else if (tamagotchi.coins > 0) {
+    tamagotchi.coins--;  // Spend a coin
+    tamagotchi.toys = 100; // Refill toys
+  }
+});
+
+document.getElementById("cleanBtn").addEventListener("click", () => {
+  if (tamagotchi.cleaningSupplies > 0) {
+    tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
+    tamagotchi.cleaningSupplies -= 10;
+    spawnItem("clean");
+  } else if (tamagotchi.coins > 0) {
+    tamagotchi.coins--;  // Spend a coin
+    tamagotchi.cleaningSupplies = 100; // Refill cleaning supplies
   }
 });
 
 
-    document.getElementById("playBtn").addEventListener("click", () => {
-      if (tamagotchi.toys > 0) {
-        tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
-        tamagotchi.toys -= 10;
-        spawnItem("play");
-      }
-    });
-
-    document.getElementById("cleanBtn").addEventListener("click", () => {
-      if (tamagotchi.cleaningSupplies > 0) {
-        tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
-        tamagotchi.cleaningSupplies -= 10;
-        spawnItem("clean");
-      }
-    });
-
-    function gameLoop() {
-      if (tamagotchi.alive) {
-        moveTamagotchi();
-        updateStats();
-        drawEnvironment();
-      }
-    }
-
-    setInterval(gameLoop, 100);
-  // Update Tamagotchi movement
-   function moveTamagotchi() {
-  tamagotchi.bounce += 0.1;
-
+    // Target Seeking
   if (tamagotchi.target) {
     const target = tamagotchi.target;
     const dx = target.x - tamagotchi.x;
@@ -422,6 +424,19 @@ document.getElementById("cleanBtn").addEventListener("click", () => {
     cleanup(); // Trigger cleanup logic
   }
 });
+
+    function gameLoop() {
+      if (tamagotchi.alive) {
+        moveTamagotchi();
+        updateStats();
+        drawEnvironment();
+      }
+    }
+
+    setInterval(gameLoop, 100);
+  // Update Tamagotchi movement
+   function moveTamagotchi() {
+  tamagotchi.bounce += 0.1;
 
 </script>
 </body>
