@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -165,7 +166,7 @@
   </div>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
-    <div class="coins" id="coinCount">Coins:<span id="coinBalance">Loading...</span></div>
+    <div class="coins" id="coinCount">Coins: 0</div>
     <div class="controls">
       <button id="feedBtn">Feed</button>
       <button id="playBtn">Play</button>
@@ -186,24 +187,7 @@
       <div class="inventory-meter"><div class="inventory-fill"><span id="cleaningFill" style="width: 100%;"></span></div></div>
     </div>
   </div>
-  <script>  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
-
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD2zSE_R3oQEOJST7BH0e5OAsDsPV0JzW8",
-            authDomain: "wallet-18aba.firebaseapp.com",
-            projectId: "wallet-18aba",
-            storageBucket: "wallet-18aba.appspot.com",
-            messagingSenderId: "926434300165",
-            appId: "1:926434300165:web:0b5d3ba8f32de4d8cbe76c",
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+  <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -249,36 +233,11 @@
       const hungerFill = document.getElementById("hungerFill");
       const happinessFill = document.getElementById("happinessFill");
       const cleanlinessFill = document.getElementById("cleanlinessFill");
-   const coinBalanceSpan = document.getElementById("coinBalance");      hungerFill.style.width = `${tamagotchi.hunger}%`;
+
+      hungerFill.style.width = `${tamagotchi.hunger}%`;
       happinessFill.style.width = `${tamagotchi.happiness}%`;
       cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
-     
-    let currentUser = null;
-    const coinBalanceSpan = document.getElementById("coinBalance");
-
-    // Fetch user balance
-    async function fetchUserBalance(uid) {
-        const userDoc = await getDoc(doc(db, "users", uid));
-        return userDoc.exists() ? userDoc.data().balance : 0;
-    }
-
-    // Update balance
-    async function updateUserBalance(uid, newBalance) {
-        const userDocRef = doc(db, "users", uid);
-        await updateDoc(userDocRef, { balance: newBalance });
-        coinBalanceSpan.textContent = newBalance;
-    }
-      // Monitor authentication state
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                const balance = await fetchUserBalance(user.uid);
-                coinBalanceSpan.textContent = balance;
-            } else {
-                coinBalanceSpan.textContent = "Login required!";
-            }
-        });
  function drawTamagotchi() {
       const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
 
@@ -377,7 +336,6 @@ tamagotchi.cleanliness -= 0.07 * tamagotchi.speedDecayMultiplier;      updateMet
     }
 
 document.getElementById("feedBtn").addEventListener("click", () => {
-  if (currentUser) refillInventory("hunger", currentUser.uid);
   if (tamagotchi.food > 0) {
     tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
     tamagotchi.food -= 10;
@@ -395,8 +353,8 @@ document.getElementById("feedBtn").addEventListener("click", () => {
   }
 });
 
+
     document.getElementById("playBtn").addEventListener("click", () => {
-       if (currentUser) refillInventory("happiness", currentUser.uid);
       if (tamagotchi.toys > 0) {
         tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
         tamagotchi.toys -= 10;
@@ -405,7 +363,6 @@ document.getElementById("feedBtn").addEventListener("click", () => {
     });
 
     document.getElementById("cleanBtn").addEventListener("click", () => {
-       if (currentUser) refillInventory("cleanliness", currentUser.uid);
       if (tamagotchi.cleaningSupplies > 0) {
         tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
         tamagotchi.cleaningSupplies -= 10;
