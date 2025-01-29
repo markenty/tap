@@ -204,7 +204,28 @@
             messagingSenderId: "926434300165",
             appId: "1:926434300165:web:0b5d3ba8f32de4d8cbe76c",
         };
+ // Fetch User Coin Balance
+    async function fetchBalance(uid) {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      return userDoc.exists() ? userDoc.data().balance : 0;
+    }
 
+    // Update User Coin Balance
+    async function updateBalance(uid, newBalance) {
+      await updateDoc(doc(db, "users", uid), { balance: newBalance });
+      document.getElementById("coinBalance").textContent = newBalance;
+    }
+
+    // Initialize UI
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        const balance = await fetchBalance(user.uid);
+        document.getElementById("coinBalance").textContent = balance;
+      } else {
+        alert("Login required");
+      }
+    });
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -393,9 +414,11 @@ document.getElementById("feedBtn").addEventListener("click", () => {
 
     function gameLoop() {
       if (tamagotchi.alive) {
-        moveTamagotchi();
-        updateStats();
-        drawEnvironment();
+       ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+    moveTamagotchi(); // Handle movement
+    updateStats(); // Update Tamagotchi stats
+    drawEnvironment(); // Draw items, poop, and animations
+    drawTamagotchi(); // Draw the Tamagotchi
       }
     }
 
