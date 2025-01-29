@@ -152,17 +152,17 @@
 </head>
 <body>
   <div class="meters-container">
-    <div class="meter" onclick="refillMeter('hunger')">
+    <div class="meter">
   <div class="meter-label">Hunger</div>
   <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
 </div>
 
-<div class="meter" onclick="refillMeter('happiness')">
+<div class="meter">
   <div class="meter-label">Happiness</div>
   <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
 </div>
 
-<div class="meter" onclick="refillMeter('cleanliness')">
+<div class="meter">
   <div class="meter-label">Cleanliness</div>
   <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
 </div>
@@ -253,6 +253,8 @@
       speedDecayMultiplier: 1 // Multiplier to increase cleanliness decay with too many items
     };
 
+tamagotchi.x = canvas.width / 2 - spriteSize / 2;
+tamagotchi.y = canvas.height / 2 - spriteSize / 2;
     const spriteSize = 32;
    const items = [];
     const poops = [];
@@ -280,31 +282,34 @@
       happinessFill.style.width = `${tamagotchi.happiness}%`;
       cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
- function drawTamagotchi() {
-      const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
+function drawTamagotchi() {
+  const bounceOffset = Math.sin(tamagotchi.bounce) * 5; // Add a bounce effect
 
-      ctx.fillStyle = "yellow";
-      ctx.beginPath();
-      ctx.arc(
-        tamagotchi.x + spriteSize / 2,
-        tamagotchi.y + spriteSize / 2 + bounceOffset,
-        spriteSize,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
+  // Draw Tamagotchi body
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.arc(
+    tamagotchi.x + spriteSize / 2,
+    tamagotchi.y + spriteSize / 2 + bounceOffset,
+    spriteSize,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
 
-      const emoji = tamagotchi.happiness > 70 ? "😊" : tamagotchi.happiness > 30 ? "😐" : "😢";
-      ctx.font = `${spriteSize * 2}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "black";
-      ctx.fillText(
-        emoji,
-        tamagotchi.x + spriteSize / 2,
-        tamagotchi.y + spriteSize / 2 + bounceOffset
-      );
-    }
+  // Draw face (emoji based on happiness)
+  const emoji = tamagotchi.happiness > 70 ? "😊" : tamagotchi.happiness > 30 ? "😐" : "😢";
+  ctx.font = `${spriteSize * 1.5}px Arial`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "black";
+  ctx.fillText(
+    emoji,
+    tamagotchi.x + spriteSize / 2,
+    tamagotchi.y + spriteSize / 2 + bounceOffset
+  );
+}
+
 function spawnItem(type) {
   const emoji = itemEmojis[type][Math.floor(Math.random() * itemEmojis[type].length)];
   const x = Math.random() * (canvas.width - 20);
