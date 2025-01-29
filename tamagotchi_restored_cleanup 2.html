@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,23 +152,21 @@
 <body>
   <div class="meters-container">
     <div class="meter">
-  <div class="meter-label">Hunger</div>
-  <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
-</div>
-
-<div class="meter">
-  <div class="meter-label">Happiness</div>
-  <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
-</div>
-
-<div class="meter">
-  <div class="meter-label">Cleanliness</div>
-  <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
-</div>
+      <div class="meter-label">Hunger</div>
+      <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label">Happiness</div>
+      <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-label">Cleanliness</div>
+      <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
+    </div>
   </div>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
-     <div class="coins">Coins: <span id="coinBalance">0</span></div>
+    <div class="coins" id="coinCount">Coins: 0</div>
     <div class="controls">
       <button id="feedBtn">Feed</button>
       <button id="playBtn">Play</button>
@@ -190,46 +187,7 @@
       <div class="inventory-meter"><div class="inventory-fill"><span id="cleaningFill" style="width: 100%;"></span></div></div>
     </div>
   </div>
-  <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
-
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD2zSE_R3oQEOJST7BH0e5OAsDsPV0JzW8",
-            authDomain: "wallet-18aba.firebaseapp.com",
-            projectId: "wallet-18aba",
-            storageBucket: "wallet-18aba.appspot.com",
-            messagingSenderId: "926434300165",
-            appId: "1:926434300165:web:0b5d3ba8f32de4d8cbe76c",
-        };
- // Fetch User Coin Balance
-    async function fetchBalance(uid) {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      return userDoc.exists() ? userDoc.data().balance : 0;
-    }
-
-    // Update User Coin Balance
-    async function updateBalance(uid, newBalance) {
-      await updateDoc(doc(db, "users", uid), { balance: newBalance });
-      document.getElementById("coinBalance").textContent = newBalance;
-    }
-
-    // Initialize UI
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        const balance = await fetchBalance(user.uid);
-        document.getElementById("coinBalance").textContent = balance;
-      } else {
-        alert("Login required");
-      }
-    });
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+  <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -253,8 +211,6 @@
       speedDecayMultiplier: 1 // Multiplier to increase cleanliness decay with too many items
     };
 
-tamagotchi.x = canvas.width / 2 - spriteSize / 2;
-tamagotchi.y = canvas.height / 2 - spriteSize / 2;
     const spriteSize = 32;
    const items = [];
     const poops = [];
@@ -282,34 +238,31 @@ tamagotchi.y = canvas.height / 2 - spriteSize / 2;
       happinessFill.style.width = `${tamagotchi.happiness}%`;
       cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
-function drawTamagotchi() {
-  const bounceOffset = Math.sin(tamagotchi.bounce) * 5; // Add a bounce effect
+ function drawTamagotchi() {
+      const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
 
-  // Draw Tamagotchi body
-  ctx.fillStyle = "yellow";
-  ctx.beginPath();
-  ctx.arc(
-    tamagotchi.x + spriteSize / 2,
-    tamagotchi.y + spriteSize / 2 + bounceOffset,
-    spriteSize,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(
+        tamagotchi.x + spriteSize / 2,
+        tamagotchi.y + spriteSize / 2 + bounceOffset,
+        spriteSize,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
 
-  // Draw face (emoji based on happiness)
-  const emoji = tamagotchi.happiness > 70 ? "😊" : tamagotchi.happiness > 30 ? "😐" : "😢";
-  ctx.font = `${spriteSize * 1.5}px Arial`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "black";
-  ctx.fillText(
-    emoji,
-    tamagotchi.x + spriteSize / 2,
-    tamagotchi.y + spriteSize / 2 + bounceOffset
-  );
-}
-
+      const emoji = tamagotchi.happiness > 70 ? "😊" : tamagotchi.happiness > 30 ? "😐" : "😢";
+      ctx.font = `${spriteSize * 2}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "black";
+      ctx.fillText(
+        emoji,
+        tamagotchi.x + spriteSize / 2,
+        tamagotchi.y + spriteSize / 2 + bounceOffset
+      );
+    }
 function spawnItem(type) {
   const emoji = itemEmojis[type][Math.floor(Math.random() * itemEmojis[type].length)];
   const x = Math.random() * (canvas.width - 20);
@@ -419,11 +372,9 @@ document.getElementById("feedBtn").addEventListener("click", () => {
 
     function gameLoop() {
       if (tamagotchi.alive) {
-       ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    moveTamagotchi(); // Handle movement
-    updateStats(); // Update Tamagotchi stats
-    drawEnvironment(); // Draw items, poop, and animations
-    drawTamagotchi(); // Draw the Tamagotchi
+        moveTamagotchi();
+        updateStats();
+        drawEnvironment();
       }
     }
 
@@ -463,25 +414,7 @@ if (dist > 1) {
   }
 }
 
-// Function to refill meters when clicked, deducting 1 coin
-async function refillMeter(type) {
-  if (!currentUser) return alert("Login required!");
 
-  let balance = await fetchBalance(currentUser.uid);
-  if (balance < 1) return alert("Not enough coins!");
-
-  if (type === "hunger") tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
-  if (type === "happiness") tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
-  if (type === "cleanliness") tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
-
-  await updateBalance(currentUser.uid, balance - 1);
-  updateMeters();
-}
-
-// Attach click events to meters
-document.getElementById("hungerFill").addEventListener("click", () => refillMeter("hunger"));
-document.getElementById("happinessFill").addEventListener("click", () => refillMeter("happiness"));
-document.getElementById("cleanlinessFill").addEventListener("click", () => refillMeter("cleanliness"));
 
 // Example usage in a button event:
 document.getElementById("cleanBtn").addEventListener("click", () => {
