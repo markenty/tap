@@ -151,19 +151,22 @@
 </head>
 <body>
   <div class="meters-container">
-    <div class="meter">
-      <div class="meter-label">Hunger</div>
-      <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
-    </div>
-    <div class="meter">
-      <div class="meter-label">Happiness</div>
-      <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
-    </div>
-    <div class="meter">
-      <div class="meter-label">Cleanliness</div>
-      <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
-    </div>
+    <div class="meter" onclick="refillMeter('hunger')">
+  <div class="meter-label">Hunger</div>
+  <div class="meter-bar"><div class="meter-fill" id="hungerFill"></div></div>
+</div>
+
+<div class="meter" onclick="refillMeter('happiness')">
+  <div class="meter-label">Happiness</div>
+  <div class="meter-bar"><div class="meter-fill" id="happinessFill"></div></div>
+</div>
+
+<div class="meter" onclick="refillMeter('cleanliness')">
+  <div class="meter-label">Cleanliness</div>
+  <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
+</div>
   </div>
+  
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
     <div class="coins">Coins: <span id="coinBalance">0</span></div>
@@ -205,7 +208,8 @@
 const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
+ </script>
+  <script>
     let currentUser = null;
 
     // Fetch User Coin Balance
@@ -464,19 +468,20 @@ if (dist > 1) {
  
 
  // Handle Actions
-    async function performAction(action) {
-      if (!currentUser) return alert("Login required!");
-      
-      let balance = await fetchBalance(currentUser.uid);
-      if (balance < 1) return alert("Not enough coins!");
 
-      if (action === "feed") tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
-      if (action === "play") tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
-      if (action === "clean") tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
-      
-      await updateBalance(currentUser.uid, balance - 1);
-      updateMeters();
-    }
+    async function refillMeter(type) {
+  if (!currentUser) return alert("Login required!");
+
+  let balance = await fetchBalance(currentUser.uid);
+  if (balance < 1) return alert("Not enough coins!");
+
+  if (type === "hunger") tamagotchi.hunger = Math.min(100, tamagotchi.hunger + 20);
+  if (type === "happiness") tamagotchi.happiness = Math.min(100, tamagotchi.happiness + 20);
+  if (type === "cleanliness") tamagotchi.cleanliness = Math.min(100, tamagotchi.cleanliness + 20);
+
+  await updateBalance(currentUser.uid, balance - 1);
+  updateMeters();
+}
 // Example usage in a button event:
 document.getElementById("cleanBtn").addEventListener("click", () => {
   if (tamagotchi.alive) {
