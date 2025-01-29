@@ -322,7 +322,37 @@
     }
 
     setInterval(gameLoop, 100);
-  
+  // Update Tamagotchi movement
+    function moveTamagotchi() {
+      tamagotchi.bounce += 0.1;
+
+      if (tamagotchi.target) {
+        const target = tamagotchi.target;
+        const dx = target.x - tamagotchi.x;
+        const dy = target.y - tamagotchi.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = 4; // Increased speed for target
+        if (dist > 1) {
+          tamagotchi.x += (dx / dist) * speed;
+          tamagotchi.y += (dy / dist) * speed;
+        } else {
+          tamagotchi.target = null;
+          items.splice(items.indexOf(target), 1);
+        }
+      } else {
+        tamagotchi.movementTimer--;
+        if (tamagotchi.movementTimer <= 0) {
+          tamagotchi.dx = (Math.random() - 0.5) * 4;
+          tamagotchi.dy = (Math.random() - 0.5) * 4;
+          tamagotchi.movementTimer = Math.random() * 100 + 50;
+        }
+        tamagotchi.x += tamagotchi.dx;
+        tamagotchi.y += tamagotchi.dy;
+
+        if (tamagotchi.x < 0 || tamagotchi.x > canvas.width - spriteSize) tamagotchi.dx *= -1;
+        if (tamagotchi.y < 0 || tamagotchi.y > canvas.height - spriteSize) tamagotchi.dy *= -1;
+      }
+    }
 // Cleanup items and animate cleaning
 function cleanup() {
   items.length = 0; // Clear all items
