@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -166,10 +167,9 @@
   <div class="meter-bar"><div class="meter-fill" id="cleanlinessFill"></div></div>
 </div>
   </div>
-  
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div class="controls-container">
-    <div class="coins">Coins: <span id="coinBalance">0</span></div>
+     <div class="coins">Coins: <span id="coinBalance">0</span></div>
     <div class="controls">
       <button id="feedBtn">Feed</button>
       <button id="playBtn">Play</button>
@@ -190,12 +190,12 @@
       <div class="inventory-meter"><div class="inventory-fill"><span id="cleaningFill" style="width: 100%;"></span></div></div>
     </div>
   </div>
- <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+  <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-       // Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyD2zSE_R3oQEOJST7BH0e5OAsDsPV0JzW8",
             authDomain: "wallet-18aba.firebaseapp.com",
@@ -205,37 +205,10 @@
             appId: "1:926434300165:web:0b5d3ba8f32de4d8cbe76c",
         };
 
-const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
- </script>
-  <script>
-    let currentUser = null;
-
-    // Fetch User Coin Balance
-    async function fetchBalance(uid) {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      return userDoc.exists() ? userDoc.data().balance : 0;
-    }
-
-    // Update User Coin Balance
-    async function updateBalance(uid, newBalance) {
-      await updateDoc(doc(db, "users", uid), { balance: newBalance });
-      document.getElementById("coinBalance").textContent = newBalance;
-    }
-
-    // Initialize UI
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        const balance = await fetchBalance(user.uid);
-        document.getElementById("coinBalance").textContent = balance;
-      } else {
-        alert("Login required");
-      }
-    });
-
-   
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -286,9 +259,6 @@ const app = initializeApp(firebaseConfig);
       happinessFill.style.width = `${tamagotchi.happiness}%`;
       cleanlinessFill.style.width = `${tamagotchi.cleanliness}%`;
     }
-    document.getElementById("feedBtn").addEventListener("click", () => performAction("feed"));
-    document.getElementById("playBtn").addEventListener("click", () => performAction("play"));
-    document.getElementById("cleanBtn").addEventListener("click", () => performAction("clean"));
  function drawTamagotchi() {
       const bounceOffset = Math.sin(tamagotchi.bounce) * 5;
 
@@ -465,11 +435,8 @@ if (dist > 1) {
   }
 }
 
- 
-
- // Handle Actions
-
-    async function refillMeter(type) {
+// Function to refill meters when clicked, deducting 1 coin
+async function refillMeter(type) {
   if (!currentUser) return alert("Login required!");
 
   let balance = await fetchBalance(currentUser.uid);
@@ -482,6 +449,12 @@ if (dist > 1) {
   await updateBalance(currentUser.uid, balance - 1);
   updateMeters();
 }
+
+// Attach click events to meters
+document.getElementById("hungerFill").addEventListener("click", () => refillMeter("hunger"));
+document.getElementById("happinessFill").addEventListener("click", () => refillMeter("happiness"));
+document.getElementById("cleanlinessFill").addEventListener("click", () => refillMeter("cleanliness"));
+
 // Example usage in a button event:
 document.getElementById("cleanBtn").addEventListener("click", () => {
   if (tamagotchi.alive) {
