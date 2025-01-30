@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolution Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      overflow: hidden;
+    }
+    #game-container {
+      width: 100%;
+      height: 600px;
+      border: 2px solid white;
+      margin: 20px auto;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #004d00, #001a00);
+    }
+    .organism {
+      position: absolute;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      text-align: center;
+      line-height: 30px;
+      transition: transform 0.1s linear; /* Smooth movement */
+    }
+    .organism.alive {
+      animation: aliveAnimation 2.5s infinite alternate ease-in-out; /* Alive feel */
+    }
+    .organism span {
+      font-size: 24px;
+    }
+    #stats {
+      margin-top: 10px;
+    }
+    @keyframes aliveAnimation {
+      0% {
+        transform: scale(1) rotate(0deg);
+      }
+      50% {
+        transform: scale(1.1) rotate(5deg);
+      }
+      100% {
+        transform: scale(1) rotate(-5deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div id="stats">
+    <p><strong>Years:</strong> <span id="years">1</span></p>
+    <p><strong>Organisms:</strong> <span id="organism-count">0</span></p>
+  </div>
+
+  <script>
+    // Game Variables
+    let years = 1;
+    let organisms = [];
+    const organismSize = 30; // Size of each organism (px)
+    const stages = ["🦠", "🪱", "🐟", "🐦", "🐒", "🧬", "✨"];
+    let tapCount = 0;
+    let tappedCells = [];
+    const organismData = new Map(); // Store organism positions and stages for better performance
+
+    // DOM Elements
+    const gameContainer = document.getElementById("game-container");
+    const yearsDisplay = document.getElementById("years");
+    const organismCountDisplay = document.getElementById("organism-count");
+
+    // Create Organism
+    function createOrganism(stage = 0, x = null, y = null) {
+      const organism = document.createElement("div");
+      organism.classList.add("organism", "alive");
+      organism.innerHTML = `<span>${stages[stage]}</span>`;
+      organism.style.left = `${x || Math.random() * (gameContainer.clientWidth - organismSize)}px`;
+      organism.style.top = `${y || Math.random() * (gameContainer.clientHeight - organismSize)}px`;
+      organism.dataset.stage = stage;
+      organism.dataset.hp = 10; // Default HP
+
+      // Store organism position and data
+      organismData.set(organism, {
+        x: parseFloat(organism.style.left),
+        y: parseFloat(organism.style.top),
+        stage,
+        hp: 10,
+        directionX: Math.random() > 0.5 ? 1 : -1, // Random initial movement direction
+        directionY: Math.random() > 0.5 ? 1 : -1,
+      });
+
+      // Add event listener for duplication and evolution
+      organism.addEventListener("click", () => handleTap(organism));
+
+      gameContainer.appendChild(organism);
+      organisms.push(organism);
+      updateOrganismCount();
+
+      return organism; // Return the created organism
+    }
+
+    // Handle Tap (Duplicate or Progressive Evolution)
+    function handleTap(organism) {
+      const stage = parseInt(organism.dataset.stage);
+
+      // If tapped organism matches the current stage of evolution, count the tap
+      if (tapCount === 0 || tappedCells[tapCount - 1].dataset.stage == stage) {
+        tapCount++;
+        tappedCells.push(organism);
+      } else {
+        tapCount = 1; // Reset if chain breaks
+        tappedCells = [organism];
+      }
+
+      // Duplicate on single tap
+      if (tapCount === 1) {
+        setTimeout(() => {
+          if (tapCount === 1) {
+            duplicateCell(organism);
+            tapCount = 0; // Reset tap count for single tap
+            tappedCells = [];
+          }
+        }, 300); // Short delay to differentiate single tap from multi-tap
+      }
+
+      // Evolve progressively through the chain of evolution on 4 taps
+      if (tapCount === 4) {
+        evolveTappedCells(stage);
+      }
+    }
+
+    // Duplicate Cell
+    function duplicateCell(organism) {
+      const data = organismData.get(organism);
+      const x = data.x + (Math.random() - 0.5) * 50;
+      const y = data.y + (Math.random() - 0.5) * 50;
+      createOrganism(data.stage, x, y);
+    }
+
+    // Evolve Tapped Cells Progressively
+    function evolveTappedCells(stage) {
+      // Remove tapped cells
+      tappedCells.forEach((cell) => {
+        organismData.delete(cell);
+        cell.remove();
+        organisms = organisms.filter((o) => o !== cell);
+      });
+
+      // Spawn new organism of the next stage
+      if (stage < stages.length - 1) {
+        createOrganism(
+          stage + 1,
+          Math.random() * (gameContainer.clientWidth - organismSize),
+          Math.random() * (gameContainer.clientHeight - organismSize)
+        );
+      }
+
+      // Reset tap counters
+      tapCount = 0;
+      tappedCells = [];
+    }
+
+    // Move all organisms dynamically
+    function moveOrganisms() {
+      organisms.forEach((organism, i) => {
+        const data = organismData.get(organism);
+        if (data) {
+          // Update position with current direction
+          data.x += data.directionX * 1; // Movement speed X
+          data.y += data.directionY * 1; // Movement speed Y
+
+          // Prevent organisms from leaving the container
+          if (data.x <= 0 || data.x >= gameContainer.clientWidth - organismSize) {
+            data.directionX *= -1; // Reverse direction
+          }
+          if (data.y <= 0 || data.y >= gameContainer.clientHeight - organismSize) {
+            data.directionY *= -1; // Reverse direction
+          }
+
+          organism.style.left = `${data.x}px`;
+          organism.style.top = `${data.y}px`;
+        }
+      });
+    }
+
+    // Predator-Prey Logic
+    function handlePredatorPrey() {
+      organisms.forEach((organism) => {
+        const data = organismData.get(organism);
+        if (!data) return;
+
+        const isPredator = data.stage > 0;
+
+        if (isPredator) {
+          // Locate the nearest prey
+          let nearestPrey = null;
+          let minDistance = Infinity;
+
+          organisms.forEach((prey) => {
+            const preyData = organismData.get(prey);
+            if (!preyData || preyData.stage !== data.stage - 1) return;
+
+            const dx = preyData.x - data.x;
+            const dy = preyData.y - data.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < minDistance) {
+              minDistance = dist;
+              nearestPrey = { prey, preyData, dist };
+            }
+          });
+
+          // Move towards nearest prey
+          if (nearestPrey) {
+            const { prey, preyData, dist } = nearestPrey;
+            const stepX = ((preyData.x - data.x) / dist) * 1.5; // Predator speed
+            const stepY = ((preyData.y - data.y) / dist) * 1.5;
+
+            data.x += stepX;
+            data.y += stepY;
+
+            organism.style.left = `${data.x}px`;
+            organism.style.top = `${data.y}px`;
+
+            // If close enough, reduce prey HP and remove it if HP reaches 0
+            if (dist < organismSize) {
+              preyData.hp -= 1;
+              if (preyData.hp <= 0) {
+                organismData.delete(prey);
+                prey.remove();
+                organisms = organisms.filter((o) => o !== prey);
+                updateOrganismCount();
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Auto-Spawn Cells
+    function spawnCells() {
+      setInterval(() => {
+        createOrganism(0); // Always spawn at stage 0
+      }, 2000); // Spawn every 2 seconds
+    }
+
+    // Update Organism Count
+    function updateOrganismCount() {
+      organismCountDisplay.textContent = organisms.length;
+    }
+
+    // Update Timeline
+    function updateTimeline() {
+      years++;
+      yearsDisplay.textContent = years;
+    }
+
+    // Main Game Loop
+    function gameLoop() {
+      updateTimeline();
+      moveOrganisms();
+      handlePredatorPrey();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Initialize Game
+    createOrganism(0); // Create initial cell
+        spawnCells(); // Start auto-spawning cells
+    gameLoop();
+  </script>
+</body>
+</html>
