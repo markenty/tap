@@ -195,27 +195,33 @@
         const data = organismData.get(organism);
         if (!data) return;
 
-        const isPredator = data.stage > 0;
+        const isPredator = data.stage > 0 || data.stage === 0; // Make cells (stage 0) hunters too
+
 
         if (isPredator) {
           // Locate the nearest prey
           let nearestPrey = null;
           let minDistance = Infinity;
 
-          organisms.forEach((prey) => {
-            const preyData = organismData.get(prey);
-            if (!preyData || (preyData.stage !== data.stage - 1 && !(data.stage === 0 && preyData.stage === 6))) return;
+    organisms.forEach((prey) => {
+    const preyData = organismData.get(prey);
+    if (!preyData) return;
 
-            const dx = preyData.x - data.x;
-            const dy = preyData.y - data.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+    // Normal predators eat one stage below, but cells (stage 0) eat stars (stage 6)
+    const validPrey = (data.stage > 0 && preyData.stage === data.stage - 1) ||
+                      (data.stage === 0 && preyData.stage === 6);
 
-            if (dist < minDistance) {
-              minDistance = dist;
-              nearestPrey = { prey, preyData, dist };
-            }
-          });
+    if (!validPrey) return;
 
+    const dx = preyData.x - data.x;
+    const dy = preyData.y - data.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < minDistance) {
+        minDistance = dist;
+        nearestPrey = { prey, preyData, dist };
+    }
+});
           // Move towards nearest prey
           if (nearestPrey) {
             const { prey, preyData, dist } = nearestPrey;
