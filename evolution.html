@@ -144,8 +144,7 @@
     }
 
     // Evolve Tapped Cells Progressively
-  function evolveTappedCells(stage) {
-    // Remove tapped cells
+function evolveTappedCells(stage) {
     tappedCells.forEach((cell) => {
         organismData.delete(cell);
         cell.remove();
@@ -154,26 +153,21 @@
 
     // Spawn new evolved organism
     if (stage < stages.length - 1) {
-        createOrganism(stage + 1, Math.random() * gameContainer.clientWidth, Math.random() * gameContainer.clientHeight);
+        createOrganism(stage + 1, 
+            Math.random() * gameContainer.clientWidth, 
+            Math.random() * gameContainer.clientHeight);
     }
 
-    // Auto-spawn more creatures after evolution
-    for (let i = 0; i < 3; i++) { // Spawns 3 random new creatures
-        createOrganism(Math.floor(Math.random() * (stage + 1)), 
-                       Math.random() * gameContainer.clientWidth, 
-                       Math.random() * gameContainer.clientHeight);
+    // Auto-spawn more of the new stage
+    for (let i = 0; i < 2; i++) {
+        createOrganism(stage, 
+            Math.random() * gameContainer.clientWidth, 
+            Math.random() * gameContainer.clientHeight);
     }
 
-    // Reset tap counters
     tapCount = 0;
     tappedCells = [];
 }
-
-
-      // Reset tap counters
-      tapCount = 0;
-      tappedCells = [];
-    }
 
     // Move all organisms dynamically
     function moveOrganisms() {
@@ -259,11 +253,27 @@
     }
 
     // Auto-Spawn Cells
-    function spawnCells() {
-      setInterval(() => {
-        createOrganism(0); // Always spawn at stage 0
-      }, 2000); // Spawn every 2 seconds
-    }
+ function spawnOrganisms() {
+    setInterval(() => {
+        const stageCounts = new Map();
+
+        // Count how many of each stage exist
+        organisms.forEach((organism) => {
+            const stage = parseInt(organism.dataset.stage);
+            stageCounts.set(stage, (stageCounts.get(stage) || 0) + 1);
+        });
+
+        // For each stage that exists, spawn more of the same type
+        stageCounts.forEach((count, stage) => {
+            if (count > 0) { // Only spawn if at least 1 exists
+                createOrganism(stage, 
+                    Math.random() * gameContainer.clientWidth, 
+                    Math.random() * gameContainer.clientHeight);
+            }
+        });
+    }, 2000); // Runs every 2 seconds
+}
+
 
     // Update Organism Count
     function updateOrganismCount() {
@@ -285,7 +295,9 @@
     }
 
     // Initialize Game
-    createOrganism(0); // Create initial cell
+   for (let i = 0; i < 3; i++) { // Start with 3 different organisms
+    createOrganism(i);
+} // Create initial cell
         spawnCells(); // Start auto-spawning cells
     gameLoop();
   </script>
