@@ -204,7 +204,7 @@
 
           organisms.forEach((prey) => {
             const preyData = organismData.get(prey);
-            if (!preyData || preyData.stage !== data.stage - 1) return;
+            if (!preyData || (preyData.stage !== data.stage - 1 && !(data.stage === 0 && preyData.stage === 6))) return;
 
             const dx = preyData.x - data.x;
             const dy = preyData.y - data.y;
