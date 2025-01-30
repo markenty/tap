@@ -144,7 +144,7 @@
     }
 
     // Evolve Tapped Cells Progressively
-    function evolveTappedCells(stage) {
+  function evolveTappedCells(stage) {
     // Remove tapped cells
     tappedCells.forEach((cell) => {
         organismData.delete(cell);
@@ -169,6 +169,11 @@
     tappedCells = [];
 }
 
+
+      // Reset tap counters
+      tapCount = 0;
+      tappedCells = [];
+    }
 
     // Move all organisms dynamically
     function moveOrganisms() {
@@ -255,9 +260,10 @@
 
     // Auto-Spawn Cells
     function spawnCells() {
-    setInterval(() => {
-    createOrganism(Math.floor(Math.random() * stages.length)); // Spawn random stage
-}, 1500); // Faster spawn interval
+      setInterval(() => {
+        createOrganism(0); // Always spawn at stage 0
+      }, 2000); // Spawn every 2 seconds
+    }
 
     // Update Organism Count
     function updateOrganismCount() {
