@@ -250,11 +250,24 @@
     }
 
     // Auto-Spawn Cells
-    function spawnCells() {
-      setInterval(() => {
-        createOrganism(0); // Always spawn at stage 0
-      }, 2000); // Spawn every 2 seconds
-    }
+   function autoSpawnSpecies() {
+    setInterval(() => {
+        const speciesPresent = new Set();
+
+        // Identify all unique species currently in the game
+        organisms.forEach((organism) => {
+            speciesPresent.add(parseInt(organism.dataset.stage));
+        });
+
+        // Spawn more of each species that exists
+        speciesPresent.forEach((stage) => {
+            createOrganism(stage, 
+                Math.random() * gameContainer.clientWidth, 
+                Math.random() * gameContainer.clientHeight);
+        });
+    }, 2000); // Runs every 2 seconds
+}
+
 
     // Update Organism Count
     function updateOrganismCount() {
@@ -277,7 +290,7 @@
 
     // Initialize Game
     createOrganism(0); // Create initial cell
-        spawnCells(); // Start auto-spawning cells
+        autoSpawnSpecies() // Start auto-spawning cells
     gameLoop();
   </script>
 </body>
