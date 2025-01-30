@@ -258,6 +258,10 @@
         organisms.forEach((organism) => {
             speciesPresent.add(parseInt(organism.dataset.stage));
         });
+  // Always spawn cells (stage 0), even if none exist
+        if (!speciesPresent.has(0)) {
+            createOrganism(0, Math.random() * gameContainer.clientWidth, Math.random() * gameContainer.clientHeight);
+        }
 
         // Spawn more of each species that exists
         speciesPresent.forEach((stage) => {
