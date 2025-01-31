@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  .shot1-animation {
+    width: 64px;
+    height: 64px;
+    background: url("soldier-sprites.jpeg") no-repeat 0 -192px;
+    cursor: pointer;
+    /* Adjust background-size if needed, e.g. background-size: 512px auto; */
+  }
+  .shot1-animation.animate {
+    animation: shot1Cycle 0.8s steps(4) infinite;
+  }
+  @keyframes shot1Cycle {
+    0%   { background-position:    0    -192px; }
+    100% { background-position: -256px -192px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shot1-animation" onclick="this.classList.toggle('animate')">
+  Tap to animate
+</div>
+
+</body>
+</html>
