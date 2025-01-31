@@ -3,18 +3,28 @@
 <head>
 <style>
   .shot1-animation {
+    /* Change width/height to a single frame’s size */
     width: 64px;
     height: 64px;
+
+    /* Point directly to the “Shot 1” row and ensure it’s cropped */
     background: url("soldier-sprites.jpeg") no-repeat 0 -192px;
+
+    /* If sprite sheet is wider or taller, adjust background-size */
+    /* Example if there are 8 columns at 64px each: 512px wide */
+    /* background-size: 512px auto; */
+
     cursor: pointer;
-    /* Adjust background-size if needed, e.g. background-size: 512px auto; */
   }
+
   .shot1-animation.animate {
+    /* Animate through four frames horizontally */
     animation: shot1Cycle 0.8s steps(4) infinite;
   }
+
   @keyframes shot1Cycle {
-    0%   { background-position:    0    -192px; }
-    100% { background-position: -256px -192px; }
+    0%   { background-position-x:    0px; }
+    100% { background-position-x: -256px; }
   }
 </style>
 </head>
