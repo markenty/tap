@@ -2,48 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Mobile Controls (Gameboy D-pad) & Effects</title>
+  <title>Isometric Game Engine – Mobile Controls (Enhanced Gameboy D-pad)</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: #505050;
-      touch-action: none; /* Prevent unwanted default touch behaviors */
+      touch-action: none;
     }
     canvas {
       display: block;
       background: #505050;
     }
-    /* --- D-pad Container (Gameboy style) --- */
+    /* --- D-pad Container: enlarged for easier touch --- */
     #dpadContainer {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      width: 100px;
-      height: 100px;
+      width: 150px;
+      height: 150px;
       z-index: 10;
       user-select: none;
     }
-    /* Simulated D-pad background */
+    /* --- Plus-shaped D-pad background --- */
     #dpad {
       position: relative;
       width: 100%;
       height: 100%;
-      background: #ccc;
-      border: 2px solid #888;
-      border-radius: 10px;
-      /* Optional: use a background image to mimic a Gameboy D-pad */
+      /* Optional background styling for the plus shape */
     }
-    /* Draggable center disc (joystick) */
-    #joystick {
+    /* Directional touch areas */
+    .dpad-arm {
+      position: absolute;
+      background: rgba(200,200,200,0.6);
+      border: 2px solid #888;
+      border-radius: 5px;
+    }
+    /* Up area */
+    #dpad-up {
+      top: 0;
+      left: 25%;
+      width: 50%;
+      height: 40px;
+    }
+    /* Down area */
+    #dpad-down {
+      bottom: 0;
+      left: 25%;
+      width: 50%;
+      height: 40px;
+    }
+    /* Left area */
+    #dpad-left {
+      left: 0;
+      top: 25%;
+      width: 40px;
+      height: 50px;
+    }
+    /* Right area */
+    #dpad-right {
+      right: 0;
+      top: 25%;
+      width: 40px;
+      height: 50px;
+    }
+    /* Center disc for refined attacking (small, draggable) */
+    #dpad-center {
       position: absolute;
       width: 40px;
       height: 40px;
       background: #666;
+      border: 2px solid #444;
       border-radius: 50%;
       left: calc(50% - 20px);
       top: calc(50% - 20px);
+      z-index: 1;
       touch-action: none;
     }
     /* Shoot Button Styling */
@@ -68,10 +102,14 @@
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- Gameboy-style D-pad -->
+  <!-- Enlarged, plus-shaped D-pad with four arms and a small center disc -->
   <div id="dpadContainer">
     <div id="dpad">
-      <div id="joystick"></div>
+      <div id="dpad-up" class="dpad-arm"></div>
+      <div id="dpad-down" class="dpad-arm"></div>
+      <div id="dpad-left" class="dpad-arm"></div>
+      <div id="dpad-right" class="dpad-arm"></div>
+      <div id="dpad-center"></div>
     </div>
   </div>
   
@@ -87,7 +125,7 @@
     let slowMotionTimer = 0;
     let killCount = 0;
 
-    // Utility function: clamp value between min and max.
+    // Utility: clamp a value between min and max.
     function clamp(val, min, max) {
       return Math.min(Math.max(val, min), max);
     }
@@ -311,7 +349,7 @@
     }
 
     // ---------------------------
-    // Player Class – With HP, shooting, walking animation, knockback, and death effects.
+    // Player Class – With HP, shooting, animation, knockback, and death effects.
     // ---------------------------
     class Player {
       constructor(tileX, tileY, tileMap) {
@@ -452,7 +490,7 @@
           "player"
         ));
       }
-      // Fires toward a target world coordinate.
+      // Refined attack: fires toward a target world coordinate.
       shootAt(target) {
         let startPos = new Vector2(
           this.position.x + this.width / 2,
@@ -616,13 +654,12 @@
     let pickups = [];
     let pickupSpawnTimer = 0;
     const pickupSpawnInterval = 10.0; // seconds.
-
     let screenShakeTime = 0;
     let screenShakeMagnitude = 0;
     let shakeOffset = new Vector2(0, 0);
 
     // ---------------------------
-    // Collision Resolution (Knockback) Between Entities
+    // Collision Resolution (Knockback)
     // ---------------------------
     function resolveCollision(entityA, entityB) {
       let ax = entityA.position.x + entityA.knockback.x,
@@ -648,7 +685,7 @@
     }
 
     // ---------------------------
-    // Setup Canvas and Compute World Bounds for Camera
+    // Setup Canvas and Camera
     // ---------------------------
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
@@ -666,7 +703,6 @@
     let worldMaxX = Math.max(...corners.map(c => c.x)) + tileMap.tileWidth;
     let worldMinY = Math.min(...corners.map(c => c.y));
     let worldMaxY = Math.max(...corners.map(c => c.y)) + tileMap.tileHeight;
-
     function updateCamera() {
       let halfWidth = (canvas.width / camera.zoom) / 2;
       let halfHeight = (canvas.height / camera.zoom) / 2;
@@ -697,7 +733,7 @@
     const enemySpawnInterval = 3.0; // seconds.
 
     // ---------------------------
-    // Input Event Listeners (Keyboard and Mouse)
+    // Input Listeners (Keyboard/Mouse)
     // ---------------------------
     document.addEventListener("keydown", (evt) => { player.keyDown(evt); });
     canvas.addEventListener("click", (evt) => {
@@ -707,112 +743,105 @@
       let worldTarget = camera.screenToWorld(new Vector2(mouseX, mouseY));
       player.shootAt(worldTarget);
     });
-    
+
     // ---------------------------
-    // Mobile Controls – Gameboy D-pad (draggable joystick)
+    // Mobile Controls: Plus-shaped D-pad
     // ---------------------------
-    const dpad = document.getElementById("dpad");
-    const joystick = document.getElementById("joystick");
-    const shootBtn = document.getElementById("shootBtn");
-
-    // Helper: Trigger a move if player is not already moving.
-    function handleMove(direction) {
-      if (!player.moving) {
-        player.move(direction);
-      }
-    }
-
-    // Variables for tracking joystick drag.
-    let active = false;
-    const maxRadius = 30; // maximum displacement in pixels.
-    const threshold = 15; // minimum displacement to trigger a move.
-
-    joystick.addEventListener("touchstart", (evt) => {
+    // Coarse movement via four large touch areas.
+    document.getElementById("dpad-up").addEventListener("touchstart", (evt) => {
       evt.preventDefault();
-      active = true;
+      if (!player.moving) player.move("up");
     });
-    joystick.addEventListener("touchmove", (evt) => {
-      if (!active) return;
+    document.getElementById("dpad-down").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("down");
+    });
+    document.getElementById("dpad-left").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("left");
+    });
+    document.getElementById("dpad-right").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("right");
+    });
+    // Also support mouse events on the arms.
+    document.getElementById("dpad-up").addEventListener("mousedown", () => { if (!player.moving) player.move("up"); });
+    document.getElementById("dpad-down").addEventListener("mousedown", () => { if (!player.moving) player.move("down"); });
+    document.getElementById("dpad-left").addEventListener("mousedown", () => { if (!player.moving) player.move("left"); });
+    document.getElementById("dpad-right").addEventListener("mousedown", () => { if (!player.moving) player.move("right"); });
+
+    // Refined attacking via dragging the small center disc.
+    const centerDisc = document.getElementById("dpad-center");
+    let refinedActive = false;
+    const refinedThreshold = 8;  // Minimum displacement (in pixels) to trigger a refined shot.
+    let startPosCenter = { x: 0, y: 0 };
+
+    centerDisc.addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      refinedActive = true;
+      let rect = centerDisc.getBoundingClientRect();
+      startPosCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+    });
+    centerDisc.addEventListener("touchmove", (evt) => {
+      if (!refinedActive) return;
       evt.preventDefault();
       let touch = evt.touches[0];
-      let rect = dpad.getBoundingClientRect();
-      // Calculate offset from center of dpad.
-      let centerX = rect.width / 2;
-      let centerY = rect.height / 2;
-      let offsetX = touch.clientX - rect.left - centerX;
-      let offsetY = touch.clientY - rect.top - centerY;
-      let distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
-      if (distance > maxRadius) {
-        let ratio = maxRadius / distance;
-        offsetX *= ratio;
-        offsetY *= ratio;
-      }
-      joystick.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      let offsetX = touch.clientX - startPosCenter.x;
+      let offsetY = touch.clientY - startPosCenter.y;
+      centerDisc.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
     });
-    joystick.addEventListener("touchend", (evt) => {
+    centerDisc.addEventListener("touchend", (evt) => {
       evt.preventDefault();
-      if (!active) return;
-      active = false;
-      // Parse current translation.
-      let style = window.getComputedStyle(joystick);
-      let matrix = new WebKitCSSMatrix(style.transform);
+      if (!refinedActive) return;
+      refinedActive = false;
+      let style = window.getComputedStyle(centerDisc);
+      let matrix = new DOMMatrixReadOnly(style.transform);
       let offsetX = matrix.m41;
       let offsetY = matrix.m42;
-      // Trigger move if displacement exceeds threshold.
-      if (Math.abs(offsetX) >= threshold || Math.abs(offsetY) >= threshold) {
-        if (Math.abs(offsetX) > Math.abs(offsetY)) {
-          handleMove(offsetX > 0 ? "right" : "left");
-        } else {
-          handleMove(offsetY > 0 ? "down" : "up");
-        }
+      // If movement exceeds threshold, fire a refined attack.
+      if (Math.abs(offsetX) >= refinedThreshold || Math.abs(offsetY) >= refinedThreshold) {
+        // Calculate target relative to player’s center.
+        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+        let refinedTarget = playerCenter.add(new Vector2(offsetX, offsetY));
+        player.shootAt(refinedTarget);
       }
-      // Snap joystick back to center.
-      joystick.style.transition = "transform 0.2s";
-      joystick.style.transform = "none";
-      setTimeout(() => { joystick.style.transition = ""; }, 200);
+      centerDisc.style.transition = "transform 0.2s";
+      centerDisc.style.transform = "none";
+      setTimeout(() => { centerDisc.style.transition = ""; }, 200);
     });
-
-    // Support mouse events as an alternative.
-    joystick.addEventListener("mousedown", (evt) => {
+    // Also support mouse events for refined attack.
+    centerDisc.addEventListener("mousedown", (evt) => {
       evt.preventDefault();
-      active = true;
+      refinedActive = true;
+      let rect = centerDisc.getBoundingClientRect();
+      startPosCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
     });
     document.addEventListener("mousemove", (evt) => {
-      if (!active) return;
+      if (!refinedActive) return;
       evt.preventDefault();
-      let rect = dpad.getBoundingClientRect();
-      let centerX = rect.width / 2;
-      let centerY = rect.height / 2;
-      let offsetX = evt.clientX - rect.left - centerX;
-      let offsetY = evt.clientY - rect.top - centerY;
-      let distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
-      if (distance > maxRadius) {
-        let ratio = maxRadius / distance;
-        offsetX *= ratio;
-        offsetY *= ratio;
-      }
-      joystick.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      let offsetX = evt.clientX - startPosCenter.x;
+      let offsetY = evt.clientY - startPosCenter.y;
+      centerDisc.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
     });
     document.addEventListener("mouseup", (evt) => {
-      if (!active) return;
-      active = false;
-      let style = window.getComputedStyle(joystick);
-      let matrix = new WebKitCSSMatrix(style.transform);
+      if (!refinedActive) return;
+      refinedActive = false;
+      let style = window.getComputedStyle(centerDisc);
+      let matrix = new DOMMatrixReadOnly(style.transform);
       let offsetX = matrix.m41;
       let offsetY = matrix.m42;
-      if (Math.abs(offsetX) >= threshold || Math.abs(offsetY) >= threshold) {
-        if (Math.abs(offsetX) > Math.abs(offsetY)) {
-          handleMove(offsetX > 0 ? "right" : "left");
-        } else {
-          handleMove(offsetY > 0 ? "down" : "up");
-        }
+      if (Math.abs(offsetX) >= refinedThreshold || Math.abs(offsetY) >= refinedThreshold) {
+        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+        let refinedTarget = playerCenter.add(new Vector2(offsetX, offsetY));
+        player.shootAt(refinedTarget);
       }
-      joystick.style.transition = "transform 0.2s";
-      joystick.style.transform = "none";
-      setTimeout(() => { joystick.style.transition = ""; }, 200);
+      centerDisc.style.transition = "transform 0.2s";
+      centerDisc.style.transform = "none";
+      setTimeout(() => { centerDisc.style.transition = ""; }, 200);
     });
 
     // Shoot button events.
+    const shootBtn = document.getElementById("shootBtn");
     shootBtn.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       player.shoot();
@@ -907,7 +936,6 @@
         if (!enemies[i].alive) enemies.splice(i, 1);
       }
 
-      // Auto-spawn enemies.
       enemySpawnTimer += effectiveDelta;
       if (enemySpawnTimer >= enemySpawnInterval) {
         enemySpawnTimer = 0;
@@ -929,7 +957,6 @@
         enemies.push(new Enemy(gridX, gridY, tileMap));
       }
 
-      // Spawn health pickups periodically.
       pickupSpawnTimer += effectiveDelta;
       if (pickupSpawnTimer >= pickupSpawnInterval) {
         pickupSpawnTimer = 0;
@@ -938,7 +965,6 @@
         pickups.push(new HealthPickup(gridX, gridY, tileMap));
       }
 
-      // Check collision between player and health pickups.
       for (let i = pickups.length - 1; i >= 0; i--) {
         let pickup = pickups[i];
         if (
@@ -953,7 +979,6 @@
         }
       }
 
-      // Resolve collisions between player and enemies.
       enemies.forEach((enemy) => resolveCollision(player, enemy));
       for (let i = 0; i < enemies.length; i++) {
         for (let j = i + 1; j < enemies.length; j++) {
@@ -961,7 +986,6 @@
         }
       }
 
-      // Update screen shake.
       if (screenShakeTime > 0) {
         screenShakeTime -= effectiveDelta;
         shakeOffset = new Vector2(
