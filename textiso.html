@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Tap-to-Move & Bomb Animation</title>
+  <title>Isometric Game Engine – Tap/Hold-to-Move & Bomb Animation</title>
   <style>
     html, body {
       margin: 0;
@@ -54,8 +54,6 @@
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- Removed onscreen D-pad container -->
-
   <!-- Shoot Button -->
   <button id="shootBtn">Shoot</button>
   <!-- Bomb Deploy Button -->
@@ -74,6 +72,10 @@
     
     // Global timer for animations.
     let globalTime = 0;
+    
+    // Auto-move globals.
+    let autoMoveIntervalID = null;
+    let autoMoveDirection = null;
     
     // Utility: clamp a value between min and max.
     function clamp(val, min, max) {
@@ -788,9 +790,8 @@
     // Keyboard controls remain for desktop.
     document.addEventListener("keydown", (evt) => { player.keyDown && player.keyDown(evt); });
     
-    // Keep shoot button as is.
+    // For shooting: click on canvas shoots.
     canvas.addEventListener("click", (evt) => {
-      // For desktop clicks, use shooting as before.
       let rect = canvas.getBoundingClientRect();
       let mouseX = evt.clientX - rect.left;
       let mouseY = evt.clientY - rect.top;
@@ -798,46 +799,81 @@
       player.shootAt(worldTarget);
     });
     
-    // New mobile control: tap on canvas to move the player.
-    function handleMoveTap(clientX, clientY) {
+    // --- Auto-move (tap/hold) control ---
+    // Compute a direction based on a tap's clientX/clientY.
+    function computeDirection(clientX, clientY) {
       let rect = canvas.getBoundingClientRect();
       let tapX = clientX - rect.left;
       let tapY = clientY - rect.top;
       let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
-      // Inverse isometric conversion.
       // For tileWidth=64 and tileHeight=32: half sizes are 32 and 16.
       let gridX = Math.floor((worldPos.x / 32 + worldPos.y / 16) / 2);
       let gridY = Math.floor((worldPos.y / 16 - worldPos.x / 32) / 2);
-      // If tap is on player's current tile, do nothing.
-      if (gridX === player.gridX && gridY === player.gridY) return;
-      // Compute difference.
+      if (gridX === player.gridX && gridY === player.gridY) return null;
       let dx = gridX - player.gridX;
       let dy = gridY - player.gridY;
-      // If the target tile is adjacent, move directly.
+      let direction;
       if (Math.abs(dx) + Math.abs(dy) === 1) {
-        if (dx === 1) player.move("right");
-        else if (dx === -1) player.move("left");
-        else if (dy === 1) player.move("down");
-        else if (dy === -1) player.move("up");
+        if (dx === 1) direction = "right";
+        else if (dx === -1) direction = "left";
+        else if (dy === 1) direction = "down";
+        else if (dy === -1) direction = "up";
       } else {
-        // For nonadjacent taps, choose the dominant direction.
         if (Math.abs(dx) >= Math.abs(dy)) {
-          player.move(dx > 0 ? "right" : "left");
+          direction = dx > 0 ? "right" : "left";
         } else {
-          player.move(dy > 0 ? "down" : "up");
+          direction = dy > 0 ? "down" : "up";
         }
       }
+      return direction;
     }
     
-    // Add touch listener for mobile.
+    // Touch events for mobile.
     canvas.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       let touch = evt.touches[0];
-      handleMoveTap(touch.clientX, touch.clientY);
+      autoMoveDirection = computeDirection(touch.clientX, touch.clientY);
+      if (autoMoveDirection) {
+        if (!player.moving) player.move(autoMoveDirection);
+        autoMoveIntervalID = setInterval(() => {
+          if (!player.moving && autoMoveDirection) player.move(autoMoveDirection);
+        }, 300);
+      }
     });
-    // Optionally, add mousedown for testing on desktop.
+    canvas.addEventListener("touchmove", (evt) => {
+      evt.preventDefault();
+      let touch = evt.touches[0];
+      let newDirection = computeDirection(touch.clientX, touch.clientY);
+      if (newDirection) autoMoveDirection = newDirection;
+    });
+    canvas.addEventListener("touchend", (evt) => {
+      evt.preventDefault();
+      if (autoMoveIntervalID) clearInterval(autoMoveIntervalID);
+      autoMoveIntervalID = null;
+      autoMoveDirection = null;
+    });
+    
+    // Mouse events for desktop hold-to-move.
     canvas.addEventListener("mousedown", (evt) => {
-      handleMoveTap(evt.clientX, evt.clientY);
+      evt.preventDefault();
+      autoMoveDirection = computeDirection(evt.clientX, evt.clientY);
+      if (autoMoveDirection) {
+        if (!player.moving) player.move(autoMoveDirection);
+        autoMoveIntervalID = setInterval(() => {
+          if (!player.moving && autoMoveDirection) player.move(autoMoveDirection);
+        }, 300);
+      }
+    });
+    canvas.addEventListener("mousemove", (evt) => {
+      if (autoMoveIntervalID !== null) {
+        let newDirection = computeDirection(evt.clientX, evt.clientY);
+        if (newDirection) autoMoveDirection = newDirection;
+      }
+    });
+    canvas.addEventListener("mouseup", (evt) => {
+      if (autoMoveIntervalID) clearInterval(autoMoveIntervalID);
+      autoMoveIntervalID = null;
+      autoMoveDirection = null;
     });
     
     // ---------------------------
