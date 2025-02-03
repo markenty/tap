@@ -2,83 +2,71 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Overlay X D-pad</title>
+  <title>Isometric Game Engine – Mobile Controls (X‑Shaped D‑pad)</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: #505050;
-      touch-action: none;
-      font-family: sans-serif;
+      touch-action: none; /* Prevent unwanted touch behavior */
     }
     canvas {
       display: block;
       background: #505050;
     }
-    /* --- X D-pad Overlay Styles --- */
+ /* The D-pad overlay container */
     .dpad-overlay {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      width: 220px;
-      height: 220px;
-      /* Rotate the container 45° so the plus appears as an X */
+      width: 200px;
+      height: 200px;
+      /* Rotate the container 45° so a plus becomes an X */
       transform: rotate(45deg);
       transform-origin: center;
-      /* Allow interactions on children */
-      pointer-events: auto;
-      z-index: 20;
+      pointer-events: none; /* Make overlay non-interactive */
     }
+    /* Common style for each arm */
     .dpad-overlay .arm {
       position: absolute;
-      background: rgba(255,255,255,0.8);
+      background: rgba(255, 255, 255, 0.8);
       border: 2px solid #ccc;
-      border-radius: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 28px;
-      /* Counter-rotate the button content so the arrows appear upright */
-      transform: rotate(-45deg);
-      cursor: pointer;
-      user-select: none;
+      border-radius: 5px;
     }
-    /* Vertical arm: 40px wide, full height */
+    /* The vertical arm: 40px wide and full height */
     .dpad-overlay .arm.vertical {
       width: 40px;
-      height: 220px;
-      left: calc(50% - 20px);
+      height: 200px;
+      left: 80px; /* (200 - 40)/2 */
       top: 0;
     }
-    /* Horizontal arm: full width, 40px tall */
+    /* The horizontal arm: full width and 40px tall */
     .dpad-overlay .arm.horizontal {
-      width: 220px;
+      width: 200px;
       height: 40px;
-      top: calc(50% - 20px);
+      top: 80px; /* (200 - 40)/2 */
       left: 0;
     }
-    /* Center disc for refined control */
+    /* Optional: a center disc that remains unrotated (counter-rotated) */
     .dpad-overlay .center-disc {
       position: absolute;
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
       background: #666;
       border: 2px solid #444;
       border-radius: 50%;
-      left: calc(50% - 30px);
-      top: calc(50% - 30px);
+      left: 75px; /* (200 - 50)/2 */
+      top: 75px;
       /* Counter-rotate so it appears upright */
       transform: rotate(-45deg);
-      cursor: pointer;
-      user-select: none;
     }
-    /* --- Shoot Button (unchanged) --- */
+    /* --- Shoot Button styling --- */
     #shootBtn {
       position: absolute;
       bottom: 20px;
       right: 20px;
-      z-index: 20;
+      z-index: 10;
       width: 80px;
       height: 80px;
       background: rgba(255,255,255,0.7);
@@ -86,56 +74,38 @@
       border-radius: 8px;
       font-size: 24px;
       user-select: none;
-      cursor: pointer;
     }
     #shootBtn:active {
       background: rgba(255,255,255,0.9);
-    }
-    /* --- HUD styles --- */
-    #hud {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      z-index: 20;
-      color: white;
-      font-size: 16px;
-      background: rgba(0,0,0,0.5);
-      padding: 5px 10px;
-      border-radius: 4px;
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- Overlay X D-pad -->
-  <div class="dpad-overlay">
-    <!-- The vertical arm covers the full height -->
-    <div id="dpad-vertical" class="arm vertical">
-      <!-- (No inner text needed; the vertical arm responds to top and bottom touches) -->
+  <!-- X‑shaped D‑pad -->
+  <div id="dpadContainer">
+    <div id="dpad">
+      <div id="dpad-up" class="dpad-button">▲</div>
+      <div id="dpad-left" class="dpad-button">◄</div>
+      <div id="dpad-center"></div>
+      <div id="dpad-right" class="dpad-button">►</div>
+      <div id="dpad-down" class="dpad-button">▼</div>
     </div>
-    <!-- The horizontal arm covers the full width -->
-    <div id="dpad-horizontal" class="arm horizontal">
-    </div>
-    <!-- Center disc for refined shooting -->
-    <div id="dpad-center" class="center-disc"></div>
   </div>
   
   <!-- Shoot Button -->
   <button id="shootBtn">Shoot</button>
   
-  <!-- Simple HUD -->
-  <div id="hud">HP: 100 | Kills: 0</div>
-  
   <script>
     "use strict";
-    // Global pixel upscale factor.
+    // Global pixel upscaling factor.
     const PIXEL_SIZE = 4;
     let timeScale = 1.0;
     let slowMotionTimer = 0;
     let killCount = 0;
     
-    // Utility function: clamp a value between min and max.
+    // Utility: clamp a value between min and max.
     function clamp(val, min, max) {
       return Math.min(Math.max(val, min), max);
     }
@@ -167,7 +137,7 @@
     }
     
     // ---------------------------
-    // Camera Class
+    // Camera Class – Follows player and clamps to board bounds.
     // ---------------------------
     class Camera {
       constructor(screenWidth, screenHeight) {
@@ -245,7 +215,7 @@
     }
     
     // ---------------------------
-    // Particle Class
+    // Particle Class – For blood and pickup burst effects.
     // ---------------------------
     class Particle {
       constructor(position, velocity, life, color, size) {
@@ -306,7 +276,7 @@
     }
     
     // ---------------------------
-    // Health Pickup Class
+    // Health Pickup Class – Renders a heart emoji.
     // ---------------------------
     class HealthPickup {
       constructor(tileX, tileY, tileMap) {
@@ -324,7 +294,7 @@
     }
     
     // ---------------------------
-    // Bullet Class
+    // Bullet Class – Travels a limited distance.
     // ---------------------------
     class Bullet {
       constructor(position, velocity, owner) {
@@ -359,7 +329,7 @@
     }
     
     // ---------------------------
-    // Player Class
+    // Player Class – With movement, shooting, animation, and death effects.
     // ---------------------------
     class Player {
       constructor(tileX, tileY, tileMap) {
@@ -500,7 +470,7 @@
           "player"
         ));
       }
-      // Refined attack: fires toward a target coordinate.
+      // Refined attack: fires toward a target world coordinate.
       shootAt(target) {
         let startPos = new Vector2(
           this.position.x + this.width / 2,
@@ -522,7 +492,7 @@
     }
     
     // ---------------------------
-    // Enemy Class
+    // Enemy Class – With HP, knockback, and death effects.
     // ---------------------------
     class Enemy {
       constructor(tileX, tileY, tileMap) {
@@ -755,71 +725,42 @@
     });
     
     // ---------------------------
-    // Mobile Controls – X-shaped D-pad overlay event handling
+    // Mobile Controls – Plus‑shaped D‑pad
     // ---------------------------
-    // For coarse movement, we split the vertical arm into top and bottom halves,
-    // and the horizontal arm into left and right halves.
+    // Coarse movement: tapping the four large arms.
+    document.getElementById("dpad-up").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("up");
+    });
+    document.getElementById("dpad-down").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("down");
+    });
+    document.getElementById("dpad-left").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("left");
+    });
+    document.getElementById("dpad-right").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      if (!player.moving) player.move("right");
+    });
+    // Also support mouse events.
+    document.getElementById("dpad-up").addEventListener("mousedown", () => { if (!player.moving) player.move("up"); });
+    document.getElementById("dpad-down").addEventListener("mousedown", () => { if (!player.moving) player.move("down"); });
+    document.getElementById("dpad-left").addEventListener("mousedown", () => { if (!player.moving) player.move("left"); });
+    document.getElementById("dpad-right").addEventListener("mousedown", () => { if (!player.moving) player.move("right"); });
     
-    // Vertical arm: determine tap position relative to center.
-    const dpadVertical = document.querySelector(".dpad-overlay .arm.vertical");
-    dpadVertical.addEventListener("touchstart", (evt) => {
-      evt.preventDefault();
-      let touch = evt.touches[0];
-      let rect = dpadVertical.getBoundingClientRect();
-      let y = touch.clientY - rect.top;
-      // Compare to half the height
-      if (y < rect.height / 2) {
-        if (!player.moving) player.move("up");
-      } else {
-        if (!player.moving) player.move("down");
-      }
-    });
-    dpadVertical.addEventListener("mousedown", (evt) => {
-      evt.preventDefault();
-      let rect = dpadVertical.getBoundingClientRect();
-      let y = evt.clientY - rect.top;
-      if (y < rect.height / 2) {
-        if (!player.moving) player.move("up");
-      } else {
-        if (!player.moving) player.move("down");
-      }
-    });
-    
-    // Horizontal arm: determine tap position relative to center.
-    const dpadHorizontal = document.querySelector(".dpad-overlay .arm.horizontal");
-    dpadHorizontal.addEventListener("touchstart", (evt) => {
-      evt.preventDefault();
-      let touch = evt.touches[0];
-      let rect = dpadHorizontal.getBoundingClientRect();
-      let x = touch.clientX - rect.left;
-      if (x < rect.width / 2) {
-        if (!player.moving) player.move("left");
-      } else {
-        if (!player.moving) player.move("right");
-      }
-    });
-    dpadHorizontal.addEventListener("mousedown", (evt) => {
-      evt.preventDefault();
-      let rect = dpadHorizontal.getBoundingClientRect();
-      let x = evt.clientX - rect.left;
-      if (x < rect.width / 2) {
-        if (!player.moving) player.move("left");
-      } else {
-        if (!player.moving) player.move("right");
-      }
-    });
-    
-    // Refined control: dragging the center disc.
+    // Refined control: dragging the small center disc.
     const centerDisc = document.getElementById("dpad-center");
     let refinedActive = false;
-    const refinedThreshold = 8;  // Minimum displacement (in pixels) to trigger a refined shot.
+    const refinedThreshold = 8;  // Minimum displacement to trigger a refined shot.
     let startPosCenter = { x: 0, y: 0 };
     
     centerDisc.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       refinedActive = true;
       let rect = centerDisc.getBoundingClientRect();
-      startPosCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      startPosCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
     });
     centerDisc.addEventListener("touchmove", (evt) => {
       if (!refinedActive) return;
@@ -846,7 +787,7 @@
       centerDisc.style.transform = "none";
       setTimeout(() => { centerDisc.style.transition = ""; }, 200);
     });
-    
+    // Mouse support for refined control.
     centerDisc.addEventListener("mousedown", (evt) => {
       evt.preventDefault();
       refinedActive = true;
@@ -888,11 +829,20 @@
     });
     
     // ---------------------------
-    // HUD update
+    // Draw HUD – Display Player HP and Kill Count.
     // ---------------------------
-    function updateHUD() {
-      const hud = document.getElementById("hud");
-      hud.textContent = `HP: ${player.hp} | Kills: ${killCount}`;
+    function drawHUD(ctx) {
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 20, 200, 24);
+      ctx.fillStyle = "red";
+      let hpWidth = (player.hp / player.maxHP) * 100;
+      ctx.fillRect(22, 22, hpWidth, 20);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 20, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.fillText("HP: " + player.hp, 30, 38);
+      ctx.fillText("Kills: " + killCount, 130, 38);
     }
     
     // ---------------------------
@@ -1046,7 +996,7 @@
       bullets.forEach((bullet) => bullet.render(ctx, renderCamera));
       renderEffects(ctx, renderCamera);
       player.render(ctx, renderCamera);
-      updateHUD();
+      drawHUD(ctx);
     
       requestAnimationFrame(gameLoop);
     }
