@@ -800,7 +800,6 @@
     });
     
     // --- Auto-move (tap/hold) control ---
-    // Compute a direction based on a tap's clientX/clientY.
     function computeDirection(clientX, clientY) {
       let rect = canvas.getBoundingClientRect();
       let tapX = clientX - rect.left;
@@ -995,6 +994,7 @@
       updatePickups();
       updateBaitBombs(effectiveDelta);
     
+      // --- Bullet Collision Handling ---
       bullets.forEach((bullet) => {
         if (bullet.owner === "player") {
           enemies.forEach((enemy) => {
@@ -1005,19 +1005,11 @@
               bullet.position.y <= enemy.position.y + enemy.height
             ) {
               bullet.alive = false;
-              enemy.hp -= 20;
+              // Instead of reducing enemy HP, simply apply a knockback.
               let knockForce = bullet.velocity.normalize().scale(20);
               enemy.knockback = enemy.knockback.add(knockForce);
               screenShakeTime = 0.2;
               screenShakeMagnitude = 10;
-              if (enemy.hp <= 0 && enemy.alive) {
-                spawnBloodEffect(enemy.position);
-                enemy.alive = false;
-                killCount++;
-                if (Math.random() < 0.3) {
-                  pickups.push(new BombPickup(enemy.gridX, enemy.gridY, tileMap));
-                }
-              }
             }
           });
         } else if (bullet.owner === "enemy") {
