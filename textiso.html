@@ -2,85 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Mobile Controls (Enhanced Gameboy D-pad)</title>
+  <title>Isometric Game Engine – Mobile Controls (Plus‑Shaped D‑pad)</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: #505050;
-      touch-action: none;
+      touch-action: none; /* Prevent unwanted touch behavior */
     }
     canvas {
       display: block;
       background: #505050;
     }
-    /* --- D-pad Container: enlarged for easier touch --- */
+    /* --- D-pad container: increased size for easy tapping --- */
     #dpadContainer {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      width: 150px;
-      height: 150px;
+      width: 220px;
+      height: 220px;
       z-index: 10;
       user-select: none;
     }
-    /* --- Plus-shaped D-pad background --- */
+    /* --- Use a grid to form a 3x3 layout --- */
     #dpad {
-      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
       width: 100%;
       height: 100%;
-      /* Optional background styling for the plus shape */
+      gap: 5px;
+      background: transparent;
     }
-    /* Directional touch areas */
-    .dpad-arm {
-      position: absolute;
-      background: rgba(200,200,200,0.6);
+    /* --- Each directional button is styled as a large, easy‑tap area --- */
+    .dpad-button {
+      background: rgba(200,200,200,0.8);
       border: 2px solid #888;
-      border-radius: 5px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
     }
-    /* Up area */
-    #dpad-up {
-      top: 0;
-      left: 25%;
-      width: 50%;
-      height: 40px;
-    }
-    /* Down area */
-    #dpad-down {
-      bottom: 0;
-      left: 25%;
-      width: 50%;
-      height: 40px;
-    }
-    /* Left area */
-    #dpad-left {
-      left: 0;
-      top: 25%;
-      width: 40px;
-      height: 50px;
-    }
-    /* Right area */
-    #dpad-right {
-      right: 0;
-      top: 25%;
-      width: 40px;
-      height: 50px;
-    }
-    /* Center disc for refined attacking (small, draggable) */
+    /* Place the four arms in the proper grid cells */
+    #dpad-up    { grid-column: 2; grid-row: 1; }
+    #dpad-left  { grid-column: 1; grid-row: 2; }
+    #dpad-right { grid-column: 3; grid-row: 2; }
+    #dpad-down  { grid-column: 2; grid-row: 3; }
+    /* --- Center cell reserved for refined control (small draggable disc) --- */
     #dpad-center {
-      position: absolute;
-      width: 40px;
-      height: 40px;
+      grid-column: 2;
+      grid-row: 2;
+      position: relative;
+      width: 60px;
+      height: 60px;
+      margin: auto;
       background: #666;
       border: 2px solid #444;
       border-radius: 50%;
-      left: calc(50% - 20px);
-      top: calc(50% - 20px);
-      z-index: 1;
       touch-action: none;
     }
-    /* Shoot Button Styling */
+    /* --- Shoot Button styling --- */
     #shootBtn {
       position: absolute;
       bottom: 20px;
@@ -88,48 +71,47 @@
       z-index: 10;
       width: 80px;
       height: 80px;
-      background: rgba(255, 255, 255, 0.7);
+      background: rgba(255,255,255,0.7);
       border: none;
       border-radius: 8px;
       font-size: 24px;
       user-select: none;
     }
     #shootBtn:active {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255,255,255,0.9);
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- Enlarged, plus-shaped D-pad with four arms and a small center disc -->
+  <!-- Plus‑shaped D-pad -->
   <div id="dpadContainer">
     <div id="dpad">
-      <div id="dpad-up" class="dpad-arm"></div>
-      <div id="dpad-down" class="dpad-arm"></div>
-      <div id="dpad-left" class="dpad-arm"></div>
-      <div id="dpad-right" class="dpad-arm"></div>
+      <div id="dpad-up" class="dpad-button">▲</div>
+      <div id="dpad-left" class="dpad-button">◄</div>
       <div id="dpad-center"></div>
+      <div id="dpad-right" class="dpad-button">►</div>
+      <div id="dpad-down" class="dpad-button">▼</div>
     </div>
   </div>
   
   <!-- Shoot Button -->
   <button id="shootBtn">Shoot</button>
-
+  
   <script>
     "use strict";
-
-    // Global pixel size for upscaling.
+    // Global pixel upscaling factor.
     const PIXEL_SIZE = 4;
     let timeScale = 1.0;
     let slowMotionTimer = 0;
     let killCount = 0;
-
+    
     // Utility: clamp a value between min and max.
     function clamp(val, min, max) {
       return Math.min(Math.max(val, min), max);
     }
-
+    
     // ---------------------------
     // Vector2 Class
     // ---------------------------
@@ -155,7 +137,7 @@
         return new Vector2(this.x / (len || 1), this.y / (len || 1));
       }
     }
-
+    
     // ---------------------------
     // Camera Class – Follows player and clamps to board bounds.
     // ---------------------------
@@ -179,7 +161,7 @@
         );
       }
     }
-
+    
     // ---------------------------
     // Tile and TileMap Classes
     // ---------------------------
@@ -187,7 +169,7 @@
       constructor(gridX, gridY, tileType, color) {
         this.gridX = gridX;
         this.gridY = gridY;
-        this.tileType = tileType;
+        this.tileType = tileType; // 0 means walkable.
         this.color = color;
       }
     }
@@ -233,7 +215,7 @@
         }
       }
     }
-
+    
     // ---------------------------
     // Particle Class – For blood and pickup burst effects.
     // ---------------------------
@@ -259,7 +241,7 @@
         ctx.fill();
       }
     }
-
+    
     let effects = [];
     function spawnPickupEffect(position) {
       const count = 10;
@@ -294,7 +276,7 @@
         eff.render(ctx, camera);
       }
     }
-
+    
     // ---------------------------
     // Health Pickup Class – Renders a heart emoji.
     // ---------------------------
@@ -312,9 +294,9 @@
         ctx.fillText("❤️", screenPos.x, screenPos.y + this.size);
       }
     }
-
+    
     // ---------------------------
-    // Bullet Class – Clamped to travel one tile's distance.
+    // Bullet Class – Travels a limited distance.
     // ---------------------------
     class Bullet {
       constructor(position, velocity, owner) {
@@ -347,9 +329,9 @@
         ctx.fill();
       }
     }
-
+    
     // ---------------------------
-    // Player Class – With HP, shooting, animation, knockback, and death effects.
+    // Player Class – With movement, shooting, animation, and death effects.
     // ---------------------------
     class Player {
       constructor(tileX, tileY, tileMap) {
@@ -372,12 +354,12 @@
         this.hp = 100;
         this.knockback = new Vector2(0, 0);
         this.isDead = false;
-
+    
         this.spriteSheet = new Image();
         this.spriteLoaded = false;
         this.spriteSheet.onload = () => { this.spriteLoaded = true; };
         this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-SHIRMOND-SHEET.png";
-
+    
         this.frameCount = 4;
         this.currentFrame = 0;
         this.frameTime = 0;
@@ -510,9 +492,9 @@
         this.isDead = false;
       }
     }
-
+    
     // ---------------------------
-    // Enemy Class – With HP, knockback, and blood effect on death.
+    // Enemy Class – With HP, knockback, and death effects.
     // ---------------------------
     class Enemy {
       constructor(tileX, tileY, tileMap) {
@@ -647,9 +629,9 @@
         bullets.push(new Bullet(startPos, velocity, "enemy"));
       }
     }
-
+    
     // ---------------------------
-    // Global Variables for Screen Shake and Pickups
+    // Global Variables for Pickups and Screen Shake
     // ---------------------------
     let pickups = [];
     let pickupSpawnTimer = 0;
@@ -657,7 +639,7 @@
     let screenShakeTime = 0;
     let screenShakeMagnitude = 0;
     let shakeOffset = new Vector2(0, 0);
-
+    
     // ---------------------------
     // Collision Resolution (Knockback)
     // ---------------------------
@@ -683,7 +665,7 @@
         }
       }
     }
-
+    
     // ---------------------------
     // Setup Canvas and Camera
     // ---------------------------
@@ -722,7 +704,7 @@
       }
       camera.position = new Vector2(targetX, targetY);
     }
-
+    
     // ---------------------------
     // Create Player, Enemies, and Pickups
     // ---------------------------
@@ -731,7 +713,7 @@
     const enemies = [];
     let enemySpawnTimer = 0;
     const enemySpawnInterval = 3.0; // seconds.
-
+    
     // ---------------------------
     // Input Listeners (Keyboard/Mouse)
     // ---------------------------
@@ -743,11 +725,11 @@
       let worldTarget = camera.screenToWorld(new Vector2(mouseX, mouseY));
       player.shootAt(worldTarget);
     });
-
+    
     // ---------------------------
-    // Mobile Controls: Plus-shaped D-pad
+    // Mobile Controls – Plus‑shaped D‑pad
     // ---------------------------
-    // Coarse movement via four large touch areas.
+    // Coarse movement: tapping the four large arms.
     document.getElementById("dpad-up").addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       if (!player.moving) player.move("up");
@@ -764,18 +746,18 @@
       evt.preventDefault();
       if (!player.moving) player.move("right");
     });
-    // Also support mouse events on the arms.
+    // Also support mouse events.
     document.getElementById("dpad-up").addEventListener("mousedown", () => { if (!player.moving) player.move("up"); });
     document.getElementById("dpad-down").addEventListener("mousedown", () => { if (!player.moving) player.move("down"); });
     document.getElementById("dpad-left").addEventListener("mousedown", () => { if (!player.moving) player.move("left"); });
     document.getElementById("dpad-right").addEventListener("mousedown", () => { if (!player.moving) player.move("right"); });
-
-    // Refined attacking via dragging the small center disc.
+    
+    // Refined control: dragging the small center disc.
     const centerDisc = document.getElementById("dpad-center");
     let refinedActive = false;
-    const refinedThreshold = 8;  // Minimum displacement (in pixels) to trigger a refined shot.
+    const refinedThreshold = 8;  // Minimum displacement to trigger a refined shot.
     let startPosCenter = { x: 0, y: 0 };
-
+    
     centerDisc.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       refinedActive = true;
@@ -798,10 +780,8 @@
       let matrix = new DOMMatrixReadOnly(style.transform);
       let offsetX = matrix.m41;
       let offsetY = matrix.m42;
-      // If movement exceeds threshold, fire a refined attack.
       if (Math.abs(offsetX) >= refinedThreshold || Math.abs(offsetY) >= refinedThreshold) {
-        // Calculate target relative to player’s center.
-        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+        let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
         let refinedTarget = playerCenter.add(new Vector2(offsetX, offsetY));
         player.shootAt(refinedTarget);
       }
@@ -809,7 +789,7 @@
       centerDisc.style.transform = "none";
       setTimeout(() => { centerDisc.style.transition = ""; }, 200);
     });
-    // Also support mouse events for refined attack.
+    // Mouse support for refined control.
     centerDisc.addEventListener("mousedown", (evt) => {
       evt.preventDefault();
       refinedActive = true;
@@ -831,7 +811,7 @@
       let offsetX = matrix.m41;
       let offsetY = matrix.m42;
       if (Math.abs(offsetX) >= refinedThreshold || Math.abs(offsetY) >= refinedThreshold) {
-        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+        let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
         let refinedTarget = playerCenter.add(new Vector2(offsetX, offsetY));
         player.shootAt(refinedTarget);
       }
@@ -839,7 +819,7 @@
       centerDisc.style.transform = "none";
       setTimeout(() => { centerDisc.style.transition = ""; }, 200);
     });
-
+    
     // Shoot button events.
     const shootBtn = document.getElementById("shootBtn");
     shootBtn.addEventListener("touchstart", (evt) => {
@@ -849,7 +829,7 @@
     shootBtn.addEventListener("mousedown", (evt) => {
       player.shoot();
     });
-
+    
     // ---------------------------
     // Draw HUD – Display Player HP and Kill Count.
     // ---------------------------
@@ -866,7 +846,7 @@
       ctx.fillText("HP: " + player.hp, 30, 38);
       ctx.fillText("Kills: " + killCount, 130, 38);
     }
-
+    
     // ---------------------------
     // Main Game Loop
     // ---------------------------
@@ -876,12 +856,12 @@
       let deltaTime = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
       let effectiveDelta = deltaTime * timeScale;
-
+    
       player.update(effectiveDelta);
       enemies.forEach((enemy) => enemy.update(effectiveDelta));
       bullets.forEach((bullet) => bullet.update(effectiveDelta));
       updateEffects(effectiveDelta);
-
+    
       // Bullet collision checks.
       bullets.forEach((bullet) => {
         if (bullet.owner === "player") {
@@ -926,7 +906,7 @@
           }
         }
       });
-
+    
       // Remove dead bullets.
       for (let i = bullets.length - 1; i >= 0; i--) {
         if (!bullets[i].alive) bullets.splice(i, 1);
@@ -935,7 +915,7 @@
       for (let i = enemies.length - 1; i >= 0; i--) {
         if (!enemies[i].alive) enemies.splice(i, 1);
       }
-
+    
       enemySpawnTimer += effectiveDelta;
       if (enemySpawnTimer >= enemySpawnInterval) {
         enemySpawnTimer = 0;
@@ -956,7 +936,7 @@
         }
         enemies.push(new Enemy(gridX, gridY, tileMap));
       }
-
+    
       pickupSpawnTimer += effectiveDelta;
       if (pickupSpawnTimer >= pickupSpawnInterval) {
         pickupSpawnTimer = 0;
@@ -964,7 +944,7 @@
         let gridY = Math.floor(Math.random() * tileMap.height);
         pickups.push(new HealthPickup(gridX, gridY, tileMap));
       }
-
+    
       for (let i = pickups.length - 1; i >= 0; i--) {
         let pickup = pickups[i];
         if (
@@ -978,14 +958,14 @@
           pickups.splice(i, 1);
         }
       }
-
+    
       enemies.forEach((enemy) => resolveCollision(player, enemy));
       for (let i = 0; i < enemies.length; i++) {
         for (let j = i + 1; j < enemies.length; j++) {
           resolveCollision(enemies[i], enemies[j]);
         }
       }
-
+    
       if (screenShakeTime > 0) {
         screenShakeTime -= effectiveDelta;
         shakeOffset = new Vector2(
@@ -995,12 +975,12 @@
       } else {
         shakeOffset = new Vector2(0, 0);
       }
-
+    
       updateCamera();
       let renderCamera = new Camera(camera.screenWidth, camera.screenHeight);
       renderCamera.zoom = camera.zoom;
       renderCamera.position = camera.position.add(shakeOffset);
-
+    
       if (player.isDead) {
         slowMotionTimer -= deltaTime;
         if (slowMotionTimer <= 0) {
@@ -1009,7 +989,7 @@
           timeScale = 1.0;
         }
       }
-
+    
       ctx.fillStyle = "#505050";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       tileMap.render(ctx, renderCamera);
@@ -1019,7 +999,7 @@
       renderEffects(ctx, renderCamera);
       player.render(ctx, renderCamera);
       drawHUD(ctx);
-
+    
       requestAnimationFrame(gameLoop);
     }
     requestAnimationFrame(gameLoop);
