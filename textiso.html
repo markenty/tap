@@ -2,37 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Mobile Controls, Player Death Slow Motion, Effects & Kill Count</title>
+  <title>Isometric Game Engine – Mobile Controls (Gameboy D-pad) & Effects</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: #505050;
-      touch-action: none; /* Prevent default touch behaviors */
+      touch-action: none; /* Prevent unwanted default touch behaviors */
     }
     canvas {
       display: block;
       background: #505050;
     }
-    /* Mobile Controls Styling */
-    #mobileControls {
+    /* --- D-pad Container (Gameboy style) --- */
+    #dpadContainer {
       position: absolute;
       bottom: 20px;
       left: 20px;
+      width: 100px;
+      height: 100px;
       z-index: 10;
       user-select: none;
     }
-    #mobileControls button, #shootBtn {
-      background: rgba(255, 255, 255, 0.7);
-      border: none;
-      border-radius: 8px;
-      font-size: 24px;
-      margin: 2px;
+    /* Simulated D-pad background */
+    #dpad {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #ccc;
+      border: 2px solid #888;
+      border-radius: 10px;
+      /* Optional: use a background image to mimic a Gameboy D-pad */
     }
-    #mobileControls button:active, #shootBtn:active {
-      background: rgba(255, 255, 255, 0.9);
+    /* Draggable center disc (joystick) */
+    #joystick {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: #666;
+      border-radius: 50%;
+      left: calc(50% - 20px);
+      top: calc(50% - 20px);
+      touch-action: none;
     }
+    /* Shoot Button Styling */
     #shootBtn {
       position: absolute;
       bottom: 20px;
@@ -40,22 +54,27 @@
       z-index: 10;
       width: 80px;
       height: 80px;
+      background: rgba(255, 255, 255, 0.7);
+      border: none;
+      border-radius: 8px;
+      font-size: 24px;
+      user-select: none;
+    }
+    #shootBtn:active {
+      background: rgba(255, 255, 255, 0.9);
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
-  <!-- Onscreen keypad for movement -->
-  <div id="mobileControls">
-    <div style="text-align: center;">
-      <button id="upBtn" style="width: 60px; height: 60px;">▲</button>
-    </div>
-    <div style="display: flex; justify-content: center;">
-      <button id="leftBtn" style="width: 60px; height: 60px;">◄</button>
-      <button id="downBtn" style="width: 60px; height: 60px;">▼</button>
-      <button id="rightBtn" style="width: 60px; height: 60px;">►</button>
+  
+  <!-- Gameboy-style D-pad -->
+  <div id="dpadContainer">
+    <div id="dpad">
+      <div id="joystick"></div>
     </div>
   </div>
+  
   <!-- Shoot Button -->
   <button id="shootBtn">Shoot</button>
 
@@ -64,12 +83,8 @@
 
     // Global pixel size for upscaling.
     const PIXEL_SIZE = 4;
-
-    // Global time scale (for slow motion) and slow-motion timer.
     let timeScale = 1.0;
     let slowMotionTimer = 0;
-
-    // Global kill count.
     let killCount = 0;
 
     // Utility function: clamp value between min and max.
@@ -134,7 +149,7 @@
       constructor(gridX, gridY, tileType, color) {
         this.gridX = gridX;
         this.gridY = gridY;
-        this.tileType = tileType; // 0 means walkable.
+        this.tileType = tileType;
         this.color = color;
       }
     }
@@ -186,8 +201,8 @@
     // ---------------------------
     class Particle {
       constructor(position, velocity, life, color, size) {
-        this.position = position; // Vector2
-        this.velocity = velocity; // Vector2
+        this.position = position;
+        this.velocity = velocity;
         this.life = life;
         this.maxLife = life;
         this.color = color;
@@ -678,12 +693,11 @@
     let player = new Player(5, 5, tileMap);
     const bullets = [];
     const enemies = [];
-
     let enemySpawnTimer = 0;
     const enemySpawnInterval = 3.0; // seconds.
 
     // ---------------------------
-    // Input Event Listeners
+    // Input Event Listeners (Keyboard and Mouse)
     // ---------------------------
     document.addEventListener("keydown", (evt) => { player.keyDown(evt); });
     canvas.addEventListener("click", (evt) => {
@@ -693,49 +707,119 @@
       let worldTarget = camera.screenToWorld(new Vector2(mouseX, mouseY));
       player.shootAt(worldTarget);
     });
-
+    
     // ---------------------------
-    // Mobile Controls – Attach touch event listeners to onscreen buttons.
+    // Mobile Controls – Gameboy D-pad (draggable joystick)
     // ---------------------------
-    const upBtn = document.getElementById("upBtn");
-    const downBtn = document.getElementById("downBtn");
-    const leftBtn = document.getElementById("leftBtn");
-    const rightBtn = document.getElementById("rightBtn");
+    const dpad = document.getElementById("dpad");
+    const joystick = document.getElementById("joystick");
     const shootBtn = document.getElementById("shootBtn");
 
+    // Helper: Trigger a move if player is not already moving.
     function handleMove(direction) {
       if (!player.moving) {
         player.move(direction);
       }
     }
 
-    upBtn.addEventListener("touchstart", (evt) => {
+    // Variables for tracking joystick drag.
+    let active = false;
+    const maxRadius = 30; // maximum displacement in pixels.
+    const threshold = 15; // minimum displacement to trigger a move.
+
+    joystick.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
-      handleMove("up");
+      active = true;
     });
-    downBtn.addEventListener("touchstart", (evt) => {
+    joystick.addEventListener("touchmove", (evt) => {
+      if (!active) return;
       evt.preventDefault();
-      handleMove("down");
+      let touch = evt.touches[0];
+      let rect = dpad.getBoundingClientRect();
+      // Calculate offset from center of dpad.
+      let centerX = rect.width / 2;
+      let centerY = rect.height / 2;
+      let offsetX = touch.clientX - rect.left - centerX;
+      let offsetY = touch.clientY - rect.top - centerY;
+      let distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+      if (distance > maxRadius) {
+        let ratio = maxRadius / distance;
+        offsetX *= ratio;
+        offsetY *= ratio;
+      }
+      joystick.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
     });
-    leftBtn.addEventListener("touchstart", (evt) => {
+    joystick.addEventListener("touchend", (evt) => {
       evt.preventDefault();
-      handleMove("left");
+      if (!active) return;
+      active = false;
+      // Parse current translation.
+      let style = window.getComputedStyle(joystick);
+      let matrix = new WebKitCSSMatrix(style.transform);
+      let offsetX = matrix.m41;
+      let offsetY = matrix.m42;
+      // Trigger move if displacement exceeds threshold.
+      if (Math.abs(offsetX) >= threshold || Math.abs(offsetY) >= threshold) {
+        if (Math.abs(offsetX) > Math.abs(offsetY)) {
+          handleMove(offsetX > 0 ? "right" : "left");
+        } else {
+          handleMove(offsetY > 0 ? "down" : "up");
+        }
+      }
+      // Snap joystick back to center.
+      joystick.style.transition = "transform 0.2s";
+      joystick.style.transform = "none";
+      setTimeout(() => { joystick.style.transition = ""; }, 200);
     });
-    rightBtn.addEventListener("touchstart", (evt) => {
+
+    // Support mouse events as an alternative.
+    joystick.addEventListener("mousedown", (evt) => {
       evt.preventDefault();
-      handleMove("right");
+      active = true;
     });
+    document.addEventListener("mousemove", (evt) => {
+      if (!active) return;
+      evt.preventDefault();
+      let rect = dpad.getBoundingClientRect();
+      let centerX = rect.width / 2;
+      let centerY = rect.height / 2;
+      let offsetX = evt.clientX - rect.left - centerX;
+      let offsetY = evt.clientY - rect.top - centerY;
+      let distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+      if (distance > maxRadius) {
+        let ratio = maxRadius / distance;
+        offsetX *= ratio;
+        offsetY *= ratio;
+      }
+      joystick.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    });
+    document.addEventListener("mouseup", (evt) => {
+      if (!active) return;
+      active = false;
+      let style = window.getComputedStyle(joystick);
+      let matrix = new WebKitCSSMatrix(style.transform);
+      let offsetX = matrix.m41;
+      let offsetY = matrix.m42;
+      if (Math.abs(offsetX) >= threshold || Math.abs(offsetY) >= threshold) {
+        if (Math.abs(offsetX) > Math.abs(offsetY)) {
+          handleMove(offsetX > 0 ? "right" : "left");
+        } else {
+          handleMove(offsetY > 0 ? "down" : "up");
+        }
+      }
+      joystick.style.transition = "transform 0.2s";
+      joystick.style.transform = "none";
+      setTimeout(() => { joystick.style.transition = ""; }, 200);
+    });
+
+    // Shoot button events.
     shootBtn.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       player.shoot();
     });
-
-    // Optionally support mouse events on mobile controls:
-    upBtn.addEventListener("mousedown", () => { handleMove("up"); });
-    downBtn.addEventListener("mousedown", () => { handleMove("down"); });
-    leftBtn.addEventListener("mousedown", () => { handleMove("left"); });
-    rightBtn.addEventListener("mousedown", () => { handleMove("right"); });
-    shootBtn.addEventListener("mousedown", () => { player.shoot(); });
+    shootBtn.addEventListener("mousedown", (evt) => {
+      player.shoot();
+    });
 
     // ---------------------------
     // Draw HUD – Display Player HP and Kill Count.
@@ -764,7 +848,6 @@
       lastTime = currentTime;
       let effectiveDelta = deltaTime * timeScale;
 
-      // Update game objects.
       player.update(effectiveDelta);
       enemies.forEach((enemy) => enemy.update(effectiveDelta));
       bullets.forEach((bullet) => bullet.update(effectiveDelta));
