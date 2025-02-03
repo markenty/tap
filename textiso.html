@@ -91,8 +91,8 @@
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- Bomb Deploy Button now shows bomb emoji and count -->
-  <button id="bombBtn">💣 <span style="color:red; font-size:0.8em; vertical-align:middle;">x 0</span></button>
+  <!-- Bomb Deploy Button with bomb emoji as label -->
+  <button id="bombBtn">💣</button>
   <!-- Headbutt effect overlay (initially hidden) -->
   <div id="headbuttEffect"></div>
   
@@ -917,7 +917,8 @@
       void headbuttDiv.offsetWidth;  // force reflow
       headbuttDiv.classList.add("active");
       
-      // For each enemy overlapping the player's bounding box, apply double base knockback.
+      // Check collision: for each enemy overlapping the player's bounding box,
+      // apply a knockback vector twice the base force.
       let playerBox = {
           x: playerScreenPos.x,
           y: playerScreenPos.y,
@@ -1033,7 +1034,7 @@
     }
     
     // ---------------------------
-    // HUD – Display HP and kill count.
+    // HUD – Display HP, kill count, and bomb count.
     // ---------------------------
     function drawHUD(ctx) {
       ctx.fillStyle = "black";
@@ -1047,6 +1048,13 @@
       ctx.font = "16px Arial";
       ctx.fillText("HP: " + player.hp, 30, 38);
       ctx.fillText("Kills: " + killCount, 130, 38);
+      
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 50, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 50, 200, 24);
+      ctx.fillText("Bombs: " + bombCount, 30, 68);
     }
     
     // ---------------------------
@@ -1188,9 +1196,9 @@
       player.render(ctx, renderCamera);
       drawHUD(ctx);
     
-      // --- Update bomb button appearance, glow effect, and text ---
+      // --- Update bomb button appearance and glow effect ---
       let bombBtn = document.getElementById("bombBtn");
-      if (bombCount > 0) {
+      if(bombCount > 0){
         bombBtn.style.opacity = "1";
         bombBtn.disabled = false;
         bombBtn.classList.add("ready");
@@ -1199,8 +1207,6 @@
         bombBtn.disabled = true;
         bombBtn.classList.remove("ready");
       }
-      // Update the bomb button's inner HTML with bomb emoji and red count.
-      bombBtn.innerHTML = `💣 <span style="color:red; font-size:0.8em; vertical-align:middle;">x ${bombCount}</span>`;
     
       requestAnimationFrame(gameLoop);
     }
