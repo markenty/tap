@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Mobile Controls (X‑Shaped D‑pad Diagonals)</title>
+  <title>Isometric Game Engine – Mobile Controls (Plus‑Shaped D‑pad)</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: #505050;
-      touch-action: none;
+      touch-action: none; /* Prevent unwanted touch behavior */
     }
     canvas {
       display: block;
       background: #505050;
     }
-    /* --- X‑shaped D‑pad container --- */
+    /* --- D-pad container: increased size for easy tapping --- */
     #dpadContainer {
       position: absolute;
       bottom: 20px;
@@ -25,7 +25,17 @@
       z-index: 10;
       user-select: none;
     }
-    /* --- Diagonal buttons --- */
+    /* --- Use a grid to form a 3x3 layout --- */
+    #dpad {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      width: 100%;
+      height: 100%;
+      gap: 5px;
+      background: transparent;
+    }
+    /* --- Each directional button is styled as a large, easy‑tap area --- */
     .dpad-button {
       background: rgba(200,200,200,0.8);
       border: 2px solid #888;
@@ -34,27 +44,24 @@
       justify-content: center;
       align-items: center;
       font-size: 28px;
-      position: absolute;
-      width: 80px;
-      height: 80px;
-      cursor: pointer;
     }
-    /* --- Position buttons in the four corners --- */
-    #dpad-up-left {
-      top: 0;
-      left: 0;
-    }
-    #dpad-up-right {
-      top: 0;
-      right: 0;
-    }
-    #dpad-down-left {
-      bottom: 0;
-      left: 0;
-    }
-    #dpad-down-right {
-      bottom: 0;
-      right: 0;
+    /* Place the four arms in the proper grid cells */
+    #dpad-up    { grid-column: 2; grid-row: 1; }
+    #dpad-left  { grid-column: 1; grid-row: 2; }
+    #dpad-right { grid-column: 3; grid-row: 2; }
+    #dpad-down  { grid-column: 2; grid-row: 3; }
+    /* --- Center cell reserved for refined control (small draggable disc) --- */
+    #dpad-center {
+      grid-column: 2;
+      grid-row: 2;
+      position: relative;
+      width: 60px;
+      height: 60px;
+      margin: auto;
+      background: #666;
+      border: 2px solid #444;
+      border-radius: 50%;
+      touch-action: none;
     }
     /* --- Shoot Button styling --- */
     #shootBtn {
@@ -69,7 +76,6 @@
       border-radius: 8px;
       font-size: 24px;
       user-select: none;
-      cursor: pointer;
     }
     #shootBtn:active {
       background: rgba(255,255,255,0.9);
@@ -79,12 +85,15 @@
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- X‑shaped D‑pad (diagonal movement buttons) -->
+  <!-- Plus‑shaped D-pad -->
   <div id="dpadContainer">
-    <div id="dpad-up-left" class="dpad-button">↖</div>
-    <div id="dpad-up-right" class="dpad-button">↗</div>
-    <div id="dpad-down-left" class="dpad-button">↙</div>
-    <div id="dpad-down-right" class="dpad-button">↘</div>
+    <div id="dpad">
+      <div id="dpad-up" class="dpad-button">▲</div>
+      <div id="dpad-left" class="dpad-button">◄</div>
+      <div id="dpad-center"></div>
+      <div id="dpad-right" class="dpad-button">►</div>
+      <div id="dpad-down" class="dpad-button">▼</div>
+    </div>
   </div>
   
   <!-- Shoot Button -->
@@ -92,15 +101,20 @@
   
   <script>
     "use strict";
+    // Global pixel upscaling factor.
     const PIXEL_SIZE = 4;
     let timeScale = 1.0;
     let slowMotionTimer = 0;
     let killCount = 0;
     
+    // Utility: clamp a value between min and max.
     function clamp(val, min, max) {
       return Math.min(Math.max(val, min), max);
     }
     
+    // ---------------------------
+    // Vector2 Class
+    // ---------------------------
     class Vector2 {
       constructor(x, y) {
         this.x = x;
@@ -124,6 +138,9 @@
       }
     }
     
+    // ---------------------------
+    // Camera Class – Follows player and clamps to board bounds.
+    // ---------------------------
     class Camera {
       constructor(screenWidth, screenHeight) {
         this.position = new Vector2(0, 0);
@@ -145,11 +162,14 @@
       }
     }
     
+    // ---------------------------
+    // Tile and TileMap Classes
+    // ---------------------------
     class Tile {
       constructor(gridX, gridY, tileType, color) {
         this.gridX = gridX;
         this.gridY = gridY;
-        this.tileType = tileType;
+        this.tileType = tileType; // 0 means walkable.
         this.color = color;
       }
     }
@@ -196,6 +216,9 @@
       }
     }
     
+    // ---------------------------
+    // Particle Class – For blood and pickup burst effects.
+    // ---------------------------
     class Particle {
       constructor(position, velocity, life, color, size) {
         this.position = position;
@@ -254,6 +277,9 @@
       }
     }
     
+    // ---------------------------
+    // Health Pickup Class – Renders a heart emoji.
+    // ---------------------------
     class HealthPickup {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap;
@@ -269,6 +295,9 @@
       }
     }
     
+    // ---------------------------
+    // Bullet Class – Travels a limited distance.
+    // ---------------------------
     class Bullet {
       constructor(position, velocity, owner) {
         this.position = new Vector2(position.x, position.y);
@@ -301,6 +330,9 @@
       }
     }
     
+    // ---------------------------
+    // Player Class – With movement, shooting, animation, and death effects.
+    // ---------------------------
     class Player {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap;
@@ -367,10 +399,6 @@
             case "right": row = 1; break;
             case "up": row = 2; break;
             case "left": row = 3; break;
-            case "up-left": row = 2; break;
-            case "up-right": row = 2; break;
-            case "down-left": row = 0; break;
-            case "down-right": row = 0; break;
             default: row = 0;
           }
           let srcX = this.currentFrame * 32;
@@ -385,7 +413,6 @@
           ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
         }
       }
-      // Standard movement for cardinal directions.
       move(direction) {
         if (this.moving) return;
         let newGridX = this.gridX;
@@ -407,27 +434,6 @@
         this.frameTime = 0;
         this.currentFrame = 0;
       }
-      // Diagonal movement: each button moves the player along both axes.
-      moveDiagonal(dx, dy) {
-        if (this.moving) return;
-        let newGridX = this.gridX + dx;
-        let newGridY = this.gridY + dy;
-        if (newGridX < 0 || newGridX >= this.tileMap.width ||
-            newGridY < 0 || newGridY >= this.tileMap.height) return;
-        if (this.tileMap.tiles[newGridY][newGridX].tileType !== 0) return;
-        this.moving = true;
-        this.moveTime = 0;
-        this.startPos = this.position;
-        this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
-        this.targetGridX = newGridX;
-        this.targetGridY = newGridY;
-        if (dx === 1 && dy === -1) this.direction = "up-right";
-        else if (dx === -1 && dy === -1) this.direction = "up-left";
-        else if (dx === 1 && dy === 1) this.direction = "down-right";
-        else if (dx === -1 && dy === 1) this.direction = "down-left";
-        this.frameTime = 0;
-        this.currentFrame = 0;
-      }
       keyDown(evt) {
         if (evt.key === " " || evt.key === "Spacebar") {
           this.shoot();
@@ -444,6 +450,7 @@
           this.move("right");
         }
       }
+      // Fires in facing direction.
       shoot() {
         let startPos = new Vector2(
           this.position.x + this.width / 2,
@@ -465,6 +472,7 @@
           "player"
         ));
       }
+      // Refined attack: fires toward a target world coordinate.
       shootAt(target) {
         let startPos = new Vector2(
           this.position.x + this.width / 2,
@@ -485,6 +493,9 @@
       }
     }
     
+    // ---------------------------
+    // Enemy Class – With HP, knockback, and death effects.
+    // ---------------------------
     class Enemy {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap;
@@ -619,13 +630,19 @@
       }
     }
     
+    // ---------------------------
+    // Global Variables for Pickups and Screen Shake
+    // ---------------------------
     let pickups = [];
     let pickupSpawnTimer = 0;
-    const pickupSpawnInterval = 10.0;
+    const pickupSpawnInterval = 10.0; // seconds.
     let screenShakeTime = 0;
     let screenShakeMagnitude = 0;
     let shakeOffset = new Vector2(0, 0);
     
+    // ---------------------------
+    // Collision Resolution (Knockback)
+    // ---------------------------
     function resolveCollision(entityA, entityB) {
       let ax = entityA.position.x + entityA.knockback.x,
           ay = entityA.position.y + entityA.knockback.y,
@@ -649,6 +666,9 @@
       }
     }
     
+    // ---------------------------
+    // Setup Canvas and Camera
+    // ---------------------------
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
@@ -685,12 +705,18 @@
       camera.position = new Vector2(targetX, targetY);
     }
     
+    // ---------------------------
+    // Create Player, Enemies, and Pickups
+    // ---------------------------
     let player = new Player(5, 5, tileMap);
     const bullets = [];
     const enemies = [];
     let enemySpawnTimer = 0;
-    const enemySpawnInterval = 3.0;
+    const enemySpawnInterval = 3.0; // seconds.
     
+    // ---------------------------
+    // Input Listeners (Keyboard/Mouse)
+    // ---------------------------
     document.addEventListener("keydown", (evt) => { player.keyDown(evt); });
     canvas.addEventListener("click", (evt) => {
       let rect = canvas.getBoundingClientRect();
@@ -700,35 +726,113 @@
       player.shootAt(worldTarget);
     });
     
-    // Diagonal buttons: each button calls moveDiagonal with appropriate offsets.
-    document.getElementById("dpad-up-left").addEventListener("touchstart", (evt) => {
+    // ---------------------------
+    // Mobile Controls – Plus‑shaped D‑pad
+    // ---------------------------
+    // Coarse movement: tapping the four large arms.
+    document.getElementById("dpad-up").addEventListener("touchstart", (evt) => {
       evt.preventDefault();
-      if (!player.moving) player.moveDiagonal(-1, -1);
+      if (!player.moving) player.move("up");
     });
-    document.getElementById("dpad-up-right").addEventListener("touchstart", (evt) => {
+    document.getElementById("dpad-down").addEventListener("touchstart", (evt) => {
       evt.preventDefault();
-      if (!player.moving) player.moveDiagonal(1, -1);
+      if (!player.moving) player.move("down");
     });
-    document.getElementById("dpad-down-left").addEventListener("touchstart", (evt) => {
+    document.getElementById("dpad-left").addEventListener("touchstart", (evt) => {
       evt.preventDefault();
-      if (!player.moving) player.moveDiagonal(-1, 1);
+      if (!player.moving) player.move("left");
     });
-    document.getElementById("dpad-down-right").addEventListener("touchstart", (evt) => {
+    document.getElementById("dpad-right").addEventListener("touchstart", (evt) => {
       evt.preventDefault();
-      if (!player.moving) player.moveDiagonal(1, 1);
+      if (!player.moving) player.move("right");
     });
-    document.getElementById("dpad-up-left").addEventListener("mousedown", () => { if (!player.moving) player.moveDiagonal(-1, -1); });
-    document.getElementById("dpad-up-right").addEventListener("mousedown", () => { if (!player.moving) player.moveDiagonal(1, -1); });
-    document.getElementById("dpad-down-left").addEventListener("mousedown", () => { if (!player.moving) player.moveDiagonal(-1, 1); });
-    document.getElementById("dpad-down-right").addEventListener("mousedown", () => { if (!player.moving) player.moveDiagonal(1, 1); });
+    // Also support mouse events.
+    document.getElementById("dpad-up").addEventListener("mousedown", () => { if (!player.moving) player.move("up"); });
+    document.getElementById("dpad-down").addEventListener("mousedown", () => { if (!player.moving) player.move("down"); });
+    document.getElementById("dpad-left").addEventListener("mousedown", () => { if (!player.moving) player.move("left"); });
+    document.getElementById("dpad-right").addEventListener("mousedown", () => { if (!player.moving) player.move("right"); });
     
+    // Refined control: dragging the small center disc.
+    const centerDisc = document.getElementById("dpad-center");
+    let refinedActive = false;
+    const refinedThreshold = 8;  // Minimum displacement to trigger a refined shot.
+    let startPosCenter = { x: 0, y: 0 };
+    
+    centerDisc.addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      refinedActive = true;
+      let rect = centerDisc.getBoundingClientRect();
+      startPosCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+    });
+    centerDisc.addEventListener("touchmove", (evt) => {
+      if (!refinedActive) return;
+      evt.preventDefault();
+      let touch = evt.touches[0];
+      let offsetX = touch.clientX - startPosCenter.x;
+      let offsetY = touch.clientY - startPosCenter.y;
+      centerDisc.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    });
+    centerDisc.addEventListener("touchend", (evt) => {
+      evt.preventDefault();
+      if (!refinedActive) return;
+      refinedActive = false;
+      let style = window.getComputedStyle(centerDisc);
+      let matrix = new DOMMatrixReadOnly(style.transform);
+      let offsetX = matrix.m41;
+      let offsetY = matrix.m42;
+      if (Math.abs(offsetX) >= refinedThreshold || Math.abs(offsetY) >= refinedThreshold) {
+        let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
+        let refinedTarget = playerCenter.add(new Vector2(offsetX, offsetY));
+        player.shootAt(refinedTarget);
+      }
+      centerDisc.style.transition = "transform 0.2s";
+      centerDisc.style.transform = "none";
+      setTimeout(() => { centerDisc.style.transition = ""; }, 200);
+    });
+    // Mouse support for refined control.
+    centerDisc.addEventListener("mousedown", (evt) => {
+      evt.preventDefault();
+      refinedActive = true;
+      let rect = centerDisc.getBoundingClientRect();
+      startPosCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+    });
+    document.addEventListener("mousemove", (evt) => {
+      if (!refinedActive) return;
+      evt.preventDefault();
+      let offsetX = evt.clientX - startPosCenter.x;
+      let offsetY = evt.clientY - startPosCenter.y;
+      centerDisc.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    });
+    document.addEventListener("mouseup", (evt) => {
+      if (!refinedActive) return;
+      refinedActive = false;
+      let style = window.getComputedStyle(centerDisc);
+      let matrix = new DOMMatrixReadOnly(style.transform);
+      let offsetX = matrix.m41;
+      let offsetY = matrix.m42;
+      if (Math.abs(offsetX) >= refinedThreshold || Math.abs(offsetY) >= refinedThreshold) {
+        let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
+        let refinedTarget = playerCenter.add(new Vector2(offsetX, offsetY));
+        player.shootAt(refinedTarget);
+      }
+      centerDisc.style.transition = "transform 0.2s";
+      centerDisc.style.transform = "none";
+      setTimeout(() => { centerDisc.style.transition = ""; }, 200);
+    });
+    
+    // Shoot button events.
     const shootBtn = document.getElementById("shootBtn");
     shootBtn.addEventListener("touchstart", (evt) => {
       evt.preventDefault();
       player.shoot();
     });
-    shootBtn.addEventListener("mousedown", () => { player.shoot(); });
+    shootBtn.addEventListener("mousedown", (evt) => {
+      player.shoot();
+    });
     
+    // ---------------------------
+    // Draw HUD – Display Player HP and Kill Count.
+    // ---------------------------
     function drawHUD(ctx) {
       ctx.fillStyle = "black";
       ctx.fillRect(20, 20, 200, 24);
@@ -743,6 +847,9 @@
       ctx.fillText("Kills: " + killCount, 130, 38);
     }
     
+    // ---------------------------
+    // Main Game Loop
+    // ---------------------------
     let lastTime = performance.now();
     function gameLoop() {
       let currentTime = performance.now();
@@ -755,6 +862,7 @@
       bullets.forEach((bullet) => bullet.update(effectiveDelta));
       updateEffects(effectiveDelta);
     
+      // Bullet collision checks.
       bullets.forEach((bullet) => {
         if (bullet.owner === "player") {
           enemies.forEach((enemy) => {
@@ -799,9 +907,11 @@
         }
       });
     
+      // Remove dead bullets.
       for (let i = bullets.length - 1; i >= 0; i--) {
         if (!bullets[i].alive) bullets.splice(i, 1);
       }
+      // Remove dead enemies.
       for (let i = enemies.length - 1; i >= 0; i--) {
         if (!enemies[i].alive) enemies.splice(i, 1);
       }
