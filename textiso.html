@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Isometric Game Engine – Tap/Hold-to-Move & Bomb Animation</title>
+  <title>Isometric Game Engine – Headbutt & Bomb Attack</title>
   <style>
     html, body {
       margin: 0;
@@ -31,22 +31,59 @@
       line-height: 80px;
       text-align: center;
       cursor: pointer;
-      transition: background 0.2s, transform 0.2s, opacity 0.2s;
+      transition: background 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s;
       user-select: none;
+    }
+    /* Glow effect when a bomb is ready */
+    #bombBtn.ready {
+      box-shadow: 0 0 15px 3px rgba(255, 255, 0, 0.9);
     }
     #bombBtn:active {
       background: rgba(255,255,255,1);
       transform: scale(0.95);
     }
-    /* Responsive adjustments */
+    /* Dim bomb button when disabled */
+    #bombBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+    /* Responsive adjustments for mobile: larger button with centered emoji */
     @media (max-width: 600px) {
       #bombBtn {
-        width: 60px;
-        height: 60px;
-        font-size: 28px;
-        line-height: 60px;
+        width: 100px;
+        height: 100px;
+        font-size: 48px;
+        line-height: 100px;
         bottom: 15px;
         right: 15px;
+      }
+    }
+    
+    /* --- Headbutt Effect Styling --- */
+    #headbuttEffect {
+      position: absolute;
+      pointer-events: none;
+      width: 64px;
+      height: 64px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      transform: scale(0);
+      opacity: 0;
+    }
+    /* The headbutt animation is triggered by adding the "active" class */
+    #headbuttEffect.active {
+      animation: headbuttAnim 0.3s forwards;
+    }
+    @keyframes headbuttAnim {
+      0% { transform: scale(0); opacity: 1; }
+      50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    @media (max-width: 600px) {
+      #headbuttEffect {
+        width: 48px;
+        height: 48px;
       }
     }
   </style>
@@ -56,6 +93,8 @@
   
   <!-- Bomb Deploy Button with bomb emoji as label -->
   <button id="bombBtn">💣</button>
+  <!-- Headbutt effect overlay (initially hidden) -->
+  <div id="headbuttEffect"></div>
   
   <script>
     "use strict";
@@ -860,6 +899,64 @@
     });
     
     // ---------------------------
+    // Headbutt Attack – Triggered by clicking/tapping on the player sprite.
+    // ---------------------------
+    function rectIntersect(a, b) {
+      return a.x < b.x + b.width && a.x + a.width > b.x &&
+             a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+    
+    function triggerHeadbutt() {
+      // Position the headbutt effect div over the player (centered)
+      let playerScreenPos = camera.worldToScreen(player.position);
+      let headbuttDiv = document.getElementById("headbuttEffect");
+      headbuttDiv.style.left = (playerScreenPos.x + player.width/2 - 32) + "px";
+      headbuttDiv.style.top = (playerScreenPos.y + player.height/2 - 32) + "px";
+      // Restart animation by removing and re-adding the "active" class
+      headbuttDiv.classList.remove("active");
+      void headbuttDiv.offsetWidth;  // force reflow
+      headbuttDiv.classList.add("active");
+      
+      // Check collision: for each enemy overlapping the player's bounding box,
+      // apply a knockback vector twice the base force.
+      let playerBox = {
+          x: playerScreenPos.x,
+          y: playerScreenPos.y,
+          width: player.width,
+          height: player.height
+      };
+      enemies.forEach((enemy) => {
+         let enemyScreenPos = camera.worldToScreen(enemy.position);
+         let enemyBox = {
+           x: enemyScreenPos.x,
+           y: enemyScreenPos.y,
+           width: enemy.width,
+           height: enemy.height
+         };
+         if (rectIntersect(playerBox, enemyBox)) {
+           let playerCenter = new Vector2(playerBox.x + playerBox.width/2, playerBox.y + playerBox.height/2);
+           let enemyCenter = new Vector2(enemyBox.x + enemyBox.width/2, enemyBox.y + enemyBox.height/2);
+           let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
+           enemy.knockback = enemy.knockback.add(knockVec);
+         }
+      });
+    }
+    
+    // Click event on canvas to trigger headbutt if clicking on the player sprite.
+    canvas.addEventListener("click", (evt) => {
+      let rect = canvas.getBoundingClientRect();
+      let x = evt.clientX - rect.left;
+      let y = evt.clientY - rect.top;
+      let playerScreenPos = camera.worldToScreen(player.position);
+      if (x >= playerScreenPos.x && x <= playerScreenPos.x + player.width &&
+          y >= playerScreenPos.y && y <= playerScreenPos.y + player.height) {
+            triggerHeadbutt();
+            evt.stopPropagation();
+            return;
+      }
+    });
+    
+    // ---------------------------
     // Bomb Deployment.
     // ---------------------------
     function deployBomb() {
@@ -979,8 +1076,6 @@
       updateBaitBombs(effectiveDelta);
     
       // --- Bullet Collision Handling ---
-      // Compute the "tile distance" (world units for one tile's diagonal)
-      let tileDistance = Math.sqrt(Math.pow(tileMap.tileWidth / 2, 2) + Math.pow(tileMap.tileHeight / 2, 2));
       bullets.forEach((bullet) => {
         if (bullet.owner === "player") {
           enemies.forEach((enemy) => {
@@ -991,19 +1086,8 @@
               bullet.position.y <= enemy.position.y + enemy.height
             ) {
               bullet.alive = false;
-              // Compute centers.
-              let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
-              let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
-              let dist = enemyCenter.subtract(playerCenter).length();
-              if(dist < tileDistance * 1.5){
-                // If enemy is near player, send enemy back 4 tiles.
-                let enhancedKnock = enemyCenter.subtract(playerCenter).normalize().scale(tileDistance * 4);
-                enemy.knockback = enemy.knockback.add(enhancedKnock);
-              } else {
-                // Default knockback.
-                let baseKnock = bullet.velocity.normalize().scale(20);
-                enemy.knockback = enemy.knockback.add(baseKnock);
-              }
+              let baseKnock = bullet.velocity.normalize().scale(20);
+              enemy.knockback = enemy.knockback.add(baseKnock);
               screenShakeTime = 0.2;
               screenShakeMagnitude = 10;
             }
@@ -1112,14 +1196,16 @@
       player.render(ctx, renderCamera);
       drawHUD(ctx);
     
-      // --- Update bomb button appearance ---
+      // --- Update bomb button appearance and glow effect ---
       let bombBtn = document.getElementById("bombBtn");
       if(bombCount > 0){
         bombBtn.style.opacity = "1";
         bombBtn.disabled = false;
+        bombBtn.classList.add("ready");
       } else {
         bombBtn.style.opacity = "0.5";
         bombBtn.disabled = true;
+        bombBtn.classList.remove("ready");
       }
     
       requestAnimationFrame(gameLoop);
