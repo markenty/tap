@@ -10,54 +10,52 @@
       overflow: hidden;
       background: #505050;
       touch-action: none;
+      font-family: sans-serif;
     }
     canvas {
       display: block;
       background: #505050;
     }
-    /* --- Removed D-pad CSS --- */
-    /* --- Shoot and Bomb Buttons remain --- */
-    #shootBtn {
+    /* --- Bomb Button Styling --- */
+    #bombBtn {
       position: absolute;
       bottom: 20px;
       right: 20px;
       z-index: 10;
       width: 80px;
       height: 80px;
-      background: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.85);
       border: none;
-      border-radius: 8px;
-      font-size: 24px;
-      user-select: none;
-    }
-    #shootBtn:active {
-      background: rgba(255,255,255,0.9);
-    }
-    #bombBtn {
-      position: absolute;
-      bottom: 20px;
-      right: 120px;
-      z-index: 10;
-      width: 80px;
-      height: 80px;
-      background: rgba(255,255,255,0.7);
-      border: none;
-      border-radius: 8px;
-      font-size: 24px;
+      border-radius: 50%;
+      font-size: 36px;
+      line-height: 80px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, opacity 0.2s;
       user-select: none;
     }
     #bombBtn:active {
-      background: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,1);
+      transform: scale(0.95);
+    }
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      #bombBtn {
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+        line-height: 60px;
+        bottom: 15px;
+        right: 15px;
+      }
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
   
-  <!-- Shoot Button -->
-  <button id="shootBtn">Shoot</button>
-  <!-- Bomb Deploy Button -->
-  <button id="bombBtn">Bomb</button>
+  <!-- Bomb Deploy Button with bomb emoji as label -->
+  <button id="bombBtn">💣</button>
   
   <script>
     "use strict";
@@ -187,7 +185,7 @@
     }
     
     // ---------------------------
-    // Particle Class – Now supports optional acceleration.
+    // Particle Class – Supports optional acceleration.
     // ---------------------------
     class Particle {
       constructor(position, velocity, life, color, size, acceleration) {
@@ -257,7 +255,7 @@
         let life = Math.random() * 1 + 0.5;
         let size = Math.random() * 3 + 2;
         let color = Math.random() < 0.5 ? "rgba(255,105,180,ALPHA)" : "rgba(255,0,0,ALPHA)";
-        let acceleration = new Vector2(0, 300); // gravity
+        let acceleration = new Vector2(0, 300);
         effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration));
       }
     }
@@ -490,7 +488,6 @@
           ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
         }
       }
-      // Move one tile in the specified direction if possible.
       move(direction) {
         if (this.moving) return;
         let newGridX = this.gridX;
@@ -785,21 +782,8 @@
     const enemySpawnInterval = 3.0;
     
     // ---------------------------
-    // Input Listeners – Remove D-pad events.
+    // Input Listeners – Auto-move (tap/hold) control.
     // ---------------------------
-    // Keyboard controls remain for desktop.
-    document.addEventListener("keydown", (evt) => { player.keyDown && player.keyDown(evt); });
-    
-    // For shooting: click on canvas shoots.
-    canvas.addEventListener("click", (evt) => {
-      let rect = canvas.getBoundingClientRect();
-      let mouseX = evt.clientX - rect.left;
-      let mouseY = evt.clientY - rect.top;
-      let worldTarget = camera.screenToWorld(new Vector2(mouseX, mouseY));
-      player.shootAt(worldTarget);
-    });
-    
-    // --- Auto-move (tap/hold) control ---
     function computeDirection(clientX, clientY) {
       let rect = canvas.getBoundingClientRect();
       let tapX = clientX - rect.left;
@@ -995,6 +979,8 @@
       updateBaitBombs(effectiveDelta);
     
       // --- Bullet Collision Handling ---
+      // Compute the "tile distance" (world units for one tile's diagonal)
+      let tileDistance = Math.sqrt(Math.pow(tileMap.tileWidth / 2, 2) + Math.pow(tileMap.tileHeight / 2, 2));
       bullets.forEach((bullet) => {
         if (bullet.owner === "player") {
           enemies.forEach((enemy) => {
@@ -1005,9 +991,19 @@
               bullet.position.y <= enemy.position.y + enemy.height
             ) {
               bullet.alive = false;
-              // Instead of reducing enemy HP, simply apply a knockback.
-              let knockForce = bullet.velocity.normalize().scale(20);
-              enemy.knockback = enemy.knockback.add(knockForce);
+              // Compute centers.
+              let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
+              let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
+              let dist = enemyCenter.subtract(playerCenter).length();
+              if(dist < tileDistance * 1.5){
+                // If enemy is near player, send enemy back 4 tiles.
+                let enhancedKnock = enemyCenter.subtract(playerCenter).normalize().scale(tileDistance * 4);
+                enemy.knockback = enemy.knockback.add(enhancedKnock);
+              } else {
+                // Default knockback.
+                let baseKnock = bullet.velocity.normalize().scale(20);
+                enemy.knockback = enemy.knockback.add(baseKnock);
+              }
               screenShakeTime = 0.2;
               screenShakeMagnitude = 10;
             }
@@ -1115,6 +1111,16 @@
       renderEffects(ctx, renderCamera);
       player.render(ctx, renderCamera);
       drawHUD(ctx);
+    
+      // --- Update bomb button appearance ---
+      let bombBtn = document.getElementById("bombBtn");
+      if(bombCount > 0){
+        bombBtn.style.opacity = "1";
+        bombBtn.disabled = false;
+      } else {
+        bombBtn.style.opacity = "0.5";
+        bombBtn.disabled = true;
+      }
     
       requestAnimationFrame(gameLoop);
     }
