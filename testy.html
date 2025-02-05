@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>StickFight – Enhanced Beat 'Em Up</title>
+  <style>
+    /* Base reset */
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #333;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: #f2f2f2;
+    }
+    /* Onscreen Controls */
+    .joystick-container {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 120px;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+    }
+    .joystick {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60px;
+      height: 60px;
+      background: lightgray;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      touch-action: none;
+    }
+    .attack {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 70px;
+      height: 70px;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      touch-action: none;
+    }
+    /* Overlays */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 1000;
+    }
+    .overlay button {
+      padding: 15px 30px;
+      font-size: 24px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    /* HUD styling */
+    .hud {
+      position: fixed;
+      top: 10px;
+      right: 20px;
+      color: white;
+      text-align: right;
+      z-index: 500;
+    }
+    .health-bar {
+      width: 200px;
+      height: 20px;
+      background: #555;
+      border: 2px solid #fff;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .health-fill {
+      height: 100%;
+      background: limegreen;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <!-- Start Screen Overlay -->
+  <div id="startScreen" class="overlay">
+    <button id="fightButton">Fight!</button>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div id="gameOverScreen" class="overlay" style="display: none;">
+    <h1>You were defeated</h1>
+    <button id="tryAgainButton">Try Again?</button>
+  </div>
+
+  <!-- Pause Overlay -->
+  <div id="pauseScreen" class="overlay" style="display: none;">
+    <h1>Game Paused</h1>
+    <button id="resumeButton">Resume</button>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="health-bar">
+      <div id="healthFill" class="health-fill"></div>
+    </div>
+    <div id="killCountText">0 Enemies Killed</div>
+    <div id="rankText">Rank: Novice</div>
+  </div>
+
+  <!-- Game Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Onscreen Controls -->
+  <div class="joystick-container" id="joystickContainer">
+    <div class="joystick" id="joystick"></div>
+  </div>
+  <div class="attack" id="attack">Punch</div>
+
+  <script>
+    /* ========= CORE GAME STATE ========= */
+    let gameStarted = false;
+    let gameOver = false;
+    let gamePaused = false;
+    let killCount = 0;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    /* ========= AUDIO & HAPTIC ========= */
+    const punchSound = new Audio('https://actions.google.com/sounds/v1/human_voices/punch.ogg');
+    const deathSound = new Audio('https://actions.google.com/sounds/v1/human_voices/female_scream.ogg');
+    const backgroundMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/old_cinema.ogg');
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.3;
+
+    function triggerHapticFeedback() {
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    /* ========= RANK SYSTEM ========= */
+    const rankThresholds = [
+      { name: "Novice", requiredKills: 0 },
+      { name: "Apprentice", requiredKills: 10 },
+      { name: "Fighter", requiredKills: 25 },
+      { name: "Warrior", requiredKills: 50 },
+      { name: "Veteran", requiredKills: 100 },
+      { name: "Elite", requiredKills: 250 },
+      { name: "Master", requiredKills: 500 },
+      { name: "Legend", requiredKills: 1000 },
+      { name: "Stick Assassin", requiredKills: 2000 },
+    ];
+    function getCurrentRank(kills) {
+      let currentRank = rankThresholds[0].name;
+      for (let i = 0; i < rankThresholds.length; i++) {
+        if (kills >= rankThresholds[i].requiredKills) {
+          currentRank = rankThresholds[i].name;
+        } else {
+          break;
+        }
+      }
+      return currentRank;
+    }
+
+    /* ========= GAME OBJECTS ========= */
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: 20,
+      height: 50,
+      hp: 100,
+      maxHp: 100,
+      velocityX: 0,
+      velocityY: 0,
+      speed: 5,
+      isAttacking: false,
+      attackFrame: 0,
+      isDead: false,
+      rotation: 0,
+      // For ragdoll
+      vx: 0,
+      vy: 0,
+      angularVelocity: 0,
+      groundLevel: canvas.height,
+      fadeCounter: 0,
+    };
+
+    const enemies = [];
+    const deadBodies = [];
+    const punchEffects = [];
+    const splatterEffects = [];
+    const bossEnemies = []; // placeholder for boss-type enemies
+
+    let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+
+    /* ========= INPUT HANDLING ========= */
+    let gamepadIndex = null;
+    window.addEventListener('gamepadconnected', (e) => {
+      gamepadIndex = e.gamepad.index;
+      console.log("Gamepad connected at index", gamepadIndex);
+    });
+    window.addEventListener('gamepaddisconnected', (e) => {
+      if (gamepadIndex === e.gamepad.index) {
+        gamepadIndex = null;
+        console.log("Gamepad disconnected.");
+      }
+    });
+    function updateGamepadInput() {
+      if (!gameStarted || gamePaused) {
+        // Allow starting/resuming the game via the gamepad.
+        if (gamepadIndex !== null) {
+          const gp = navigator.getGamepads()[gamepadIndex];
+          if (gp && gp.buttons[0] && gp.buttons[0].pressed) { // "A" button
+            if (document.getElementById('startScreen').style.display !== 'none') {
+              startGame();
+            }
+            if (document.getElementById('gameOverScreen').style.display !== 'none') {
+              location.reload();
+            }
+            if (document.getElementById('pauseScreen').style.display !== 'none') {
+              resumeGame();
+            }
+          }
+        }
+        return;
+      }
+
+      if (gamepadIndex === null) return;
+      const gp = navigator.getGamepads()[gamepadIndex];
+      if (!gp || !gp.buttons) return;
+      const deadzone = 0.2;
+      let axisX = Math.abs(gp.axes[0]) > deadzone ? gp.axes[0] : 0;
+      let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
+      player.velocityX = axisX * player.speed;
+      player.velocityY = axisY * player.speed;
+
+      if (gp.buttons[0].pressed && !player.isAttacking && !player.isDead) {
+        player.isAttacking = true;
+        player.attackFrame = 0;
+      }
+      // Pause if B button is pressed (example mapping)
+      if (gp.buttons[1].pressed) {
+        togglePause();
+      }
+    }
+
+    /* ========= TOUCH & MOUSE INPUT ========= */
+    const joystickContainer = document.getElementById('joystickContainer');
+    const joystick = document.getElementById('joystick');
+    const attackButton = document.getElementById('attack');
+    const radius = joystickContainer.offsetWidth / 2;
+    const center = { x: radius, y: radius };
+    let joystickPosition = { x: center.x, y: center.y };
+    let isDragging = false;
+    joystick.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      isDragging = true;
+    });
+    joystick.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (isDragging && !player.isDead) {
+        const rect = joystickContainer.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const dx = x - center.x;
+        const dy = y - center.y;
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+        const distance = Math.min(distanceFromCenter, radius);
+        const angle = Math.atan2(dy, dx);
+        joystickPosition.x = center.x + Math.cos(angle) * distance;
+        joystickPosition.y = center.y + Math.sin(angle) * distance;
+        player.velocityX = Math.cos(angle) * (distance / radius) * player.speed;
+        player.velocityY = Math.sin(angle) * (distance / radius) * player.speed;
+        joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
+      }
+    });
+    joystick.addEventListener('touchend', (e) => {
+      isDragging = false;
+      joystickPosition = { x: center.x, y: center.y };
+      player.velocityX = 0;
+      player.velocityY = 0;
+      joystick.style.transform = 'translate(-50%, -50%)';
+    });
+    attackButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!player.isDead) {
+        player.isAttacking = true;
+        player.attackFrame = 0;
+      }
+    });
+
+    /* ========= UI BUTTONS ========= */
+    document.getElementById('fightButton').addEventListener('click', startGame);
+    document.getElementById('tryAgainButton').addEventListener('click', () => location.reload());
+    document.getElementById('resumeButton').addEventListener('click', resumeGame);
+
+    function togglePause() {
+      if (!gameStarted || gameOver) return;
+      gamePaused = !gamePaused;
+      document.getElementById('pauseScreen').style.display = gamePaused ? 'flex' : 'none';
+    }
+    function resumeGame() {
+      gamePaused = false;
+      document.getElementById('pauseScreen').style.display = 'none';
+    }
+    function startGame() {
+      gameStarted = true;
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('gameOverScreen').style.display = 'none';
+      backgroundMusic.play();
+    }
+
+    /* ========= EFFECTS ========= */
+    function addPunchEffect(x, y) {
+      punchEffects.push({ x, y, alpha: 1 });
+      punchSound.currentTime = 0;
+      punchSound.play();
+      triggerHapticFeedback();
+    }
+    function updatePunchEffects() {
+      for (let i = punchEffects.length - 1; i >= 0; i--) {
+        const effect = punchEffects[i];
+        effect.alpha -= 0.05;
+        if (effect.alpha <= 0) punchEffects.splice(i, 1);
+      }
+    }
+    function drawPunchEffects() {
+      punchEffects.forEach(({ x, y, alpha }) => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💢', x, y);
+      });
+    }
+    function addSplatterEffect(x, y) {
+      for (let i = 0; i < 10; i++) {
+        splatterEffects.push({
+          x,
+          y,
+          dx: (Math.random() - 0.5) * 10,
+          dy: (Math.random() - 0.5) * 10,
+          alpha: 1,
+          size: Math.random() * 1.5 + 2,
+        });
+      }
+    }
+    function updateSplatterEffects() {
+      for (let i = splatterEffects.length - 1; i >= 0; i--) {
+        const effect = splatterEffects[i];
+        effect.x += effect.dx;
+        effect.y += effect.dy;
+        effect.alpha -= 0.02;
+        if (effect.alpha <= 0) splatterEffects.splice(i, 1);
+      }
+    }
+    function drawSplatterEffects() {
+      splatterEffects.forEach(({ x, y, alpha, size }) => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 0.5);
+        ctx.fill();
+      });
+    }
+    function applyScreenShake(intensity, duration) {
+      screenShake.intensity = intensity;
+      screenShake.duration = duration;
+    }
+    function updateScreenShake() {
+      if (screenShake.duration > 0) {
+        screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+        screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+        screenShake.duration--;
+      } else {
+        screenShake.x = 0;
+        screenShake.y = 0;
+      }
+    }
+
+    /* ========= GAME UPDATES ========= */
+    function updatePlayer() {
+      if (player.isDead) return;
+      player.x += player.velocityX;
+      player.y += player.velocityY;
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+      // Update attack animation state (three-phase attack)
+      if (player.isAttacking) {
+        player.attackFrame++;
+        if (player.attackFrame > 15) {
+          player.isAttacking = false;
+          player.attackFrame = 0;
+        }
+      }
+      // Check health status and update HUD
+      if (player.hp <= 0 && !player.isDead) {
+        player.isDead = true;
+        document.getElementById('gameOverScreen').style.display = 'flex';
+        gameStarted = false;
+        gameOver = true;
+        deathSound.play();
+        // Initialize ragdoll physics for the player
+        player.vx = (Math.random() - 0.5) * 10;
+        player.vy = -Math.random() * 10;
+        player.angularVelocity = (Math.random() - 0.5) * 0.2;
+        player.groundLevel = canvas.height;
+        deadBodies.push({ ...player });
+      }
+    }
+    function updateEnemies() {
+      enemies.forEach((enemy, index) => {
+        if (enemy.isDead) {
+          enemy.fadeCounter++;
+          if (enemy.fadeCounter > 6) enemies.splice(index, 1);
+          return;
+        }
+        // Basic enemy AI: move toward player
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Random offset for visual variation
+        const randomYOffset = -29 + (Math.random() - 0.1) * 10;
+        const randomXOffset = (Math.random() - 0.1) * 10;
+        if (distance > 10) {
+          enemy.x += (dx / distance) * (enemy.speed || 2);
+          enemy.y += (dy / distance) * (enemy.speed || 2);
+        } else if (!player.isDead) {
+          enemy.isAttacking = true;
+          enemy.attackFrame++;
+          addPunchEffect(player.x + randomXOffset, player.y + randomYOffset);
+          addSplatterEffect(player.x, player.y);
+          applyScreenShake(10, 10);
+          if (enemy.attackFrame > 10) {
+            enemy.attackFrame = 0;
+            player.hp -= 5;
+          }
+        }
+        // Check player attack hitbox (improved collision)
+        if (player.isAttacking && player.attackFrame < 7 &&
+            Math.abs(player.x - enemy.x) < 50 &&
+            Math.abs(player.y - enemy.y) < 50) {
+          enemy.hp -= 10;
+          enemy.knockback = {
+            x: (enemy.x - player.x) * 0.5,
+            y: (enemy.y - player.y) * 0.5,
+            frames: 5,
+          };
+          addPunchEffect(enemy.x, enemy.y - 25);
+          addSplatterEffect(enemy.x, enemy.y);
+          applyScreenShake(10, 10);
+        }
+        if (enemy.knockback) {
+          enemy.x += enemy.knockback.x;
+          enemy.y += enemy.knockback.y;
+          enemy.knockback.frames--;
+          if (enemy.knockback.frames <= 0) enemy.knockback = null;
+        }
+        if (enemy.hp <= 0 && !enemy.isDead) {
+          enemy.isDead = true;
+          enemy.rotation = Math.PI / 2;
+          enemy.fadeCounter = 0;
+          enemy.vx = (Math.random() - 0.5) * 10;
+          enemy.vy = -Math.random() * 10;
+          enemy.angularVelocity = (Math.random() - 0.5) * 0.2;
+          enemy.groundLevel = canvas.height;
+          deadBodies.push({ ...enemy });
+          killCount++;
+        }
+      });
+
+      // Boss enemy spawn (basic logic: spawn a boss every 50 kills)
+      if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
+        bossEnemies.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          width: 40,
+          height: 80,
+          hp: 200,
+          speed: 1.5,
+          isAttacking: false,
+          attackFrame: 0,
+          isDead: false,
+          rotation: 0,
+          knockback: null,
+          fadeCounter: 0,
+          color: 'purple',
+        });
+      }
+      // Update boss enemies similar to regular ones
+      bossEnemies.forEach((boss, index) => {
+        if (boss.isDead) {
+          boss.fadeCounter++;
+          if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
+          return;
+        }
+        const dx = player.x - boss.x;
+        const dy = player.y - boss.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > 10) {
+          boss.x += (dx / distance) * boss.speed;
+          boss.y += (dy / distance) * boss.speed;
+        } else if (!player.isDead) {
+          boss.isAttacking = true;
+          boss.attackFrame++;
+          addPunchEffect(player.x, player.y - 30);
+          addSplatterEffect(player.x, player.y);
+          applyScreenShake(15, 15);
+          if (boss.attackFrame > 15) {
+            boss.attackFrame = 0;
+            player.hp -= 10;
+          }
+        }
+        if (player.isAttacking && player.attackFrame < 7 &&
+            Math.abs(player.x - boss.x) < 60 &&
+            Math.abs(player.y - boss.y) < 60) {
+          boss.hp -= 5;
+          boss.knockback = {
+            x: (boss.x - player.x) * 0.5,
+            y: (boss.y - player.y) * 0.5,
+            frames: 5,
+          };
+          addPunchEffect(boss.x, boss.y - 30);
+          addSplatterEffect(boss.x, boss.y);
+          applyScreenShake(15, 15);
+        }
+        if (boss.knockback) {
+          boss.x += boss.knockback.x;
+          boss.y += boss.knockback.y;
+          boss.knockback.frames--;
+          if (boss.knockback.frames <= 0) boss.knockback = null;
+        }
+        if (boss.hp <= 0 && !boss.isDead) {
+          boss.isDead = true;
+          boss.rotation = Math.PI / 2;
+          boss.fadeCounter = 0;
+          boss.vx = (Math.random() - 0.5) * 10;
+          boss.vy = -Math.random() * 10;
+          boss.angularVelocity = (Math.random() - 0.5) * 0.2;
+          boss.groundLevel = canvas.height;
+          deadBodies.push({ ...boss });
+          killCount += 5; // Boss kill gives extra points
+        }
+      });
+    }
+    function updateDeadBodies() {
+      const gravity = 0.5;
+      const friction = 0.98;
+      for (let i = deadBodies.length - 1; i >= 0; i--) {
+        const body = deadBodies[i];
+        body.fadeCounter++;
+        body.vy += gravity;
+        body.x += body.vx;
+        body.y += body.vy;
+        if (body.y + body.height / 2 > body.groundLevel) {
+          body.y = body.groundLevel - body.height / 2;
+          body.vy *= -0.5;
+          body.vx *= friction;
+          body.vy *= friction;
+        }
+        body.rotation += body.angularVelocity;
+        body.angularVelocity *= friction;
+        if (body.fadeCounter > 600) deadBodies.splice(i, 1);
+      }
+    }
+    function updateHUD() {
+      document.getElementById('killCountText').innerText = `${killCount} Enemies Killed`;
+      document.getElementById('rankText').innerText = `Rank: ${getCurrentRank(killCount)}`;
+      const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+      document.getElementById('healthFill').style.width = `${hpPercent}%`;
+    }
+
+    /* ========= DRAWING ========= */
+    // Draw stickman with simple multi-frame animation (attack phase visual)
+    function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.strokeStyle = color || "black";
+      ctx.fillStyle = color || "black";
+      ctx.globalAlpha = fadeCounter ? 1 - fadeCounter / 600 : 1;
+      ctx.lineWidth = 2;
+      // Head
+      ctx.beginPath();
+      ctx.arc(0, -height / 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      // Body
+      ctx.beginPath();
+      ctx.moveTo(0, -height / 2);
+      ctx.lineTo(0, height / 2);
+      ctx.stroke();
+      // Arms (vary attack position if attacking)
+      ctx.beginPath();
+      if (isAttacking && attackFrame < 7) {
+        ctx.moveTo(0, -10);
+        ctx.lineTo(30, -10);
+      } else {
+        ctx.moveTo(0, -10);
+        ctx.lineTo(-15, 10);
+        ctx.moveTo(0, -10);
+        ctx.lineTo(15, 10);
+      }
+      ctx.stroke();
+      // Legs
+      ctx.beginPath();
+      ctx.moveTo(0, 20);
+      ctx.lineTo(-10, 40);
+      ctx.moveTo(0, 20);
+      ctx.lineTo(10, 40);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* ========= MAIN GAME LOOP ========= */
+    function gameLoop() {
+      ctx.save();
+      ctx.translate(screenShake.x, screenShake.y);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateGamepadInput();
+      if (!gamePaused) {
+        updateScreenShake();
+        updatePunchEffects();
+        updateSplatterEffects();
+        updateDeadBodies();
+        updatePlayer();
+        updateEnemies();
+        // Draw dead bodies (ragdoll)
+        deadBodies.forEach(drawStickman);
+        // Draw player if alive
+        if (!player.isDead) drawStickman(player);
+        // Draw enemies
+        enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
+        // Draw boss enemies
+        bossEnemies.forEach((boss) => drawStickman({ ...boss, color: boss.color || "purple" }));
+        drawPunchEffects();
+        drawSplatterEffects();
+      }
+      ctx.restore();
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+
+    /* ========= WINDOW RESIZE ========= */
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      player.x = canvas.width / 2;
+      player.y = canvas.height / 2;
+    });
+  </script>
+</body>
+</html>
