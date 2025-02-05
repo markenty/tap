@@ -203,19 +203,17 @@
       velocityX: 0,
       velocityY: 0,
       speed: 5,
-      // Attack states for punch and kick
+      // Attack states for punch and kick with combo system
       isAttacking: false,
       attackFrame: 0,
       punchCombo: 0,
       lastPunchTime: 0,
       currentPunchType: 'low', // alternates between "low" and "high"
-
       isKicking: false,
       kickFrame: 0,
       kickCombo: 0,
       lastKickTime: 0,
       currentKickType: 'low',
-
       isDead: false,
       rotation: 0,
       // For ragdoll physics
@@ -283,7 +281,6 @@
           player.punchCombo = 1;
         }
         player.lastPunchTime = now;
-        // Alternate: odd combos are "low", even are "high"
         player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
         player.isAttacking = true;
         player.attackFrame = 0;
@@ -564,7 +561,7 @@
         } else if (!player.isDead) {
           enemy.isAttacking = true;
           enemy.attackFrame++;
-          // Check for punch collision (range/damage depend on high vs low)
+          // Punch collision (adjusted for high vs low)
           if (player.isAttacking && player.attackFrame < 7 &&
               Math.abs(player.x - enemy.x) < (player.currentPunchType === "high" ? 55 : 50) &&
               Math.abs(player.y - enemy.y) < 50) {
@@ -579,7 +576,7 @@
             addSplatterEffect(enemy.x, enemy.y);
             applyScreenShake(10, 10);
           }
-          // Check for kick collision (longer range and higher damage)
+          // Kick collision (adjusted for high vs low)
           if (player.isKicking && player.kickFrame < 10 &&
               Math.abs(player.x - enemy.x) < (player.currentKickType === "high" ? 75 : 70) &&
               Math.abs(player.y - enemy.y) < 70) {
@@ -690,14 +687,17 @@
     function updateDeadBodies() {
       const gravity = 0.5;
       const friction = 0.98;
+      // Define a foot offset so bodies drop with their feet aligned.
+      const footOffset = 15;
       for (let i = deadBodies.length - 1; i >= 0; i--) {
         const body = deadBodies[i];
         body.fadeCounter++;
         body.vy += gravity;
         body.x += body.vx;
         body.y += body.vy;
-        if (body.y + body.height / 2 > body.groundLevel) {
-          body.y = body.groundLevel - body.height / 2;
+        // Adjust drop so that the bottom of the body (center + footOffset) aligns with groundLevel.
+        if (body.y + (body.height / 2) + footOffset > body.groundLevel) {
+          body.y = body.groundLevel - (body.height / 2) - footOffset;
           body.vy *= -0.5;
           body.vx *= friction;
           body.vy *= friction;
@@ -716,7 +716,8 @@
 
     /* ========= DRAWING ========= */
     // The drawStickman function now reflects both punch and kick animations.
-    // For punch, arms extend; for kick, one leg extends.
+    // For punch, arms extend differently based on high vs low.
+    // For kick, if high kick the leg flips upward; if low, the leg extends forward.
     function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter }) {
       ctx.save();
       ctx.translate(x, y);
@@ -737,7 +738,6 @@
       // Arms for punch attack
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
-        // Different arm extension for high vs low punch:
         if (player.currentPunchType === "high") {
           ctx.moveTo(0, -10);
           ctx.lineTo(35, -15);
@@ -752,23 +752,21 @@
         ctx.lineTo(15, 10);
       }
       ctx.stroke();
-      // Legs: if kicking, extend one leg
+      // Legs: draw the non-kicking leg normally.
       ctx.beginPath();
+      ctx.moveTo(0, 20);
+      ctx.lineTo(-10, 40);
+      // For kicking leg:
       if (isKicking && kickFrame < 10) {
-        // Draw non-kicking leg normally...
         ctx.moveTo(0, 20);
-        ctx.lineTo(-10, 40);
-        // Draw extended kicking leg; high kicks have a longer extension.
         if (player.currentKickType === "high") {
-          ctx.moveTo(0, 20);
-          ctx.lineTo(35, 45);
+          // High kick: leg flips upward.
+          ctx.lineTo(20, -10);
         } else {
-          ctx.moveTo(0, 20);
+          // Low kick: leg extends forward.
           ctx.lineTo(30, 40);
         }
       } else {
-        ctx.moveTo(0, 20);
-        ctx.lineTo(-10, 40);
         ctx.moveTo(0, 20);
         ctx.lineTo(10, 40);
       }
