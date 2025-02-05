@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>StickFight – Enhanced Beat 'Em Up</title>
   <style>
     /* Base reset */
@@ -228,10 +228,9 @@
     });
     function updateGamepadInput() {
       if (!gameStarted || gamePaused) {
-        // Allow starting/resuming the game via the gamepad.
         if (gamepadIndex !== null) {
           const gp = navigator.getGamepads()[gamepadIndex];
-          if (gp && gp.buttons[0] && gp.buttons[0].pressed) { // "A" button
+          if (gp && gp.buttons[0] && gp.buttons[0].pressed) {
             if (document.getElementById('startScreen').style.display !== 'none') {
               startGame();
             }
@@ -245,7 +244,6 @@
         }
         return;
       }
-
       if (gamepadIndex === null) return;
       const gp = navigator.getGamepads()[gamepadIndex];
       if (!gp || !gp.buttons) return;
@@ -259,7 +257,6 @@
         player.isAttacking = true;
         player.attackFrame = 0;
       }
-      // Pause if B button is pressed (example mapping)
       if (gp.buttons[1].pressed) {
         togglePause();
       }
@@ -296,7 +293,7 @@
         joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
       }
     });
-    joystick.addEventListener('touchend', (e) => {
+    joystick.addEventListener('touchend', () => {
       isDragging = false;
       joystickPosition = { x: center.x, y: center.y };
       player.velocityX = 0;
@@ -325,11 +322,40 @@
       gamePaused = false;
       document.getElementById('pauseScreen').style.display = 'none';
     }
+
+    /* ========= ENEMY SPAWNING ========= */
+    function spawnEnemy() {
+      const enemy = {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        width: 20,
+        height: 50,
+        hp: 50,
+        speed: 2,
+        isAttacking: false,
+        attackFrame: 0,
+        isDead: false,
+        rotation: 0,
+        knockback: null,
+        fadeCounter: 0,
+      };
+      enemies.push(enemy);
+    }
+
+    /* ========= START GAME ========= */
+    let enemySpawnInterval;
     function startGame() {
       gameStarted = true;
       document.getElementById('startScreen').style.display = 'none';
       document.getElementById('gameOverScreen').style.display = 'none';
       backgroundMusic.play();
+
+      // Begin periodic enemy spawning (every 2 seconds)
+      enemySpawnInterval = setInterval(() => {
+        if (gameStarted && !gamePaused) {
+          spawnEnemy();
+        }
+      }, 2000);
     }
 
     /* ========= EFFECTS ========= */
@@ -409,7 +435,6 @@
       player.y += player.velocityY;
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
-      // Update attack animation state (three-phase attack)
       if (player.isAttacking) {
         player.attackFrame++;
         if (player.attackFrame > 15) {
@@ -417,19 +442,18 @@
           player.attackFrame = 0;
         }
       }
-      // Check health status and update HUD
       if (player.hp <= 0 && !player.isDead) {
         player.isDead = true;
         document.getElementById('gameOverScreen').style.display = 'flex';
         gameStarted = false;
         gameOver = true;
         deathSound.play();
-        // Initialize ragdoll physics for the player
         player.vx = (Math.random() - 0.5) * 10;
         player.vy = -Math.random() * 10;
         player.angularVelocity = (Math.random() - 0.5) * 0.2;
         player.groundLevel = canvas.height;
         deadBodies.push({ ...player });
+        clearInterval(enemySpawnInterval);
       }
     }
     function updateEnemies() {
@@ -439,11 +463,9 @@
           if (enemy.fadeCounter > 6) enemies.splice(index, 1);
           return;
         }
-        // Basic enemy AI: move toward player
         const dx = player.x - enemy.x;
         const dy = player.y - enemy.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        // Random offset for visual variation
         const randomYOffset = -29 + (Math.random() - 0.1) * 10;
         const randomXOffset = (Math.random() - 0.1) * 10;
         if (distance > 10) {
@@ -460,7 +482,6 @@
             player.hp -= 5;
           }
         }
-        // Check player attack hitbox (improved collision)
         if (player.isAttacking && player.attackFrame < 7 &&
             Math.abs(player.x - enemy.x) < 50 &&
             Math.abs(player.y - enemy.y) < 50) {
@@ -493,7 +514,6 @@
         }
       });
 
-      // Boss enemy spawn (basic logic: spawn a boss every 50 kills)
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
           x: Math.random() * canvas.width,
@@ -511,7 +531,6 @@
           color: 'purple',
         });
       }
-      // Update boss enemies similar to regular ones
       bossEnemies.forEach((boss, index) => {
         if (boss.isDead) {
           boss.fadeCounter++;
@@ -563,7 +582,7 @@
           boss.angularVelocity = (Math.random() - 0.5) * 0.2;
           boss.groundLevel = canvas.height;
           deadBodies.push({ ...boss });
-          killCount += 5; // Boss kill gives extra points
+          killCount += 5;
         }
       });
     }
@@ -595,7 +614,6 @@
     }
 
     /* ========= DRAWING ========= */
-    // Draw stickman with simple multi-frame animation (attack phase visual)
     function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
       ctx.save();
       ctx.translate(x, y);
@@ -613,7 +631,7 @@
       ctx.moveTo(0, -height / 2);
       ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms (vary attack position if attacking)
+      // Arms
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
         ctx.moveTo(0, -10);
@@ -648,13 +666,9 @@
         updateDeadBodies();
         updatePlayer();
         updateEnemies();
-        // Draw dead bodies (ragdoll)
         deadBodies.forEach(drawStickman);
-        // Draw player if alive
         if (!player.isDead) drawStickman(player);
-        // Draw enemies
         enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
-        // Draw boss enemies
         bossEnemies.forEach((boss) => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
         drawSplatterEffects();
