@@ -15,7 +15,7 @@
     canvas {
       display: block;
       margin: auto;
-      /* The canvas background is redrawn each frame for a motion-blur effect */
+      /* We redraw a semi‑transparent background each frame to create a motion‐blur effect */
     }
     /* Onscreen Controls */
     .joystick-container {
@@ -24,7 +24,7 @@
       left: 20px;
       width: 120px;
       height: 120px;
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(0,0,0,0.2);
       border-radius: 50%;
     }
     .joystick {
@@ -106,7 +106,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0,0,0,0.8);
       color: white;
       display: flex;
       justify-content: center;
@@ -171,21 +171,40 @@
   <div class="joystick-container" id="joystickContainer">
     <div class="joystick" id="joystick"></div>
   </div>
-  <!-- Existing Attack Buttons -->
+  <!-- Attack Buttons -->
   <div class="attack" id="attack">Punch</div>
   <div class="attack kick" id="kick">Kick</div>
-  <!-- New Block Button -->
+  <!-- New Block & Jump Buttons -->
   <div class="block" id="block">Block</div>
-  <!-- New Jump Button -->
   <div class="jump" id="jump">Jump</div>
 
   <script>
-    /* ========= CORE GAME STATE ========= */
+    /* ========= CORE GAME STATE & LEVEL ========= */
     let gameStarted = false, gameOver = false, gamePaused = false, killCount = 0;
-    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    // Ground level – characters stand on this horizontal line.
-    const GROUND_LEVEL = canvas.height - 20;
+    const canvas = document.getElementById('gameCanvas'),
+          ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // Define ground level and level width (for horizontal scrolling)
+    const GROUND_LEVEL = canvas.height - 20,
+          LEVEL_WIDTH = canvas.width * 2;  // a level twice as wide as the screen
+
+    // Platforms – procedurally generated
+    let platforms = [];
+    function generatePlatforms() {
+      platforms = [];
+      // For example, generate 8 platforms randomly in the level.
+      for (let i = 0; i < 8; i++) {
+        const platWidth = 100 + Math.random() * 150;
+        const platX = Math.random() * (LEVEL_WIDTH - platWidth);
+        // y between 100 and ground level - 100
+        const platY = 100 + Math.random() * (GROUND_LEVEL - 150);
+        platforms.push({ x: platX, y: platY, width: platWidth, height: 20 });
+      }
+      // Also add a "ground" platform covering the bottom.
+      platforms.push({ x: 0, y: GROUND_LEVEL, width: LEVEL_WIDTH, height: 20 });
+    }
+    generatePlatforms();
 
     /* ========= AUDIO & HAPTIC ========= */
     const punchSound = new Audio('https://actions.google.com/sounds/v1/human_voices/punch.ogg'),
@@ -245,7 +264,7 @@
       jumpCount: 0,
       maxJumps: 3,
       jumpVelocity: 0,
-      // Other player properties:
+      // Other properties:
       isDead: false,
       rotation: 0,
       vx: 0,
@@ -254,12 +273,31 @@
       groundLevel: GROUND_LEVEL,
       fadeCounter: 0,
       comboTimeout: 500,
-      cycle: 0
+      cycle: 0,
+      // For camera adjustments (if needed)
+      platform: null  // will be set based on collision with platforms
     };
 
-    // Normal enemies (and bosses) keep their martial arts state.
-    const enemies = [], deadBodies = [], punchEffects = [], splatterEffects = [], bossEnemies = [];
+    // Enemies now have similar basic physics, plus a flag for jumping on platforms.
+    const enemies = [],
+          deadBodies = [],
+          punchEffects = [],
+          splatterEffects = [],
+          bossEnemies = [];
     let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+
+    /* ========= PLATFORM COLLISION ========= */
+    function checkPlatformCollision(entity) {
+      // Check if entity is landing on any platform (from above)
+      for (let plat of platforms) {
+        // simple AABB check for feet collision: entity's bottom is near platform top and horizontally overlapping
+        if (entity.y + entity.height >= plat.y && entity.y + entity.height <= plat.y + 10 &&
+            entity.x + entity.width > plat.x && entity.x < plat.x + plat.width) {
+          return plat;
+        }
+      }
+      return null;
+    }
 
     /* ========= INPUT HANDLING ========= */
     let gamepadIndex = null;
@@ -283,7 +321,7 @@
       const deadzone = 0.2;
       let axisX = Math.abs(gp.axes[0]) > deadzone ? gp.axes[0] : 0;
       let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
-      // For horizontal movement only when jumping, we ignore vertical joystick input.
+      // Horizontal movement always applies; vertical movement only if not jumping.
       player.velocityX = axisX * player.speed;
       if (!player.isJumping) player.velocityY = axisY * player.speed;
       const now = performance.now();
@@ -303,8 +341,10 @@
         player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
         player.isKicking = true; player.kickFrame = 0;
       }
-      // Block (B button) – here we set block state
+      // Block (B button)
       if (gp.buttons[1].pressed) { player.isBlocking = true; } else { player.isBlocking = false; }
+      // Jump (Y button)
+      if (gp.buttons[3].pressed) { triggerJump(); }
     }
 
     /* ========= TOUCH & MOUSE INPUT ========= */
@@ -314,8 +354,8 @@
           kickButton = document.getElementById('kick'),
           blockButton = document.getElementById('block'),
           jumpButton = document.getElementById('jump');
-    const r = joystickContainer.offsetWidth / 2, c = { x: r, y: r };
-    let joystickPosition = { x: c.x, y: c.y }, isDragging = false;
+    const rVal = joystickContainer.offsetWidth / 2, cVal = { x: rVal, y: rVal };
+    let joystickPosition = { x: cVal.x, y: cVal.y }, isDragging = false;
     joystick.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; });
     joystick.addEventListener('touchmove', (e) => {
       e.preventDefault();
@@ -324,21 +364,21 @@
               touch = e.touches[0],
               x = touch.clientX - rect.left,
               y = touch.clientY - rect.top,
-              dx = x - c.x, dy = y - c.y,
+              dx = x - cVal.x,
+              dy = y - cVal.y,
               dist = Math.sqrt(dx * dx + dy * dy),
-              distance = Math.min(dist, r),
+              distance = Math.min(dist, rVal),
               angle = Math.atan2(dy, dx);
-        joystickPosition = { x: c.x + Math.cos(angle) * distance, y: c.y + Math.sin(angle) * distance };
-        player.velocityX = Math.cos(angle) * (distance / r) * player.speed;
-        player.velocityY = Math.sin(angle) * (distance / r) * player.speed;
-        joystick.style.transform = `translate(${joystickPosition.x - c.x}px, ${joystickPosition.y - c.y}px)`;
+        joystickPosition = { x: cVal.x + Math.cos(angle) * distance, y: cVal.y + Math.sin(angle) * distance };
+        player.velocityX = Math.cos(angle) * (distance / rVal) * player.speed;
+        player.velocityY = Math.sin(angle) * (distance / rVal) * player.speed;
+        joystick.style.transform = `translate(${joystickPosition.x - cVal.x}px, ${joystickPosition.y - cVal.y}px)`;
       }
     });
     joystick.addEventListener('touchend', () => {
       isDragging = false;
-      joystickPosition = { x: c.x, y: c.y };
-      player.velocityX = 0;
-      player.velocityY = 0;
+      joystickPosition = { x: cVal.x, y: cVal.y };
+      player.velocityX = 0; player.velocityY = 0;
       joystick.style.transform = 'translate(-50%, -50%)';
     });
     function triggerPunch() {
@@ -365,22 +405,20 @@
     }
     kickButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKick(); });
     kickButton.addEventListener('click', triggerKick);
-    // Block button: while pressed, set block flag.
+    // Block button – while pressed, set block state.
     blockButton.addEventListener('touchstart', (e) => { e.preventDefault(); player.isBlocking = true; });
     blockButton.addEventListener('touchend', () => { player.isBlocking = false; });
     blockButton.addEventListener('mousedown', () => { player.isBlocking = true; });
     blockButton.addEventListener('mouseup', () => { player.isBlocking = false; });
-    // Jump button: when pressed, if jumps available, initiate jump.
+    // Jump button – call triggerJump.
     jumpButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
     jumpButton.addEventListener('click', triggerJump);
     function triggerJump() {
       if (player.isDead) return;
       if (player.jumpCount < player.maxJumps) {
-        // Initiate or continue jump
         player.isJumping = true;
         player.jumpCount++;
-        // Set an initial upward velocity; adjust as needed.
-        player.jumpVelocity = -12;
+        player.jumpVelocity = -12;  // adjust initial jump velocity
       }
     }
 
@@ -401,7 +439,7 @@
     /* ========= ENEMY SPAWNING ========= */
     function spawnEnemy() {
       const enemy = {
-        x: Math.random() * canvas.width,
+        x: Math.random() * LEVEL_WIDTH,
         y: Math.random() * (GROUND_LEVEL - 100) + 50,
         width: 20,
         height: 50,
@@ -415,13 +453,18 @@
         knockback: null,
         fadeCounter: 0,
         cycle: 0,
-        groundLevel: GROUND_LEVEL
+        // For enemy jump:
+        isJumping: false,
+        jumpVelocity: 0,
+        groundLevel: GROUND_LEVEL,
+        platform: null
       };
       enemies.push(enemy);
     }
     let enemySpawnInterval;
     function startGame() {
       gameStarted = true;
+      generatePlatforms();
       document.getElementById('startScreen').style.display = 'none';
       document.getElementById('gameOverScreen').style.display = 'none';
       backgroundMusic.play();
@@ -504,44 +547,72 @@
       }
     }
 
+    /* ========= CAMERA ========= */
+    let camera = { x: 0, y: 0, zoom: 1 };
+    function updateCamera() {
+      // Center on the player; if the player is in their third jump, zoom out progressively.
+      if (player.isJumping && player.jumpCount >= player.maxJumps) {
+        camera.zoom = 0.8;
+      } else {
+        camera.zoom = 1;
+      }
+      camera.x = player.x - canvas.width / (2 * camera.zoom);
+      camera.y = player.y - canvas.height / (2 * camera.zoom);
+      // Clamp camera so that we don’t show outside the level:
+      if (camera.x < 0) camera.x = 0;
+      if (camera.y < 0) camera.y = 0;
+      if (camera.x + canvas.width / camera.zoom > LEVEL_WIDTH) {
+        camera.x = LEVEL_WIDTH - canvas.width / camera.zoom;
+      }
+      if (camera.y + canvas.height / camera.zoom > canvas.height) {
+        camera.y = canvas.height - canvas.height / camera.zoom;
+      }
+    }
+
+    /* ========= PLATFORM DRAWING ========= */
+    function drawPlatforms() {
+      ctx.fillStyle = "#555";
+      for (let plat of platforms) {
+        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+      }
+    }
+
     /* ========= GAME UPDATES ========= */
     function updatePlayer() {
       if (player.isDead) return;
-      // Horizontal movement from joystick:
+      // Horizontal movement from joystick.
       player.x += player.velocityX;
-      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.x = Math.max(0, Math.min(LEVEL_WIDTH - player.width, player.x));
       // Jump physics override vertical joystick input.
       if (player.isJumping) {
-        // Apply jump velocity and gravity.
         player.y += player.jumpVelocity;
         player.jumpVelocity += 0.8; // gravity
-        // When reaching the ground, reset jump state.
-        if (player.y >= GROUND_LEVEL - player.height) {
-          player.y = GROUND_LEVEL - player.height;
+        // Check collision with platforms
+        let plat = checkPlatformCollision(player);
+        if (plat && player.jumpVelocity > 0) {
+          player.y = plat.y - player.height;
           player.isJumping = false;
           player.jumpCount = 0;
           player.jumpVelocity = 0;
+          player.platform = plat;
         }
       } else {
-        // If not jumping, keep player on ground.
-        player.y = GROUND_LEVEL - player.height;
+        // If not jumping, ensure the player stays on a platform (or ground)
+        let plat = checkPlatformCollision(player);
+        if (plat) { 
+          player.y = plat.y - player.height;
+          player.platform = plat;
+        } else {
+          // Fall to ground
+          player.y += 1;
+        }
       }
-      // Process attack animation (if any)
-      if (player.isAttacking) {
-        player.attackFrame++;
-        if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; }
-      }
-      if (player.isKicking) {
-        player.kickFrame++;
-        if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; }
-      }
-      // Update idle/walk cycle if not attacking
-      if (!player.isAttacking && !player.isKicking) { player.cycle += 0.1; }
+      if (!player.isAttacking && !player.isKicking) player.cycle += 0.1;
+      if (player.isAttacking) { player.attackFrame++; if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; } }
+      if (player.isKicking) { player.kickFrame++; if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; } }
       const now = performance.now();
       if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
       if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) player.kickCombo = 0;
-      // If blocking, no extra update needed.
-      // Check death.
       if (player.hp <= 0 && !player.isDead) {
         player.isDead = true;
         document.getElementById('gameOverScreen').style.display = 'flex';
@@ -558,12 +629,8 @@
     }
     function updateEnemies() {
       enemies.forEach((enemy, index) => {
-        if (enemy.isDead) {
-          enemy.fadeCounter++;
-          if (enemy.fadeCounter > 6) enemies.splice(index, 1);
-          return;
-        }
-        // First, let the player’s attack damage this enemy.
+        if (enemy.isDead) { enemy.fadeCounter++; if (enemy.fadeCounter > 6) enemies.splice(index, 1); return; }
+        // First, allow the player's attack to damage the enemy.
         const dx = enemy.x - player.x, dy = enemy.y - player.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (player.isAttacking && player.attackFrame < 7) {
@@ -588,7 +655,25 @@
             applyScreenShake(15, 15);
           }
         }
-        // Next, process enemy AI for attacking the player.
+        // Now, process enemy AI.
+        // Determine enemy's platform.
+        let enemyPlat = checkPlatformCollision(enemy);
+        enemy.platform = enemyPlat;
+        // If enemy is not on the same platform as the player, try to jump.
+        if (enemyPlat && player.platform && enemyPlat !== player.platform && !enemy.isJumping) {
+          enemy.isJumping = true;
+          enemy.jumpVelocity = -10;
+        }
+        if (enemy.isJumping) {
+          enemy.y += enemy.jumpVelocity;
+          enemy.jumpVelocity += 0.8;
+          let plat = checkPlatformCollision(enemy);
+          if (plat && enemy.jumpVelocity > 0) {
+            enemy.y = plat.y - enemy.height;
+            enemy.isJumping = false;
+          }
+        }
+        // Otherwise, if not jumping, move and attack.
         const dxp = player.x - enemy.x, dyp = player.y - enemy.y, dist = Math.sqrt(dxp * dxp + dyp * dyp);
         if (dist > 80) {
           enemy.x += (dxp / dist) * enemy.speed;
@@ -597,33 +682,26 @@
           enemy.isAttacking = false;
           enemy.attackFrame = 0;
         } else {
-          if (!enemy.isAttacking) {
-            enemy.isAttacking = true;
-            enemy.attackFrame = 0;
-            enemy.currentAttackType = Math.random() < 0.5 ? "punch" : "kick";
-          }
+          if (!enemy.isAttacking) { enemy.isAttacking = true; enemy.attackFrame = 0; enemy.currentAttackType = Math.random() < 0.5 ? "punch" : "kick"; }
         }
         if (enemy.isAttacking) {
           enemy.attackFrame++;
-          if (enemy.attackFrame === 10) {
-            // Only apply damage if player is not blocking.
-            if (!player.isBlocking) {
-              if (enemy.currentAttackType === "punch") {
-                const hitThreshold = 50;
-                if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
-                  player.hp -= 10;
-                  player.vx = (player.x - enemy.x) * 0.5;
-                  player.vy = (player.y - enemy.y) * 0.5;
-                  addPunchEffect(player.x, player.y - 20);
-                }
-              } else {
-                const hitThreshold = 60;
-                if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
-                  player.hp -= 15;
-                  player.vx = (player.x - enemy.x) * 0.7;
-                  player.vy = (player.y - enemy.y) * 0.7;
-                  addKickEffect(player.x, player.y - 20);
-                }
+          if (enemy.attackFrame === 10 && !player.isBlocking) {
+            if (enemy.currentAttackType === "punch") {
+              const hitThreshold = 50;
+              if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
+                player.hp -= 10;
+                player.vx = (player.x - enemy.x) * 0.5;
+                player.vy = (player.y - enemy.y) * 0.5;
+                addPunchEffect(player.x, player.y - 20);
+              }
+            } else {
+              const hitThreshold = 60;
+              if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
+                player.hp -= 15;
+                player.vx = (player.x - enemy.x) * 0.7;
+                player.vy = (player.y - enemy.y) * 0.7;
+                addKickEffect(player.x, player.y - 20);
               }
             }
           }
@@ -651,7 +729,7 @@
       // Boss enemy logic:
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
-          x: Math.random() * canvas.width,
+          x: Math.random() * LEVEL_WIDTH,
           y: Math.random() * (GROUND_LEVEL - 150) + 50,
           width: 40,
           height: 80,
@@ -669,12 +747,9 @@
         });
       }
       bossEnemies.forEach((boss, index) => {
-        if (boss.isDead) {
-          boss.fadeCounter++;
-          if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
-          return;
-        }
-        const dx = player.x - boss.x, dy = player.y - boss.y, dist = Math.sqrt(dx * dx + dy * dy);
+        if (boss.isDead) { boss.fadeCounter++; if (boss.fadeCounter > 6) bossEnemies.splice(index, 1); return; }
+        let dx = player.x - boss.x, dy = player.y - boss.y,
+            dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 80) {
           boss.x += (dx / dist) * boss.speed;
           boss.y += (dy / dist) * boss.speed;
@@ -682,32 +757,26 @@
           boss.isAttacking = false;
           boss.attackFrame = 0;
         } else {
-          if (!boss.isAttacking) {
-            boss.isAttacking = true;
-            boss.attackFrame = 0;
-            boss.currentAttackType = Math.random() < 0.5 ? "punch" : "kick";
-          }
+          if (!boss.isAttacking) { boss.isAttacking = true; boss.attackFrame = 0; boss.currentAttackType = Math.random() < 0.5 ? "punch" : "kick"; }
         }
         if (boss.isAttacking) {
           boss.attackFrame++;
-          if (boss.attackFrame === 10) {
-            if (!player.isBlocking) {
-              if (boss.currentAttackType === "punch") {
-                const hitThreshold = 60;
-                if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
-                  player.hp -= 10;
-                  player.vx = (player.x - boss.x) * 0.5;
-                  player.vy = (player.y - boss.y) * 0.5;
-                  addPunchEffect(player.x, player.y - 20);
-                }
-              } else {
-                const hitThreshold = 70;
-                if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
-                  player.hp -= 15;
-                  player.vx = (player.x - boss.x) * 0.7;
-                  player.vy = (player.y - boss.y) * 0.7;
-                  addKickEffect(player.x, player.y - 20);
-                }
+          if (boss.attackFrame === 10 && !player.isBlocking) {
+            if (boss.currentAttackType === "punch") {
+              const hitThreshold = 60;
+              if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
+                player.hp -= 10;
+                player.vx = (player.x - boss.x) * 0.5;
+                player.vy = (player.y - boss.y) * 0.5;
+                addPunchEffect(player.x, player.y - 20);
+              }
+            } else {
+              const hitThreshold = 70;
+              if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
+                player.hp -= 15;
+                player.vx = (player.x - boss.x) * 0.7;
+                player.vy = (player.y - boss.y) * 0.7;
+                addKickEffect(player.x, player.y - 20);
               }
             }
           }
@@ -759,6 +828,23 @@
       document.getElementById('healthFill').style.width = `${hpPercent}%`;
     }
 
+    /* ========= CAMERA & LEVEL DRAWING ========= */
+    let camera = { x: 0, y: 0, zoom: 1 };
+    function updateCamera() {
+      // Zoom out when player is on their third jump, else normal zoom.
+      camera.zoom = (player.isJumping && player.jumpCount === player.maxJumps) ? 0.8 : 1;
+      camera.x = player.x - canvas.width / (2 * camera.zoom);
+      camera.y = player.y - canvas.height / (2 * camera.zoom);
+      if (camera.x < 0) camera.x = 0;
+      if (camera.y < 0) camera.y = 0;
+      if (camera.x + canvas.width / camera.zoom > LEVEL_WIDTH) camera.x = LEVEL_WIDTH - canvas.width / camera.zoom;
+      if (camera.y + canvas.height / camera.zoom > canvas.height) camera.y = canvas.height - canvas.height / camera.zoom;
+    }
+    function drawPlatforms() {
+      ctx.fillStyle = "#555";
+      for (let plat of platforms) { ctx.fillRect(plat.x, plat.y, plat.width, plat.height); }
+    }
+
     /* ========= DRAWING ========= */
     function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter, cycle }) {
       ctx.save();
@@ -777,7 +863,7 @@
       ctx.moveTo(0, -height / 2);
       ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms: if attacking use fixed positions; otherwise, subtle swing via cycle.
+      // Arms
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
         if (player.currentPunchType === "high") {
@@ -795,18 +881,15 @@
         ctx.lineTo(15, 10 - offset);
       }
       ctx.stroke();
-      // Legs:
+      // Legs
       ctx.beginPath();
       const legOffset = Math.sin(cycle || 0) * 2;
       ctx.moveTo(0, 20 + legOffset);
       ctx.lineTo(-10, 40 + legOffset);
       if (isKicking && kickFrame < 10) {
         ctx.moveTo(0, 20);
-        if (player.currentKickType === "high") {
-          ctx.lineTo(20, -10);
-        } else {
-          ctx.lineTo(30, 40);
-        }
+        if (player.currentKickType === "high") { ctx.lineTo(20, -10); }
+        else { ctx.lineTo(30, 40); }
       } else {
         ctx.moveTo(0, 20);
         ctx.lineTo(10, 40);
@@ -817,11 +900,16 @@
 
     /* ========= MAIN GAME LOOP ========= */
     function gameLoop() {
-      // Draw a translucent rectangle for a subtle motion-blur effect
-      ctx.fillStyle = "rgba(242,242,242,0.8)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      updateCamera();
+      // Apply camera transform.
       ctx.save();
-      ctx.translate(screenShake.x, screenShake.y);
+      ctx.scale(camera.zoom, camera.zoom);
+      ctx.translate(-camera.x, -camera.y);
+      // Draw a translucent background for motion blur.
+      ctx.fillStyle = "rgba(242,242,242,0.8)";
+      ctx.fillRect(camera.x, camera.y, canvas.width / camera.zoom, canvas.height / camera.zoom);
+      drawPlatforms();
+      // Update game objects.
       updateGamepadInput();
       if (!gamePaused) {
         updateScreenShake();
@@ -830,10 +918,9 @@
         updateDeadBodies();
         updatePlayer();
         updateEnemies();
+        // Draw dead bodies.
         deadBodies.forEach(drawStickman);
-        if (!player.isDead) {
-          drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking });
-        }
+        if (!player.isDead) drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking });
         enemies.forEach(enemy => drawStickman({ ...enemy, color: "red" }));
         bossEnemies.forEach(boss => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
