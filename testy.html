@@ -497,6 +497,12 @@
         deadBodies.push({ ...player });
         clearInterval(enemySpawnInterval);
       }
+      
+      // Auto-regenerate player health if below maximum and alive.
+      if (!player.isDead && player.hp < player.maxHp) {
+        player.hp += 0.2; // Adjust this value for a faster or slower regen rate.
+        if (player.hp > player.maxHp) player.hp = player.maxHp;
+      }
     }
     function updateEnemies() {
       enemies.forEach((enemy, index) => {
