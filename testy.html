@@ -38,6 +38,7 @@
       transform: translate(-50%, -50%);
       touch-action: none;
     }
+    /* Attack Buttons */
     .attack {
       position: fixed;
       bottom: 20px;
@@ -55,6 +56,11 @@
       cursor: pointer;
       user-select: none;
       touch-action: none;
+    }
+    /* Kick Button: positioned slightly to the left of punch */
+    .kick {
+      right: 100px;
+      background: darkorange;
     }
     /* Overlays */
     .overlay {
@@ -135,7 +141,10 @@
   <div class="joystick-container" id="joystickContainer">
     <div class="joystick" id="joystick"></div>
   </div>
+  <!-- Punch Button -->
   <div class="attack" id="attack">Punch</div>
+  <!-- Kick Button -->
+  <div class="attack kick" id="kick">Kick</div>
 
   <script>
     /* ========= CORE GAME STATE ========= */
@@ -150,6 +159,7 @@
 
     /* ========= AUDIO & HAPTIC ========= */
     const punchSound = new Audio('https://actions.google.com/sounds/v1/human_voices/punch.ogg');
+    const kickSound = new Audio('https://actions.google.com/sounds/v1/foley/cloth_swish.ogg');
     const deathSound = new Audio('https://actions.google.com/sounds/v1/human_voices/female_scream.ogg');
     const backgroundMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/old_cinema.ogg');
     backgroundMusic.loop = true;
@@ -194,11 +204,13 @@
       velocityX: 0,
       velocityY: 0,
       speed: 5,
-      isAttacking: false,
+      isAttacking: false, // Punch attack flag
       attackFrame: 0,
+      isKicking: false,   // Kick attack flag
+      kickFrame: 0,
       isDead: false,
       rotation: 0,
-      // For ragdoll
+      // For ragdoll physics
       vx: 0,
       vy: 0,
       angularVelocity: 0,
@@ -253,9 +265,15 @@
       player.velocityX = axisX * player.speed;
       player.velocityY = axisY * player.speed;
 
-      if (gp.buttons[0].pressed && !player.isAttacking && !player.isDead) {
+      // A button for punch
+      if (gp.buttons[0].pressed && !player.isAttacking && !player.isKicking && !player.isDead) {
         player.isAttacking = true;
         player.attackFrame = 0;
+      }
+      // X button for kick (for example)
+      if (gp.buttons[2].pressed && !player.isKicking && !player.isAttacking && !player.isDead) {
+        player.isKicking = true;
+        player.kickFrame = 0;
       }
       if (gp.buttons[1].pressed) {
         togglePause();
@@ -265,7 +283,8 @@
     /* ========= TOUCH & MOUSE INPUT ========= */
     const joystickContainer = document.getElementById('joystickContainer');
     const joystick = document.getElementById('joystick');
-    const attackButton = document.getElementById('attack');
+    const punchButton = document.getElementById('attack');
+    const kickButton = document.getElementById('kick');
     const radius = joystickContainer.offsetWidth / 2;
     const center = { x: radius, y: radius };
     let joystickPosition = { x: center.x, y: center.y };
@@ -300,11 +319,33 @@
       player.velocityY = 0;
       joystick.style.transform = 'translate(-50%, -50%)';
     });
-    attackButton.addEventListener('touchstart', (e) => {
+    // Punch button touch
+    punchButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      if (!player.isDead) {
+      if (!player.isDead && !player.isKicking) {
         player.isAttacking = true;
         player.attackFrame = 0;
+      }
+    });
+    // Kick button touch
+    kickButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!player.isDead && !player.isAttacking) {
+        player.isKicking = true;
+        player.kickFrame = 0;
+      }
+    });
+    // Also allow click events for desktop
+    punchButton.addEventListener('click', () => {
+      if (!player.isDead && !player.isKicking) {
+        player.isAttacking = true;
+        player.attackFrame = 0;
+      }
+    });
+    kickButton.addEventListener('click', () => {
+      if (!player.isDead && !player.isAttacking) {
+        player.isKicking = true;
+        player.kickFrame = 0;
       }
     });
 
@@ -341,16 +382,12 @@
       };
       enemies.push(enemy);
     }
-
-    /* ========= START GAME ========= */
     let enemySpawnInterval;
     function startGame() {
       gameStarted = true;
       document.getElementById('startScreen').style.display = 'none';
       document.getElementById('gameOverScreen').style.display = 'none';
       backgroundMusic.play();
-
-      // Begin periodic enemy spawning (every 2 seconds)
       enemySpawnInterval = setInterval(() => {
         if (gameStarted && !gamePaused) {
           spawnEnemy();
@@ -363,6 +400,13 @@
       punchEffects.push({ x, y, alpha: 1 });
       punchSound.currentTime = 0;
       punchSound.play();
+      triggerHapticFeedback();
+    }
+    function addKickEffect(x, y) {
+      // A slightly different visual effect for kicks
+      punchEffects.push({ x, y, alpha: 1 });
+      kickSound.currentTime = 0;
+      kickSound.play();
       triggerHapticFeedback();
     }
     function updatePunchEffects() {
@@ -435,11 +479,21 @@
       player.y += player.velocityY;
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+      // Punch attack update
       if (player.isAttacking) {
         player.attackFrame++;
         if (player.attackFrame > 15) {
           player.isAttacking = false;
           player.attackFrame = 0;
+        }
+      }
+      // Kick attack update
+      if (player.isKicking) {
+        player.kickFrame++;
+        if (player.kickFrame > 20) {
+          player.isKicking = false;
+          player.kickFrame = 0;
         }
       }
       if (player.hp <= 0 && !player.isDead) {
@@ -474,26 +528,34 @@
         } else if (!player.isDead) {
           enemy.isAttacking = true;
           enemy.attackFrame++;
-          addPunchEffect(player.x + randomXOffset, player.y + randomYOffset);
-          addSplatterEffect(player.x, player.y);
-          applyScreenShake(10, 10);
-          if (enemy.attackFrame > 10) {
-            enemy.attackFrame = 0;
-            player.hp -= 5;
+          // Punch damage if within range during punch phase
+          if (player.isAttacking && player.attackFrame < 7 &&
+              Math.abs(player.x - enemy.x) < 50 &&
+              Math.abs(player.y - enemy.y) < 50) {
+            enemy.hp -= 10;
+            enemy.knockback = {
+              x: (enemy.x - player.x) * 0.5,
+              y: (enemy.y - player.y) * 0.5,
+              frames: 5,
+            };
+            addPunchEffect(enemy.x, enemy.y - 25);
+            addSplatterEffect(enemy.x, enemy.y);
+            applyScreenShake(10, 10);
           }
-        }
-        if (player.isAttacking && player.attackFrame < 7 &&
-            Math.abs(player.x - enemy.x) < 50 &&
-            Math.abs(player.y - enemy.y) < 50) {
-          enemy.hp -= 10;
-          enemy.knockback = {
-            x: (enemy.x - player.x) * 0.5,
-            y: (enemy.y - player.y) * 0.5,
-            frames: 5,
-          };
-          addPunchEffect(enemy.x, enemy.y - 25);
-          addSplatterEffect(enemy.x, enemy.y);
-          applyScreenShake(10, 10);
+          // Kick damage uses a longer range and deals more damage
+          if (player.isKicking && player.kickFrame < 10 &&
+              Math.abs(player.x - enemy.x) < 70 &&
+              Math.abs(player.y - enemy.y) < 70) {
+            enemy.hp -= 15;
+            enemy.knockback = {
+              x: (enemy.x - player.x) * 0.7,
+              y: (enemy.y - player.y) * 0.7,
+              frames: 5,
+            };
+            addKickEffect(enemy.x, enemy.y - 25);
+            addSplatterEffect(enemy.x, enemy.y);
+            applyScreenShake(15, 15);
+          }
         }
         if (enemy.knockback) {
           enemy.x += enemy.knockback.x;
@@ -614,7 +676,9 @@
     }
 
     /* ========= DRAWING ========= */
-    function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, color, fadeCounter }) {
+    // Modified drawStickman function to show attack animations.
+    // For punch, arms extend; for kick, one leg extends.
+    function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter }) {
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(rotation);
@@ -631,7 +695,7 @@
       ctx.moveTo(0, -height / 2);
       ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms
+      // Arms (punch animation)
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
         ctx.moveTo(0, -10);
@@ -643,12 +707,21 @@
         ctx.lineTo(15, 10);
       }
       ctx.stroke();
-      // Legs
+      // Legs: if kicking, extend one leg
       ctx.beginPath();
-      ctx.moveTo(0, 20);
-      ctx.lineTo(-10, 40);
-      ctx.moveTo(0, 20);
-      ctx.lineTo(10, 40);
+      if (isKicking && kickFrame < 10) {
+        // Draw the non-kicking leg normally...
+        ctx.moveTo(0, 20);
+        ctx.lineTo(-10, 40);
+        // Draw extended kicking leg
+        ctx.moveTo(0, 20);
+        ctx.lineTo(30, 40);
+      } else {
+        ctx.moveTo(0, 20);
+        ctx.lineTo(-10, 40);
+        ctx.moveTo(0, 20);
+        ctx.lineTo(10, 40);
+      }
       ctx.stroke();
       ctx.restore();
     }
@@ -667,7 +740,14 @@
         updatePlayer();
         updateEnemies();
         deadBodies.forEach(drawStickman);
-        if (!player.isDead) drawStickman(player);
+        if (!player.isDead) {
+          // Pass both attack flags to the drawing routine
+          drawStickman({
+            ...player,
+            isAttacking: player.isAttacking,
+            isKicking: player.isKicking,
+          });
+        }
         enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
         bossEnemies.forEach((boss) => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
