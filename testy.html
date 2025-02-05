@@ -15,7 +15,7 @@
     canvas {
       display: block;
       margin: auto;
-      /* Background is drawn each frame for a subtle motion-blur effect */
+      /* We redraw a semi‑transparent background each frame for a subtle motion blur */
     }
     /* Onscreen Controls */
     .joystick-container {
@@ -24,7 +24,7 @@
       left: 20px;
       width: 120px;
       height: 120px;
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(0,0,0,0.2);
       border-radius: 50%;
     }
     .joystick {
@@ -68,7 +68,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0,0,0,0.8);
       color: white;
       display: flex;
       justify-content: center;
@@ -146,7 +146,7 @@
           ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    // Define a ground level (all characters stand on this)
+    // Define a ground level for all characters (player/enemies stand on this)
     const GROUND_LEVEL = canvas.height - 20;
 
     /* ========= AUDIO & HAPTIC ========= */
@@ -192,7 +192,7 @@
       velocityX: 0,
       velocityY: 0,
       speed: 5,
-      // Attack states with combo system:
+      // Attack state and combo system
       isAttacking: false,
       attackFrame: 0,
       punchCombo: 0,
@@ -216,7 +216,7 @@
       cycle: 0
     };
 
-    // Enemies now include a martial arts state.
+    // Normal enemies have a simple martial arts state
     const enemies = [],
           deadBodies = [],
           punchEffects = [],
@@ -473,8 +473,14 @@
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
       player.y = Math.max(0, Math.min(GROUND_LEVEL - player.height, player.y));
       if (!player.isAttacking && !player.isKicking) { player.cycle += 0.1; }
-      if (player.isAttacking) { player.attackFrame++; if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; } }
-      if (player.isKicking) { player.kickFrame++; if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; } }
+      if (player.isAttacking) {
+        player.attackFrame++;
+        if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; }
+      }
+      if (player.isKicking) {
+        player.kickFrame++;
+        if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; }
+      }
       const now = performance.now();
       if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
       if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) player.kickCombo = 0;
@@ -499,7 +505,7 @@
           if (enemy.fadeCounter > 6) enemies.splice(index, 1);
           return;
         }
-        // First, check for player attack collisions on enemy:
+        // First, check if the player’s attack is active and close enough to damage this enemy.
         const dx = enemy.x - player.x,
               dy = enemy.y - player.y,
               distance = Math.sqrt(dx * dx + dy * dy);
@@ -525,42 +531,42 @@
             applyScreenShake(15, 15);
           }
         }
-        // Now, process enemy AI for movement and attacking the player.
+        // Now process enemy AI (movement and their own attacks on the player).
         const dxp = player.x - enemy.x,
               dyp = player.y - enemy.y,
               dist = Math.sqrt(dxp * dxp + dyp * dyp);
         if (dist > 80) {
-          // Move toward the player
           enemy.x += (dxp / dist) * enemy.speed;
           enemy.y += (dyp / dist) * enemy.speed;
           enemy.cycle = (enemy.cycle || 0) + 0.15;
           enemy.isAttacking = false;
           enemy.attackFrame = 0;
         } else {
-          // Within attack range; if not already attacking, initiate an attack.
           if (!enemy.isAttacking) {
             enemy.isAttacking = true;
             enemy.attackFrame = 0;
             enemy.currentAttackType = Math.random() < 0.5 ? "punch" : "kick";
           }
         }
-        // Process enemy attack (damage to player)
         if (enemy.isAttacking) {
           enemy.attackFrame++;
           if (enemy.attackFrame === 10) {
+            // At frame 10, enemy applies damage to player if in range.
             if (enemy.currentAttackType === "punch") {
               const hitThreshold = 50;
               if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
                 player.hp -= 10;
                 player.vx = (player.x - enemy.x) * 0.5;
                 player.vy = (player.y - enemy.y) * 0.5;
+                addPunchEffect(player.x, player.y - 20);
               }
-            } else {  // kick
+            } else { // kick
               const hitThreshold = 60;
               if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
                 player.hp -= 15;
                 player.vx = (player.x - enemy.x) * 0.7;
                 player.vy = (player.y - enemy.y) * 0.7;
+                addKickEffect(player.x, player.y - 20);
               }
             }
           }
@@ -572,7 +578,6 @@
           enemy.knockback.frames--;
           if (enemy.knockback.frames <= 0) enemy.knockback = null;
         }
-        // Clamp enemy so they do not fall below ground
         if (enemy.y > GROUND_LEVEL - enemy.height) { enemy.y = GROUND_LEVEL - enemy.height; }
         if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
@@ -586,7 +591,7 @@
           killCount++;
         }
       });
-      // Boss spawn logic (unchanged)
+      // Boss enemy logic:
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
           x: Math.random() * canvas.width,
@@ -635,11 +640,17 @@
               const hitThreshold = 60;
               if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
                 player.hp -= 10;
+                player.vx = (player.x - boss.x) * 0.5;
+                player.vy = (player.y - boss.y) * 0.5;
+                addPunchEffect(player.x, player.y - 20);
               }
             } else {
               const hitThreshold = 70;
               if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
                 player.hp -= 15;
+                player.vx = (player.x - boss.x) * 0.7;
+                player.vy = (player.y - boss.y) * 0.7;
+                addKickEffect(player.x, player.y - 20);
               }
             }
           }
@@ -709,7 +720,7 @@
       ctx.moveTo(0, -height / 2);
       ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms: if attacking use fixed positions; otherwise, subtle swing via cycle.
+      // Arms: if attacking, fixed positions; otherwise, subtle swing via cycle.
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
         if (player.currentPunchType === "high") {
@@ -749,7 +760,7 @@
 
     /* ========= MAIN GAME LOOP ========= */
     function gameLoop() {
-      // Draw a translucent rectangle for a subtle motion-blur effect
+      // Draw a translucent rectangle for motion blur
       ctx.fillStyle = "rgba(242,242,242,0.8)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.save();
@@ -763,7 +774,9 @@
         updatePlayer();
         updateEnemies();
         deadBodies.forEach(drawStickman);
-        if (!player.isDead) { drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking }); }
+        if (!player.isDead) {
+          drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking });
+        }
         enemies.forEach(enemy => drawStickman({ ...enemy, color: "red" }));
         bossEnemies.forEach(boss => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
