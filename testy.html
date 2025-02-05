@@ -15,7 +15,7 @@
     canvas {
       display: block;
       margin: auto;
-      background: #f2f2f2;
+      /* The background is now drawn each frame to create a motion-blur effect */
     }
     /* Onscreen Controls */
     .joystick-container {
@@ -156,6 +156,8 @@
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    // Define a ground level (player stands on the bottom)
+    const GROUND_LEVEL = canvas.height - 20;
 
     /* ========= AUDIO & HAPTIC ========= */
     const punchSound = new Audio('https://actions.google.com/sounds/v1/human_voices/punch.ogg');
@@ -203,12 +205,12 @@
       velocityX: 0,
       velocityY: 0,
       speed: 5,
-      // Attack states for punch and kick with combo system
+      // Attack states with combo system:
       isAttacking: false,
       attackFrame: 0,
       punchCombo: 0,
       lastPunchTime: 0,
-      currentPunchType: 'low', // alternates between "low" and "high"
+      currentPunchType: 'low',
       isKicking: false,
       kickFrame: 0,
       kickCombo: 0,
@@ -220,9 +222,11 @@
       vx: 0,
       vy: 0,
       angularVelocity: 0,
-      groundLevel: canvas.height,
+      groundLevel: GROUND_LEVEL,
       fadeCounter: 0,
-      comboTimeout: 500 // milliseconds to reset combo if no follow-up
+      comboTimeout: 500,
+      // Idle/walk cycle for subtle animation
+      cycle: 0
     };
 
     const enemies = [];
@@ -250,15 +254,9 @@
         if (gamepadIndex !== null) {
           const gp = navigator.getGamepads()[gamepadIndex];
           if (gp && gp.buttons[0] && gp.buttons[0].pressed) {
-            if (document.getElementById('startScreen').style.display !== 'none') {
-              startGame();
-            }
-            if (document.getElementById('gameOverScreen').style.display !== 'none') {
-              location.reload();
-            }
-            if (document.getElementById('pauseScreen').style.display !== 'none') {
-              resumeGame();
-            }
+            if (document.getElementById('startScreen').style.display !== 'none') startGame();
+            if (document.getElementById('gameOverScreen').style.display !== 'none') location.reload();
+            if (document.getElementById('pauseScreen').style.display !== 'none') resumeGame();
           }
         }
         return;
@@ -271,7 +269,6 @@
       let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
       player.velocityX = axisX * player.speed;
       player.velocityY = axisY * player.speed;
-
       const now = performance.now();
       // A button for punch
       if (gp.buttons[0].pressed && !player.isAttacking && !player.isKicking && !player.isDead) {
@@ -285,7 +282,7 @@
         player.isAttacking = true;
         player.attackFrame = 0;
       }
-      // X button for kick (example)
+      // X button for kick
       if (gp.buttons[2].pressed && !player.isKicking && !player.isAttacking && !player.isDead) {
         if (now - player.lastKickTime < player.comboTimeout) {
           player.kickCombo = (player.kickCombo % 4) + 1;
@@ -297,9 +294,7 @@
         player.isKicking = true;
         player.kickFrame = 0;
       }
-      if (gp.buttons[1].pressed) {
-        togglePause();
-      }
+      if (gp.buttons[1].pressed) togglePause();
     }
 
     /* ========= TOUCH & MOUSE INPUT ========= */
@@ -311,10 +306,7 @@
     const center = { x: radius, y: radius };
     let joystickPosition = { x: center.x, y: center.y };
     let isDragging = false;
-    joystick.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      isDragging = true;
-    });
+    joystick.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; });
     joystick.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (isDragging && !player.isDead) {
@@ -322,13 +314,11 @@
         const touch = e.touches[0];
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
-        const dx = x - center.x;
-        const dy = y - center.y;
-        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
-        const distance = Math.min(distanceFromCenter, radius);
+        const dx = x - center.x, dy = y - center.y;
+        const dist = Math.sqrt(dx*dx+dy*dy);
+        const distance = Math.min(dist, radius);
         const angle = Math.atan2(dy, dx);
-        joystickPosition.x = center.x + Math.cos(angle) * distance;
-        joystickPosition.y = center.y + Math.sin(angle) * distance;
+        joystickPosition = { x: center.x + Math.cos(angle)*distance, y: center.y + Math.sin(angle)*distance };
         player.velocityX = Math.cos(angle) * (distance / radius) * player.speed;
         player.velocityY = Math.sin(angle) * (distance / radius) * player.speed;
         joystick.style.transform = `translate(${joystickPosition.x - center.x}px, ${joystickPosition.y - center.y}px)`;
@@ -341,7 +331,6 @@
       player.velocityY = 0;
       joystick.style.transform = 'translate(-50%, -50%)';
     });
-    // Punch button events
     function triggerPunch() {
       if (!player.isDead && !player.isKicking) {
         const now = performance.now();
@@ -358,7 +347,6 @@
     }
     punchButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerPunch(); });
     punchButton.addEventListener('click', triggerPunch);
-    // Kick button events
     function triggerKick() {
       if (!player.isDead && !player.isAttacking) {
         const now = performance.now();
@@ -394,7 +382,7 @@
     function spawnEnemy() {
       const enemy = {
         x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        y: Math.random() * (GROUND_LEVEL - 100) + 50, // spawn above ground
         width: 20,
         height: 50,
         hp: 50,
@@ -405,6 +393,9 @@
         rotation: 0,
         knockback: null,
         fadeCounter: 0,
+        // Walk cycle for subtle movement animation
+        cycle: 0,
+        groundLevel: GROUND_LEVEL
       };
       enemies.push(enemy);
     }
@@ -415,9 +406,7 @@
       document.getElementById('gameOverScreen').style.display = 'none';
       backgroundMusic.play();
       enemySpawnInterval = setInterval(() => {
-        if (gameStarted && !gamePaused) {
-          spawnEnemy();
-        }
+        if (gameStarted && !gamePaused) spawnEnemy();
       }, 2000);
     }
 
@@ -502,43 +491,34 @@
       if (player.isDead) return;
       player.x += player.velocityX;
       player.y += player.velocityY;
+      // Clamp player within canvas and ground level:
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
-      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
-
-      // Update punch attack
+      player.y = Math.max(0, Math.min(GROUND_LEVEL - player.height, player.y));
+      // Update idle/walk cycle if not attacking
+      if (!player.isAttacking && !player.isKicking) {
+        player.cycle += 0.1;
+      }
       if (player.isAttacking) {
         player.attackFrame++;
-        if (player.attackFrame > 15) {
-          player.isAttacking = false;
-          player.attackFrame = 0;
-        }
+        if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; }
       }
-      // Update kick attack
       if (player.isKicking) {
         player.kickFrame++;
-        if (player.kickFrame > 20) {
-          player.isKicking = false;
-          player.kickFrame = 0;
-        }
+        if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; }
       }
-      // Reset combos if timeout expires
       const now = performance.now();
-      if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) {
-        player.punchCombo = 0;
-      }
-      if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) {
-        player.kickCombo = 0;
-      }
+      if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
+      if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) player.kickCombo = 0;
       if (player.hp <= 0 && !player.isDead) {
         player.isDead = true;
         document.getElementById('gameOverScreen').style.display = 'flex';
         gameStarted = false;
         gameOver = true;
         deathSound.play();
-        player.vx = (Math.random() - 0.5) * 10;
-        player.vy = -Math.random() * 10;
-        player.angularVelocity = (Math.random() - 0.5) * 0.2;
-        player.groundLevel = canvas.height;
+        player.vx = (Math.random()-0.5)*10;
+        player.vy = -Math.random()*10;
+        player.angularVelocity = (Math.random()-0.5)*0.2;
+        player.groundLevel = GROUND_LEVEL;
         deadBodies.push({ ...player });
         clearInterval(enemySpawnInterval);
       }
@@ -550,46 +530,44 @@
           if (enemy.fadeCounter > 6) enemies.splice(index, 1);
           return;
         }
-        const dx = player.x - enemy.x;
-        const dy = player.y - enemy.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const randomYOffset = -29 + (Math.random() - 0.1) * 10;
-        const randomXOffset = (Math.random() - 0.1) * 10;
+        // Basic enemy AI: move toward player
+        const dx = player.x - enemy.x, dy = player.y - enemy.y;
+        const distance = Math.sqrt(dx*dx+dy*dy);
         if (distance > 10) {
-          enemy.x += (dx / distance) * (enemy.speed || 2);
-          enemy.y += (dy / distance) * (enemy.speed || 2);
-        } else if (!player.isDead) {
+          enemy.x += (dx/distance)*enemy.speed;
+          enemy.y += (dy/distance)*enemy.speed;
+          // Increment enemy’s walk cycle when moving
+          enemy.cycle = (enemy.cycle || 0) + 0.15;
+        }
+        // Clamp enemy to ground
+        if (enemy.y > GROUND_LEVEL - enemy.height) {
+          enemy.y = GROUND_LEVEL - enemy.height;
+        }
+        // If close to player, attack as before.
+        if (!player.isDead && distance <= 10) {
           enemy.isAttacking = true;
           enemy.attackFrame++;
-          // Punch collision (adjusted for high vs low)
+          // Punch collision check (with slight variations for high vs low)
           if (player.isAttacking && player.attackFrame < 7 &&
               Math.abs(player.x - enemy.x) < (player.currentPunchType === "high" ? 55 : 50) &&
               Math.abs(player.y - enemy.y) < 50) {
             const damage = player.currentPunchType === "high" ? 12 : 10;
             enemy.hp -= damage;
-            enemy.knockback = {
-              x: (enemy.x - player.x) * 0.5,
-              y: (enemy.y - player.y) * 0.5,
-              frames: 5,
-            };
-            addPunchEffect(enemy.x, enemy.y - 25);
+            enemy.knockback = { x: (enemy.x-player.x)*0.5, y: (enemy.y-player.y)*0.5, frames: 5 };
+            addPunchEffect(enemy.x, enemy.y-25);
             addSplatterEffect(enemy.x, enemy.y);
-            applyScreenShake(10, 10);
+            applyScreenShake(10,10);
           }
-          // Kick collision (adjusted for high vs low)
+          // Kick collision check:
           if (player.isKicking && player.kickFrame < 10 &&
               Math.abs(player.x - enemy.x) < (player.currentKickType === "high" ? 75 : 70) &&
               Math.abs(player.y - enemy.y) < 70) {
             const damage = player.currentKickType === "high" ? 18 : 15;
             enemy.hp -= damage;
-            enemy.knockback = {
-              x: (enemy.x - player.x) * 0.7,
-              y: (enemy.y - player.y) * 0.7,
-              frames: 5,
-            };
-            addKickEffect(enemy.x, enemy.y - 25);
+            enemy.knockback = { x: (enemy.x-player.x)*0.7, y: (enemy.y-player.y)*0.7, frames: 5 };
+            addKickEffect(enemy.x, enemy.y-25);
             addSplatterEffect(enemy.x, enemy.y);
-            applyScreenShake(15, 15);
+            applyScreenShake(15,15);
           }
         }
         if (enemy.knockback) {
@@ -600,22 +578,21 @@
         }
         if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
-          enemy.rotation = Math.PI / 2;
+          enemy.rotation = Math.PI/2;
           enemy.fadeCounter = 0;
-          enemy.vx = (Math.random() - 0.5) * 10;
-          enemy.vy = -Math.random() * 10;
-          enemy.angularVelocity = (Math.random() - 0.5) * 0.2;
-          enemy.groundLevel = canvas.height;
+          enemy.vx = (Math.random()-0.5)*10;
+          enemy.vy = -Math.random()*10;
+          enemy.angularVelocity = (Math.random()-0.5)*0.2;
+          enemy.groundLevel = GROUND_LEVEL;
           deadBodies.push({ ...enemy });
           killCount++;
         }
       });
-
-      // Boss spawn logic (unchanged)
+      // Boss spawn logic remains unchanged
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
+          x: Math.random()*canvas.width,
+          y: Math.random()*(GROUND_LEVEL-150)+50,
           width: 40,
           height: 80,
           hp: 200,
@@ -627,67 +604,64 @@
           knockback: null,
           fadeCounter: 0,
           color: 'purple',
+          cycle: 0,
+          groundLevel: GROUND_LEVEL
         });
       }
       bossEnemies.forEach((boss, index) => {
         if (boss.isDead) {
           boss.fadeCounter++;
-          if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
+          if (boss.fadeCounter > 6) bossEnemies.splice(index,1);
           return;
         }
-        const dx = player.x - boss.x;
-        const dy = player.y - boss.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const dx = player.x - boss.x, dy = player.y - boss.y;
+        const distance = Math.sqrt(dx*dx+dy*dy);
         if (distance > 10) {
-          boss.x += (dx / distance) * boss.speed;
-          boss.y += (dy / distance) * boss.speed;
-        } else if (!player.isDead) {
+          boss.x += (dx/distance)*boss.speed;
+          boss.y += (dy/distance)*boss.speed;
+          boss.cycle = (boss.cycle || 0) + 0.1;
+        }
+        if (boss.y > GROUND_LEVEL - boss.height) {
+          boss.y = GROUND_LEVEL - boss.height;
+        }
+        if (!player.isDead && distance<=10) {
           boss.isAttacking = true;
           boss.attackFrame++;
-          addPunchEffect(player.x, player.y - 30);
+          addPunchEffect(player.x, player.y-30);
           addSplatterEffect(player.x, player.y);
-          applyScreenShake(15, 15);
-          if (boss.attackFrame > 15) {
-            boss.attackFrame = 0;
-            player.hp -= 10;
-          }
+          applyScreenShake(15,15);
+          if (boss.attackFrame > 15) { boss.attackFrame = 0; player.hp -= 10; }
         }
         if (player.isAttacking && player.attackFrame < 7 &&
-            Math.abs(player.x - boss.x) < 60 &&
-            Math.abs(player.y - boss.y) < 60) {
+            Math.abs(player.x-boss.x)<60 &&
+            Math.abs(player.y-boss.y)<60) {
           boss.hp -= 5;
-          boss.knockback = {
-            x: (boss.x - player.x) * 0.5,
-            y: (boss.y - player.y) * 0.5,
-            frames: 5,
-          };
-          addPunchEffect(boss.x, boss.y - 30);
+          boss.knockback = { x: (boss.x-player.x)*0.5, y: (boss.y-player.y)*0.5, frames: 5 };
+          addPunchEffect(boss.x, boss.y-30);
           addSplatterEffect(boss.x, boss.y);
-          applyScreenShake(15, 15);
+          applyScreenShake(15,15);
         }
         if (boss.knockback) {
           boss.x += boss.knockback.x;
           boss.y += boss.knockback.y;
           boss.knockback.frames--;
-          if (boss.knockback.frames <= 0) boss.knockback = null;
+          if (boss.knockback.frames<=0) boss.knockback = null;
         }
-        if (boss.hp <= 0 && !boss.isDead) {
+        if (boss.hp<=0 && !boss.isDead) {
           boss.isDead = true;
-          boss.rotation = Math.PI / 2;
+          boss.rotation = Math.PI/2;
           boss.fadeCounter = 0;
-          boss.vx = (Math.random() - 0.5) * 10;
-          boss.vy = -Math.random() * 10;
-          boss.angularVelocity = (Math.random() - 0.5) * 0.2;
-          boss.groundLevel = canvas.height;
+          boss.vx = (Math.random()-0.5)*10;
+          boss.vy = -Math.random()*10;
+          boss.angularVelocity = (Math.random()-0.5)*0.2;
+          boss.groundLevel = GROUND_LEVEL;
           deadBodies.push({ ...boss });
           killCount += 5;
         }
       });
     }
     function updateDeadBodies() {
-      const gravity = 0.5;
-      const friction = 0.98;
-      // Define a foot offset so bodies drop with their feet aligned.
+      const gravity = 0.5, friction = 0.98;
       const footOffset = 15;
       for (let i = deadBodies.length - 1; i >= 0; i--) {
         const body = deadBodies[i];
@@ -695,47 +669,46 @@
         body.vy += gravity;
         body.x += body.vx;
         body.y += body.vy;
-        // Adjust drop so that the bottom of the body (center + footOffset) aligns with groundLevel.
-        if (body.y + (body.height / 2) + footOffset > body.groundLevel) {
-          body.y = body.groundLevel - (body.height / 2) - footOffset;
+        if (body.y + (body.height/2) + footOffset > body.groundLevel) {
+          body.y = body.groundLevel - (body.height/2) - footOffset;
           body.vy *= -0.5;
           body.vx *= friction;
           body.vy *= friction;
         }
         body.rotation += body.angularVelocity;
         body.angularVelocity *= friction;
-        if (body.fadeCounter > 600) deadBodies.splice(i, 1);
+        if (body.fadeCounter > 600) deadBodies.splice(i,1);
       }
     }
     function updateHUD() {
       document.getElementById('killCountText').innerText = `${killCount} Enemies Killed`;
       document.getElementById('rankText').innerText = `Rank: ${getCurrentRank(killCount)}`;
-      const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+      const hpPercent = Math.max(0, (player.hp/player.maxHp)*100);
       document.getElementById('healthFill').style.width = `${hpPercent}%`;
     }
 
     /* ========= DRAWING ========= */
-    // The drawStickman function now reflects both punch and kick animations.
-    // For punch, arms extend differently based on high vs low.
-    // For kick, if high kick the leg flips upward; if low, the leg extends forward.
-    function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter }) {
+    // The drawStickman function now includes:
+    // - Modified leg drawing: if kicking, a high kick flips the leg upward.
+    // - If not attacking, a subtle swing is applied using the cycle value.
+    function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter, cycle }) {
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(rotation);
       ctx.strokeStyle = color || "black";
       ctx.fillStyle = color || "black";
-      ctx.globalAlpha = fadeCounter ? 1 - fadeCounter / 600 : 1;
+      ctx.globalAlpha = fadeCounter ? 1 - fadeCounter/600 : 1;
       ctx.lineWidth = 2;
       // Head
       ctx.beginPath();
-      ctx.arc(0, -height / 2, 10, 0, Math.PI * 2);
+      ctx.arc(0, -height/2, 10, 0, Math.PI*2);
       ctx.fill();
       // Body
       ctx.beginPath();
-      ctx.moveTo(0, -height / 2);
-      ctx.lineTo(0, height / 2);
+      ctx.moveTo(0, -height/2);
+      ctx.lineTo(0, height/2);
       ctx.stroke();
-      // Arms for punch attack
+      // Arms: if attacking use fixed positions; if idle/walking, apply a subtle oscillation.
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
         if (player.currentPunchType === "high") {
@@ -746,24 +719,28 @@
           ctx.lineTo(30, -10);
         }
       } else {
-        ctx.moveTo(0, -10);
-        ctx.lineTo(-15, 10);
-        ctx.moveTo(0, -10);
-        ctx.lineTo(15, 10);
+        // Use cycle value to swing arms slightly
+        const offset = Math.sin(cycle || 0) * 5;
+        ctx.moveTo(0, -10+offset);
+        ctx.lineTo(-15, 10+offset);
+        ctx.moveTo(0, -10-offset);
+        ctx.lineTo(15, 10-offset);
       }
       ctx.stroke();
-      // Legs: draw the non-kicking leg normally.
+      // Legs:
       ctx.beginPath();
-      ctx.moveTo(0, 20);
-      ctx.lineTo(-10, 40);
-      // For kicking leg:
+      // Non-kicking leg drawn normally with a slight oscillation
+      const legOffset = Math.sin(cycle || 0) * 2;
+      ctx.moveTo(0, 20+legOffset);
+      ctx.lineTo(-10, 40+legOffset);
+      // Kicking leg:
       if (isKicking && kickFrame < 10) {
         ctx.moveTo(0, 20);
         if (player.currentKickType === "high") {
-          // High kick: leg flips upward.
+          // High kick: leg flips upward
           ctx.lineTo(20, -10);
         } else {
-          // Low kick: leg extends forward.
+          // Low kick: leg extends forward
           ctx.lineTo(30, 40);
         }
       } else {
@@ -776,9 +753,11 @@
 
     /* ========= MAIN GAME LOOP ========= */
     function gameLoop() {
+      // Instead of a full clear, draw a translucent rectangle to create a subtle motion blur effect
+      ctx.fillStyle = "rgba(242,242,242,0.8)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       ctx.translate(screenShake.x, screenShake.y);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
       updateGamepadInput();
       if (!gamePaused) {
         updateScreenShake();
@@ -789,14 +768,10 @@
         updateEnemies();
         deadBodies.forEach(drawStickman);
         if (!player.isDead) {
-          drawStickman({
-            ...player,
-            isAttacking: player.isAttacking,
-            isKicking: player.isKicking,
-          });
+          drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking });
         }
-        enemies.forEach((enemy) => drawStickman({ ...enemy, color: "red" }));
-        bossEnemies.forEach((boss) => drawStickman({ ...boss, color: boss.color || "purple" }));
+        enemies.forEach(enemy => drawStickman({ ...enemy, color: "red" }));
+        bossEnemies.forEach(boss => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
         drawSplatterEffects();
       }
@@ -810,6 +785,7 @@
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      // Update ground level accordingly
       player.x = canvas.width / 2;
       player.y = canvas.height / 2;
     });
