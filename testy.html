@@ -185,8 +185,8 @@
       y: canvas.height / 2,
       width: 20,
       height: 50,
-      hp: 1000,
-      maxHp: 1000,
+      hp: 100,
+      maxHp: 100,
       velocityX: 0,
       velocityY: 0,
       speed: 5,
@@ -208,7 +208,13 @@
       groundLevel: GROUND_LEVEL,
       fadeCounter: 0,
       comboTimeout: 500,
-      cycle: 0
+      cycle: 0,
+      // DASH properties
+      dashSpeed: 15,
+      isDashing: false,
+      dashTimer: 0,
+      dashDuration: 10,  // dash lasts for 10 frames
+      dashVector: { x: 0, y: 0 }
     };
 
     const enemies = [],
@@ -285,8 +291,13 @@
           kickButton = document.getElementById('kick');
     const r = joystickContainer.offsetWidth / 2,
           c = { x: r, y: r };
-    let joystickPosition = { x: c.x, y: c.y }, isDragging = false;
-    joystick.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; });
+    let joystickPosition = { x: c.x, y: c.y },
+        isDragging = false,
+        lastJoystickDistance = 0;
+    joystick.addEventListener('touchstart', (e) => { 
+      e.preventDefault(); 
+      isDragging = true; 
+    });
     joystick.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (isDragging && !player.isDead) {
@@ -296,17 +307,26 @@
               y = touch.clientY - rect.top,
               dx = x - c.x,
               dy = y - c.y,
-              dist = Math.sqrt(dx * dx + dy * dy),
-              distance = Math.min(dist, r),
+              distance = Math.sqrt(dx * dx + dy * dy),
+              limitedDistance = Math.min(distance, r),
               angle = Math.atan2(dy, dx);
-        joystickPosition = { x: c.x + Math.cos(angle) * distance, y: c.y + Math.sin(angle) * distance };
-        player.velocityX = Math.cos(angle) * (distance / r) * player.speed;
-        player.velocityY = Math.sin(angle) * (distance / r) * player.speed;
+        lastJoystickDistance = distance;
+        joystickPosition = { x: c.x + Math.cos(angle) * limitedDistance, y: c.y + Math.sin(angle) * limitedDistance };
+        player.velocityX = Math.cos(angle) * (limitedDistance / r) * player.speed;
+        player.velocityY = Math.sin(angle) * (limitedDistance / r) * player.speed;
         joystick.style.transform = `translate(${joystickPosition.x - c.x}px, ${joystickPosition.y - c.y}px)`;
       }
     });
     joystick.addEventListener('touchend', () => {
       isDragging = false;
+      // If the joystick was flicked far from center, trigger dash
+      if (lastJoystickDistance > r * 0.8) {
+        let angle = Math.atan2(joystickPosition.y - c.y, joystickPosition.x - c.x);
+        player.isDashing = true;
+        player.dashTimer = player.dashDuration;
+        player.dashVector = { x: Math.cos(angle) * player.dashSpeed, y: Math.sin(angle) * player.dashSpeed };
+      }
+      lastJoystickDistance = 0;
       joystickPosition = { x: c.x, y: c.y };
       player.velocityX = 0;
       player.velocityY = 0;
@@ -315,8 +335,11 @@
     function triggerPunch() {
       if (!player.isDead && !player.isKicking) {
         const now = performance.now();
-        if (now - player.lastPunchTime < player.comboTimeout) { player.punchCombo = (player.punchCombo % 4) + 1; }
-        else { player.punchCombo = 1; }
+        if (now - player.lastPunchTime < player.comboTimeout) { 
+          player.punchCombo = (player.punchCombo % 4) + 1; 
+        } else { 
+          player.punchCombo = 1; 
+        }
         player.lastPunchTime = now;
         player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
         player.isAttacking = true;
@@ -328,8 +351,11 @@
     function triggerKick() {
       if (!player.isDead && !player.isAttacking) {
         const now = performance.now();
-        if (now - player.lastKickTime < player.comboTimeout) { player.kickCombo = (player.kickCombo % 4) + 1; }
-        else { player.kickCombo = 1; }
+        if (now - player.lastKickTime < player.comboTimeout) { 
+          player.kickCombo = (player.kickCombo % 4) + 1; 
+        } else { 
+          player.kickCombo = 1; 
+        }
         player.lastKickTime = now;
         player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
         player.isKicking = true;
@@ -462,18 +488,27 @@
     /* ========= GAME UPDATES ========= */
     function updatePlayer() {
       if (player.isDead) return;
+      // Regular movement update
       player.x += player.velocityX;
       player.y += player.velocityY;
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
       player.y = Math.max(0, Math.min(GROUND_LEVEL - player.height, player.y));
-      if (!player.isAttacking && !player.isKicking) { player.cycle += 0.1; }
+      if (!player.isAttacking && !player.isKicking) { 
+        player.cycle += 0.1; 
+      }
       if (player.isAttacking) {
         player.attackFrame++;
-        if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; }
+        if (player.attackFrame > 15) { 
+          player.isAttacking = false; 
+          player.attackFrame = 0; 
+        }
       }
       if (player.isKicking) {
         player.kickFrame++;
-        if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; }
+        if (player.kickFrame > 20) { 
+          player.isKicking = false; 
+          player.kickFrame = 0; 
+        }
       }
       const now = performance.now();
       if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
@@ -490,6 +525,15 @@
         player.groundLevel = GROUND_LEVEL;
         deadBodies.push({ ...player });
         clearInterval(enemySpawnInterval);
+      }
+      // DASH movement: if dashing, override regular movement
+      if (player.isDashing) {
+        player.x += player.dashVector.x;
+        player.y += player.dashVector.y;
+        player.dashTimer--;
+        if (player.dashTimer <= 0) {
+          player.isDashing = false;
+        }
       }
       // Auto-regenerate health
       if (!player.isDead && player.hp < player.maxHp) {
@@ -530,7 +574,7 @@
             applyScreenShake(15, 15);
           }
         }
-        // Adjusted enemy movement/attack threshold (from 80 to 60)
+        // Adjust enemy movement and attack threshold (60 units)
         const dxp = player.x - enemy.x,
               dyp = player.y - enemy.y,
               dist = Math.sqrt(dxp * dxp + dyp * dyp);
@@ -572,7 +616,10 @@
               }
             }
           }
-          if (enemy.attackFrame > 15) { enemy.isAttacking = false; enemy.attackFrame = 0; }
+          if (enemy.attackFrame > 15) { 
+            enemy.isAttacking = false; 
+            enemy.attackFrame = 0; 
+          }
         }
         if (enemy.knockback) {
           enemy.x += enemy.knockback.x;
@@ -594,7 +641,7 @@
         }
       });
       
-      // Boss enemy logic (unchanged from before)
+      // Boss enemy logic (similar to regular enemies)
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
           x: Math.random() * canvas.width,
@@ -620,7 +667,7 @@
           if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
           return;
         }
-        // Player attack on boss handled similarly:
+        // Player attack on boss
         const dxBoss = boss.x - player.x,
               dyBoss = boss.y - player.y,
               distanceBoss = Math.sqrt(dxBoss * dxBoss + dyBoss * dyBoss);
