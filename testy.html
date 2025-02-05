@@ -185,8 +185,8 @@
       y: canvas.height / 2,
       width: 20,
       height: 50,
-      hp: 1000,
-      maxHp: 1000,
+      hp: 100,
+      maxHp: 100,
       velocityX: 0,
       velocityY: 0,
       speed: 5,
@@ -491,8 +491,7 @@
         deadBodies.push({ ...player });
         clearInterval(enemySpawnInterval);
       }
-      
-      // Auto-regenerate player health if below maximum and alive.
+      // Auto-regenerate health
       if (!player.isDead && player.hp < player.maxHp) {
         player.hp += 0.2;
         if (player.hp > player.maxHp) player.hp = player.maxHp;
@@ -508,6 +507,7 @@
         const dx = enemy.x - player.x,
               dy = enemy.y - player.y,
               distance = Math.sqrt(dx * dx + dy * dy);
+        // Player attack on enemy
         if (player.isAttacking && player.attackFrame < 7) {
           const threshold = player.currentPunchType === "high" ? 55 : 50;
           if (distance < threshold) {
@@ -530,10 +530,11 @@
             applyScreenShake(15, 15);
           }
         }
+        // Adjusted enemy movement/attack threshold (from 80 to 60)
         const dxp = player.x - enemy.x,
               dyp = player.y - enemy.y,
               dist = Math.sqrt(dxp * dxp + dyp * dyp);
-        if (dist > 80) {
+        if (dist > 60) {
           enemy.x += (dxp / dist) * enemy.speed;
           enemy.y += (dyp / dist) * enemy.speed;
           enemy.cycle = (enemy.cycle || 0) + 0.15;
@@ -556,6 +557,8 @@
                 player.vx = (player.x - enemy.x) * 0.5;
                 player.vy = (player.y - enemy.y) * 0.5;
                 addPunchEffect(player.x, player.y - 20);
+                addSplatterEffect(player.x, player.y);
+                applyScreenShake(10, 10);
               }
             } else {
               const hitThreshold = 60;
@@ -564,6 +567,8 @@
                 player.vx = (player.x - enemy.x) * 0.7;
                 player.vy = (player.y - enemy.y) * 0.7;
                 addKickEffect(player.x, player.y - 20);
+                addSplatterEffect(player.x, player.y);
+                applyScreenShake(15, 15);
               }
             }
           }
@@ -588,7 +593,8 @@
           killCount++;
         }
       });
-      // Boss enemy logic:
+      
+      // Boss enemy logic (unchanged from before)
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
           x: Math.random() * canvas.width,
@@ -614,7 +620,7 @@
           if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
           return;
         }
-        // --- NEW: Check if player attacks the boss ---
+        // Player attack on boss handled similarly:
         const dxBoss = boss.x - player.x,
               dyBoss = boss.y - player.y,
               distanceBoss = Math.sqrt(dxBoss * dxBoss + dyBoss * dyBoss);
@@ -640,7 +646,6 @@
             applyScreenShake(15, 15);
           }
         }
-        // Existing boss behavior:
         const dx = player.x - boss.x,
               dy = player.y - boss.y,
               dist = Math.sqrt(dx * dx + dy * dy);
