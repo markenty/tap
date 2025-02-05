@@ -15,7 +15,7 @@
     canvas {
       display: block;
       margin: auto;
-      /* We redraw a semi‑transparent background each frame to create a motion‐blur effect */
+      /* A semi-transparent background is drawn each frame for motion blur */
     }
     /* Onscreen Controls */
     .joystick-container {
@@ -185,23 +185,22 @@
           ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    // Define ground level and level width (for horizontal scrolling)
+    // Define ground level and level width for horizontal scrolling.
     const GROUND_LEVEL = canvas.height - 20,
-          LEVEL_WIDTH = canvas.width * 2;  // a level twice as wide as the screen
+          LEVEL_WIDTH = canvas.width * 2;  // Level is twice as wide as the screen
 
-    // Platforms – procedurally generated
+    // Procedurally generated platforms.
     let platforms = [];
     function generatePlatforms() {
       platforms = [];
-      // For example, generate 8 platforms randomly in the level.
+      // Generate 8 random platforms.
       for (let i = 0; i < 8; i++) {
         const platWidth = 100 + Math.random() * 150;
         const platX = Math.random() * (LEVEL_WIDTH - platWidth);
-        // y between 100 and ground level - 100
         const platY = 100 + Math.random() * (GROUND_LEVEL - 150);
         platforms.push({ x: platX, y: platY, width: platWidth, height: 20 });
       }
-      // Also add a "ground" platform covering the bottom.
+      // Add a ground platform covering the bottom.
       platforms.push({ x: 0, y: GROUND_LEVEL, width: LEVEL_WIDTH, height: 20 });
     }
     generatePlatforms();
@@ -212,7 +211,9 @@
           deathSound = new Audio('https://actions.google.com/sounds/v1/human_voices/female_scream.ogg'),
           backgroundMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/old_cinema.ogg');
     backgroundMusic.loop = true; backgroundMusic.volume = 0.3;
-    function triggerHapticFeedback() { if (navigator.vibrate) navigator.vibrate(50); }
+    function triggerHapticFeedback() {
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
 
     /* ========= RANK SYSTEM ========= */
     const rankThresholds = [
@@ -274,11 +275,10 @@
       fadeCounter: 0,
       comboTimeout: 500,
       cycle: 0,
-      // For camera adjustments (if needed)
-      platform: null  // will be set based on collision with platforms
+      platform: null
     };
 
-    // Enemies now have similar basic physics, plus a flag for jumping on platforms.
+    // Enemies and bosses with similar state and simple AI.
     const enemies = [],
           deadBodies = [],
           punchEffects = [],
@@ -288,11 +288,12 @@
 
     /* ========= PLATFORM COLLISION ========= */
     function checkPlatformCollision(entity) {
-      // Check if entity is landing on any platform (from above)
       for (let plat of platforms) {
-        // simple AABB check for feet collision: entity's bottom is near platform top and horizontally overlapping
-        if (entity.y + entity.height >= plat.y && entity.y + entity.height <= plat.y + 10 &&
-            entity.x + entity.width > plat.x && entity.x < plat.x + plat.width) {
+        // Check if entity's bottom is near the top of a platform.
+        if (entity.y + entity.height >= plat.y &&
+            entity.y + entity.height <= plat.y + 10 &&
+            entity.x + entity.width > plat.x &&
+            entity.x < plat.x + plat.width) {
           return plat;
         }
       }
@@ -321,7 +322,7 @@
       const deadzone = 0.2;
       let axisX = Math.abs(gp.axes[0]) > deadzone ? gp.axes[0] : 0;
       let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
-      // Horizontal movement always applies; vertical movement only if not jumping.
+      // Horizontal movement always applies; vertical only when not jumping.
       player.velocityX = axisX * player.speed;
       if (!player.isJumping) player.velocityY = axisY * player.speed;
       const now = performance.now();
@@ -378,7 +379,8 @@
     joystick.addEventListener('touchend', () => {
       isDragging = false;
       joystickPosition = { x: cVal.x, y: cVal.y };
-      player.velocityX = 0; player.velocityY = 0;
+      player.velocityX = 0;
+      player.velocityY = 0;
       joystick.style.transform = 'translate(-50%, -50%)';
     });
     function triggerPunch() {
@@ -405,12 +407,12 @@
     }
     kickButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKick(); });
     kickButton.addEventListener('click', triggerKick);
-    // Block button – while pressed, set block state.
+    // Block button.
     blockButton.addEventListener('touchstart', (e) => { e.preventDefault(); player.isBlocking = true; });
     blockButton.addEventListener('touchend', () => { player.isBlocking = false; });
     blockButton.addEventListener('mousedown', () => { player.isBlocking = true; });
     blockButton.addEventListener('mouseup', () => { player.isBlocking = false; });
-    // Jump button – call triggerJump.
+    // Jump button.
     jumpButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
     jumpButton.addEventListener('click', triggerJump);
     function triggerJump() {
@@ -418,7 +420,7 @@
       if (player.jumpCount < player.maxJumps) {
         player.isJumping = true;
         player.jumpCount++;
-        player.jumpVelocity = -12;  // adjust initial jump velocity
+        player.jumpVelocity = -12;
       }
     }
 
@@ -453,7 +455,6 @@
         knockback: null,
         fadeCounter: 0,
         cycle: 0,
-        // For enemy jump:
         isJumping: false,
         jumpVelocity: 0,
         groundLevel: GROUND_LEVEL,
@@ -547,29 +548,18 @@
       }
     }
 
-    /* ========= CAMERA ========= */
+    /* ========= CAMERA & LEVEL DRAWING ========= */
     let camera = { x: 0, y: 0, zoom: 1 };
     function updateCamera() {
-      // Center on the player; if the player is in their third jump, zoom out progressively.
-      if (player.isJumping && player.jumpCount >= player.maxJumps) {
-        camera.zoom = 0.8;
-      } else {
-        camera.zoom = 1;
-      }
+      // Zoom out when player is on their third jump.
+      camera.zoom = (player.isJumping && player.jumpCount === player.maxJumps) ? 0.8 : 1;
       camera.x = player.x - canvas.width / (2 * camera.zoom);
       camera.y = player.y - canvas.height / (2 * camera.zoom);
-      // Clamp camera so that we don’t show outside the level:
       if (camera.x < 0) camera.x = 0;
       if (camera.y < 0) camera.y = 0;
-      if (camera.x + canvas.width / camera.zoom > LEVEL_WIDTH) {
-        camera.x = LEVEL_WIDTH - canvas.width / camera.zoom;
-      }
-      if (camera.y + canvas.height / camera.zoom > canvas.height) {
-        camera.y = canvas.height - canvas.height / camera.zoom;
-      }
+      if (camera.x + canvas.width / camera.zoom > LEVEL_WIDTH) camera.x = LEVEL_WIDTH - canvas.width / camera.zoom;
+      if (camera.y + canvas.height / camera.zoom > canvas.height) camera.y = canvas.height - canvas.height / camera.zoom;
     }
-
-    /* ========= PLATFORM DRAWING ========= */
     function drawPlatforms() {
       ctx.fillStyle = "#555";
       for (let plat of platforms) {
@@ -580,14 +570,13 @@
     /* ========= GAME UPDATES ========= */
     function updatePlayer() {
       if (player.isDead) return;
-      // Horizontal movement from joystick.
+      // Horizontal movement (within the level)
       player.x += player.velocityX;
       player.x = Math.max(0, Math.min(LEVEL_WIDTH - player.width, player.x));
       // Jump physics override vertical joystick input.
       if (player.isJumping) {
         player.y += player.jumpVelocity;
         player.jumpVelocity += 0.8; // gravity
-        // Check collision with platforms
         let plat = checkPlatformCollision(player);
         if (plat && player.jumpVelocity > 0) {
           player.y = plat.y - player.height;
@@ -597,13 +586,12 @@
           player.platform = plat;
         }
       } else {
-        // If not jumping, ensure the player stays on a platform (or ground)
         let plat = checkPlatformCollision(player);
-        if (plat) { 
+        if (plat) {
           player.y = plat.y - player.height;
           player.platform = plat;
         } else {
-          // Fall to ground
+          // If no platform, let the player fall slowly.
           player.y += 1;
         }
       }
@@ -630,7 +618,6 @@
     function updateEnemies() {
       enemies.forEach((enemy, index) => {
         if (enemy.isDead) { enemy.fadeCounter++; if (enemy.fadeCounter > 6) enemies.splice(index, 1); return; }
-        // First, allow the player's attack to damage the enemy.
         const dx = enemy.x - player.x, dy = enemy.y - player.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (player.isAttacking && player.attackFrame < 7) {
@@ -655,11 +642,9 @@
             applyScreenShake(15, 15);
           }
         }
-        // Now, process enemy AI.
-        // Determine enemy's platform.
+        // Enemy platform collision and jumping.
         let enemyPlat = checkPlatformCollision(enemy);
         enemy.platform = enemyPlat;
-        // If enemy is not on the same platform as the player, try to jump.
         if (enemyPlat && player.platform && enemyPlat !== player.platform && !enemy.isJumping) {
           enemy.isJumping = true;
           enemy.jumpVelocity = -10;
@@ -673,7 +658,7 @@
             enemy.isJumping = false;
           }
         }
-        // Otherwise, if not jumping, move and attack.
+        // Enemy AI: if not jumping, move toward and attack player.
         const dxp = player.x - enemy.x, dyp = player.y - enemy.y, dist = Math.sqrt(dxp * dxp + dyp * dyp);
         if (dist > 80) {
           enemy.x += (dxp / dist) * enemy.speed;
@@ -726,7 +711,7 @@
           killCount++;
         }
       });
-      // Boss enemy logic:
+      // Boss enemy logic.
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
           x: Math.random() * LEVEL_WIDTH,
@@ -748,8 +733,7 @@
       }
       bossEnemies.forEach((boss, index) => {
         if (boss.isDead) { boss.fadeCounter++; if (boss.fadeCounter > 6) bossEnemies.splice(index, 1); return; }
-        let dx = player.x - boss.x, dy = player.y - boss.y,
-            dist = Math.sqrt(dx * dx + dy * dy);
+        let dx = player.x - boss.x, dy = player.y - boss.y, dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 80) {
           boss.x += (dx / dist) * boss.speed;
           boss.y += (dy / dist) * boss.speed;
@@ -831,7 +815,6 @@
     /* ========= CAMERA & LEVEL DRAWING ========= */
     let camera = { x: 0, y: 0, zoom: 1 };
     function updateCamera() {
-      // Zoom out when player is on their third jump, else normal zoom.
       camera.zoom = (player.isJumping && player.jumpCount === player.maxJumps) ? 0.8 : 1;
       camera.x = player.x - canvas.width / (2 * camera.zoom);
       camera.y = player.y - canvas.height / (2 * camera.zoom);
@@ -901,15 +884,12 @@
     /* ========= MAIN GAME LOOP ========= */
     function gameLoop() {
       updateCamera();
-      // Apply camera transform.
       ctx.save();
       ctx.scale(camera.zoom, camera.zoom);
       ctx.translate(-camera.x, -camera.y);
-      // Draw a translucent background for motion blur.
       ctx.fillStyle = "rgba(242,242,242,0.8)";
       ctx.fillRect(camera.x, camera.y, canvas.width / camera.zoom, canvas.height / camera.zoom);
       drawPlatforms();
-      // Update game objects.
       updateGamepadInput();
       if (!gamePaused) {
         updateScreenShake();
@@ -918,9 +898,8 @@
         updateDeadBodies();
         updatePlayer();
         updateEnemies();
-        // Draw dead bodies.
         deadBodies.forEach(drawStickman);
-        if (!player.isDead) drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking });
+        if (!player.isDead) { drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking }); }
         enemies.forEach(enemy => drawStickman({ ...enemy, color: "red" }));
         bossEnemies.forEach(boss => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
