@@ -15,7 +15,7 @@
     canvas {
       display: block;
       margin: auto;
-      /* The background is drawn each frame for a motion blur effect */
+      /* Background drawn each frame for motion blur effect */
     }
     /* Onscreen Controls */
     .joystick-container {
@@ -24,7 +24,7 @@
       left: 20px;
       width: 120px;
       height: 120px;
-      background: rgba(0,0,0,0.2);
+      background: rgba(0, 0, 0, 0.2);
       border-radius: 50%;
     }
     .joystick {
@@ -68,7 +68,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0, 0, 0, 0.8);
       color: white;
       display: flex;
       justify-content: center;
@@ -107,18 +107,19 @@
   </style>
 </head>
 <body>
-  <!-- Overlays, HUD, Canvas and Controls remain unchanged -->
+  <!-- Overlays -->
   <div id="startScreen" class="overlay">
     <button id="fightButton">Fight!</button>
   </div>
-  <div id="gameOverScreen" class="overlay" style="display:none;">
+  <div id="gameOverScreen" class="overlay" style="display: none;">
     <h1>You were defeated</h1>
     <button id="tryAgainButton">Try Again?</button>
   </div>
-  <div id="pauseScreen" class="overlay" style="display:none;">
+  <div id="pauseScreen" class="overlay" style="display: none;">
     <h1>Game Paused</h1>
     <button id="resumeButton">Resume</button>
   </div>
+  <!-- HUD -->
   <div class="hud">
     <div class="health-bar">
       <div id="healthFill" class="health-fill"></div>
@@ -126,7 +127,9 @@
     <div id="killCountText">0 Enemies Killed</div>
     <div id="rankText">Rank: Novice</div>
   </div>
+  <!-- Game Canvas -->
   <canvas id="gameCanvas"></canvas>
+  <!-- Onscreen Controls -->
   <div class="joystick-container" id="joystickContainer">
     <div class="joystick" id="joystick"></div>
   </div>
@@ -135,12 +138,15 @@
 
   <script>
     /* ========= CORE GAME STATE ========= */
-    let gameStarted = false, gameOver = false, gamePaused = false, killCount = 0;
+    let gameStarted = false,
+        gameOver = false,
+        gamePaused = false,
+        killCount = 0;
     const canvas = document.getElementById('gameCanvas'),
           ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    // Define a ground level where characters stand
+    // Define the ground level (player and enemies stand on this)
     const GROUND_LEVEL = canvas.height - 20;
 
     /* ========= AUDIO & HAPTIC ========= */
@@ -150,94 +156,133 @@
           backgroundMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/old_cinema.ogg');
     backgroundMusic.loop = true;
     backgroundMusic.volume = 0.3;
-    function triggerHapticFeedback() { if(navigator.vibrate) navigator.vibrate(50); }
+    function triggerHapticFeedback() {
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
 
     /* ========= RANK SYSTEM ========= */
     const rankThresholds = [
-      {name:"Novice", requiredKills:0},
-      {name:"Apprentice", requiredKills:10},
-      {name:"Fighter", requiredKills:25},
-      {name:"Warrior", requiredKills:50},
-      {name:"Veteran", requiredKills:100},
-      {name:"Elite", requiredKills:250},
-      {name:"Master", requiredKills:500},
-      {name:"Legend", requiredKills:1000},
-      {name:"Stick Assassin", requiredKills:2000}
+      { name: "Novice", requiredKills: 0 },
+      { name: "Apprentice", requiredKills: 10 },
+      { name: "Fighter", requiredKills: 25 },
+      { name: "Warrior", requiredKills: 50 },
+      { name: "Veteran", requiredKills: 100 },
+      { name: "Elite", requiredKills: 250 },
+      { name: "Master", requiredKills: 500 },
+      { name: "Legend", requiredKills: 1000 },
+      { name: "Stick Assassin", requiredKills: 2000 },
     ];
     function getCurrentRank(kills) {
       let currentRank = rankThresholds[0].name;
-      for(let i=0; i<rankThresholds.length; i++){
-        if(kills >= rankThresholds[i].requiredKills) { currentRank = rankThresholds[i].name; }
-        else break;
+      for (let i = 0; i < rankThresholds.length; i++) {
+        if (kills >= rankThresholds[i].requiredKills) {
+          currentRank = rankThresholds[i].name;
+        } else break;
       }
       return currentRank;
     }
 
     /* ========= GAME OBJECTS ========= */
     const player = {
-      x: canvas.width/2,
-      y: canvas.height/2,
-      width:20, height:50,
-      hp:100, maxHp:100,
-      velocityX:0, velocityY:0,
-      speed:5,
-      isAttacking:false, attackFrame:0, punchCombo:0, lastPunchTime:0,
-      currentPunchType:'low',
-      isKicking:false, kickFrame:0, kickCombo:0, lastKickTime:0,
-      currentKickType:'low',
-      isDead:false, rotation:0,
-      vx:0, vy:0, angularVelocity:0,
-      groundLevel:GROUND_LEVEL,
-      fadeCounter:0,
-      comboTimeout:500,
-      cycle:0
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: 20,
+      height: 50,
+      hp: 100,
+      maxHp: 100,
+      velocityX: 0,
+      velocityY: 0,
+      speed: 5,
+      // Attack states with combo system:
+      isAttacking: false,
+      attackFrame: 0,
+      punchCombo: 0,
+      lastPunchTime: 0,
+      currentPunchType: 'low',
+      isKicking: false,
+      kickFrame: 0,
+      kickCombo: 0,
+      lastKickTime: 0,
+      currentKickType: 'low',
+      isDead: false,
+      rotation: 0,
+      // For ragdoll physics
+      vx: 0,
+      vy: 0,
+      angularVelocity: 0,
+      groundLevel: GROUND_LEVEL,
+      fadeCounter: 0,
+      comboTimeout: 500,
+      // Idle/walk cycle for subtle animation
+      cycle: 0
     };
 
-    // Enemies now have a basic martial arts state:
-    // They maintain a state variable "isAttacking", "attackFrame", and "currentAttackType" (punch or kick)
-    const enemies = [], deadBodies = [], punchEffects = [], splatterEffects = [], bossEnemies = [];
-    let screenShake = { x:0, y:0, intensity:0, duration:0 };
+    // Enemies now include a martial arts state
+    const enemies = [],
+          deadBodies = [],
+          punchEffects = [],
+          splatterEffects = [],
+          bossEnemies = [];
+    let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
 
     /* ========= INPUT HANDLING ========= */
     let gamepadIndex = null;
-    window.addEventListener('gamepadconnected',(e)=>{ gamepadIndex = e.gamepad.index; console.log("Gamepad connected at index", gamepadIndex); });
-    window.addEventListener('gamepaddisconnected',(e)=>{ if(gamepadIndex===e.gamepad.index){ gamepadIndex=null; console.log("Gamepad disconnected."); } });
-    function updateGamepadInput(){
-      if(!gameStarted || gamePaused){
-        if(gamepadIndex!==null){
+    window.addEventListener('gamepadconnected', (e) => {
+      gamepadIndex = e.gamepad.index;
+      console.log("Gamepad connected at index", gamepadIndex);
+    });
+    window.addEventListener('gamepaddisconnected', (e) => {
+      if (gamepadIndex === e.gamepad.index) {
+        gamepadIndex = null;
+        console.log("Gamepad disconnected.");
+      }
+    });
+    function updateGamepadInput() {
+      if (!gameStarted || gamePaused) {
+        if (gamepadIndex !== null) {
           const gp = navigator.getGamepads()[gamepadIndex];
-          if(gp && gp.buttons[0] && gp.buttons[0].pressed){
-            if(document.getElementById('startScreen').style.display!=="none") startGame();
-            if(document.getElementById('gameOverScreen').style.display!=="none") location.reload();
-            if(document.getElementById('pauseScreen').style.display!=="none") resumeGame();
+          if (gp && gp.buttons[0] && gp.buttons[0].pressed) {
+            if (document.getElementById('startScreen').style.display !== 'none') startGame();
+            if (document.getElementById('gameOverScreen').style.display !== 'none') location.reload();
+            if (document.getElementById('pauseScreen').style.display !== 'none') resumeGame();
           }
         }
         return;
       }
-      if(gamepadIndex===null) return;
+      if (gamepadIndex === null) return;
       const gp = navigator.getGamepads()[gamepadIndex];
-      if(!gp || !gp.buttons) return;
+      if (!gp || !gp.buttons) return;
       const deadzone = 0.2;
-      let axisX = Math.abs(gp.axes[0])>deadzone?gp.axes[0]:0;
-      let axisY = Math.abs(gp.axes[1])>deadzone?gp.axes[1]:0;
-      player.velocityX = axisX*player.speed;
-      player.velocityY = axisY*player.speed;
+      let axisX = Math.abs(gp.axes[0]) > deadzone ? gp.axes[0] : 0;
+      let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
+      player.velocityX = axisX * player.speed;
+      player.velocityY = axisY * player.speed;
       const now = performance.now();
-      if(gp.buttons[0].pressed && !player.isAttacking && !player.isKicking && !player.isDead){
-        if(now - player.lastPunchTime < player.comboTimeout) { player.punchCombo = (player.punchCombo % 4) + 1; }
-        else { player.punchCombo = 1; }
+      // Punch attack (A button)
+      if (gp.buttons[0].pressed && !player.isAttacking && !player.isKicking && !player.isDead) {
+        if (now - player.lastPunchTime < player.comboTimeout) {
+          player.punchCombo = (player.punchCombo % 4) + 1;
+        } else {
+          player.punchCombo = 1;
+        }
         player.lastPunchTime = now;
-        player.currentPunchType = (player.punchCombo %2===0)?"high":"low";
-        player.isAttacking = true; player.attackFrame = 0;
+        player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
+        player.isAttacking = true;
+        player.attackFrame = 0;
       }
-      if(gp.buttons[2].pressed && !player.isKicking && !player.isAttacking && !player.isDead){
-        if(now - player.lastKickTime < player.comboTimeout) { player.kickCombo = (player.kickCombo % 4) + 1; }
-        else { player.kickCombo = 1; }
+      // Kick attack (X button)
+      if (gp.buttons[2].pressed && !player.isKicking && !player.isAttacking && !player.isDead) {
+        if (now - player.lastKickTime < player.comboTimeout) {
+          player.kickCombo = (player.kickCombo % 4) + 1;
+        } else {
+          player.kickCombo = 1;
+        }
         player.lastKickTime = now;
-        player.currentKickType = (player.kickCombo %2===0)?"high":"low";
-        player.isKicking = true; player.kickFrame = 0;
+        player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
+        player.isKicking = true;
+        player.kickFrame = 0;
       }
-      if(gp.buttons[1].pressed) togglePause();
+      if (gp.buttons[1].pressed) togglePause();
     }
 
     /* ========= TOUCH & MOUSE INPUT ========= */
@@ -245,110 +290,134 @@
           joystick = document.getElementById('joystick'),
           punchButton = document.getElementById('attack'),
           kickButton = document.getElementById('kick');
-    const r = joystickContainer.offsetWidth/2,
-          c = { x:r, y:r };
-    let joystickPosition = { x:c.x, y:c.y }, isDragging = false;
-    joystick.addEventListener('touchstart',(e)=>{ e.preventDefault(); isDragging = true; });
-    joystick.addEventListener('touchmove',(e)=>{
+    const r = joystickContainer.offsetWidth / 2,
+          c = { x: r, y: r };
+    let joystickPosition = { x: c.x, y: c.y }, isDragging = false;
+    joystick.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; });
+    joystick.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      if(isDragging && !player.isDead){
+      if (isDragging && !player.isDead) {
         const rect = joystickContainer.getBoundingClientRect(),
               touch = e.touches[0],
-              x = touch.clientX - rect.left, y = touch.clientY - rect.top,
-              dx = x - c.x, dy = y - c.y,
-              dist = Math.sqrt(dx*dx+dy*dy),
+              x = touch.clientX - rect.left,
+              y = touch.clientY - rect.top,
+              dx = x - c.x,
+              dy = y - c.y,
+              dist = Math.sqrt(dx * dx + dy * dy),
               distance = Math.min(dist, r),
-              angle = Math.atan2(dy,dx);
-        joystickPosition = { x: c.x + Math.cos(angle)*distance, y: c.y + Math.sin(angle)*distance };
-        player.velocityX = Math.cos(angle)*(distance/r)*player.speed;
-        player.velocityY = Math.sin(angle)*(distance/r)*player.speed;
-        joystick.style.transform = `translate(${joystickPosition.x-c.x}px, ${joystickPosition.y-c.y}px)`;
+              angle = Math.atan2(dy, dx);
+        joystickPosition = { x: c.x + Math.cos(angle) * distance, y: c.y + Math.sin(angle) * distance };
+        player.velocityX = Math.cos(angle) * (distance / r) * player.speed;
+        player.velocityY = Math.sin(angle) * (distance / r) * player.speed;
+        joystick.style.transform = `translate(${joystickPosition.x - c.x}px, ${joystickPosition.y - c.y}px)`;
       }
     });
-    joystick.addEventListener('touchend',()=>{
+    joystick.addEventListener('touchend', () => {
       isDragging = false;
-      joystickPosition = { x:c.x, y:c.y };
-      player.velocityX = 0; player.velocityY = 0;
+      joystickPosition = { x: c.x, y: c.y };
+      player.velocityX = 0;
+      player.velocityY = 0;
       joystick.style.transform = 'translate(-50%, -50%)';
     });
-    function triggerPunch(){
-      if(!player.isDead && !player.isKicking){
+    function triggerPunch() {
+      if (!player.isDead && !player.isKicking) {
         const now = performance.now();
-        if(now - player.lastPunchTime < player.comboTimeout){ player.punchCombo = (player.punchCombo % 4) + 1; }
+        if (now - player.lastPunchTime < player.comboTimeout) { player.punchCombo = (player.punchCombo % 4) + 1; }
         else { player.punchCombo = 1; }
         player.lastPunchTime = now;
-        player.currentPunchType = (player.punchCombo %2===0)?"high":"low";
-        player.isAttacking = true; player.attackFrame = 0;
+        player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
+        player.isAttacking = true;
+        player.attackFrame = 0;
       }
     }
-    punchButton.addEventListener('touchstart',(e)=>{ e.preventDefault(); triggerPunch(); });
+    punchButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerPunch(); });
     punchButton.addEventListener('click', triggerPunch);
-    function triggerKick(){
-      if(!player.isDead && !player.isAttacking){
+    function triggerKick() {
+      if (!player.isDead && !player.isAttacking) {
         const now = performance.now();
-        if(now - player.lastKickTime < player.comboTimeout){ player.kickCombo = (player.kickCombo % 4) + 1; }
+        if (now - player.lastKickTime < player.comboTimeout) { player.kickCombo = (player.kickCombo % 4) + 1; }
         else { player.kickCombo = 1; }
         player.lastKickTime = now;
-        player.currentKickType = (player.kickCombo %2===0)?"high":"low";
-        player.isKicking = true; player.kickFrame = 0;
+        player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
+        player.isKicking = true;
+        player.kickFrame = 0;
       }
     }
-    kickButton.addEventListener('touchstart',(e)=>{ e.preventDefault(); triggerKick(); });
+    kickButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKick(); });
     kickButton.addEventListener('click', triggerKick);
 
     /* ========= UI BUTTONS ========= */
     document.getElementById('fightButton').addEventListener('click', startGame);
-    document.getElementById('tryAgainButton').addEventListener('click', ()=>location.reload());
+    document.getElementById('tryAgainButton').addEventListener('click', () => location.reload());
     document.getElementById('resumeButton').addEventListener('click', resumeGame);
-    function togglePause(){
-      if(!gameStarted || gameOver) return;
+    function togglePause() {
+      if (!gameStarted || gameOver) return;
       gamePaused = !gamePaused;
       document.getElementById('pauseScreen').style.display = gamePaused ? 'flex' : 'none';
     }
-    function resumeGame(){
+    function resumeGame() {
       gamePaused = false;
       document.getElementById('pauseScreen').style.display = 'none';
     }
 
     /* ========= ENEMY SPAWNING ========= */
-    function spawnEnemy(){
-      // Each enemy now gets its own martial arts state:
+    function spawnEnemy() {
+      // Each enemy gets its own martial arts state
       const enemy = {
-        x: Math.random()*canvas.width,
-        y: Math.random()*(GROUND_LEVEL-100)+50,
-        width:20, height:50, hp:50, speed:2,
-        isAttacking:false, attackFrame:0, currentAttackType:null,
-        isDead:false, rotation:0, knockback:null, fadeCounter:0,
-        cycle:0, groundLevel:GROUND_LEVEL
+        x: Math.random() * canvas.width,
+        y: Math.random() * (GROUND_LEVEL - 100) + 50,
+        width: 20,
+        height: 50,
+        hp: 50,
+        speed: 2,
+        isAttacking: false,
+        attackFrame: 0,
+        currentAttackType: null,
+        isDead: false,
+        rotation: 0,
+        knockback: null,
+        fadeCounter: 0,
+        cycle: 0,
+        groundLevel: GROUND_LEVEL
       };
       enemies.push(enemy);
     }
     let enemySpawnInterval;
-    function startGame(){
+    function startGame() {
       gameStarted = true;
       document.getElementById('startScreen').style.display = 'none';
       document.getElementById('gameOverScreen').style.display = 'none';
       backgroundMusic.play();
-      enemySpawnInterval = setInterval(()=>{
-        if(gameStarted && !gamePaused) spawnEnemy();
-      },2000);
+      enemySpawnInterval = setInterval(() => {
+        if (gameStarted && !gamePaused) spawnEnemy();
+      }, 2000);
     }
 
     /* ========= EFFECTS ========= */
-    function addPunchEffect(x,y){ punchEffects.push({x,y,alpha:1}); punchSound.currentTime=0; punchSound.play(); triggerHapticFeedback(); }
-    function addKickEffect(x,y){ punchEffects.push({x,y,alpha:1}); kickSound.currentTime=0; kickSound.play(); triggerHapticFeedback(); }
-    function updatePunchEffects(){
-      for(let i=punchEffects.length-1;i>=0;i--){
-        let effect = punchEffects[i];
-        effect.alpha-=0.05;
-        if(effect.alpha<=0) punchEffects.splice(i,1);
+    function addPunchEffect(x, y) {
+      punchEffects.push({ x, y, alpha: 1 });
+      punchSound.currentTime = 0;
+      punchSound.play();
+      triggerHapticFeedback();
+    }
+    function addKickEffect(x, y) {
+      punchEffects.push({ x, y, alpha: 1 });
+      kickSound.currentTime = 0;
+      kickSound.play();
+      triggerHapticFeedback();
+    }
+    function updatePunchEffects() {
+      for (let i = punchEffects.length - 1; i >= 0; i--) {
+        const effect = punchEffects[i];
+        effect.alpha -= 0.05;
+        if (effect.alpha <= 0) punchEffects.splice(i, 1);
       }
     }
-    function drawPunchEffects(){
-      punchEffects.forEach(({x,y,alpha})=>{
-        ctx.fillStyle=`rgba(255,0,0,${alpha})`;
+    function drawPunchEffects() {
+      punchEffects.forEach(({ x, y, alpha }) => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(x,y,2,0,Math.PI*2);
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
@@ -356,282 +425,324 @@
         ctx.fillText('💢', x, y);
       });
     }
-    function addSplatterEffect(x,y){
-      for(let i=0;i<10;i++){
-        splatterEffects.push({ x, y, dx:(Math.random()-0.5)*10, dy:(Math.random()-0.5)*10, alpha:1, size:Math.random()*1.5+2 });
+    function addSplatterEffect(x, y) {
+      for (let i = 0; i < 10; i++) {
+        splatterEffects.push({
+          x,
+          y,
+          dx: (Math.random() - 0.5) * 10,
+          dy: (Math.random() - 0.5) * 10,
+          alpha: 1,
+          size: Math.random() * 1.5 + 2,
+        });
       }
     }
-    function updateSplatterEffects(){
-      for(let i=splatterEffects.length-1;i>=0;i--){
-        let effect = splatterEffects[i];
-        effect.x+=effect.dx; effect.y+=effect.dy;
-        effect.alpha-=0.02;
-        if(effect.alpha<=0) splatterEffects.splice(i,1);
+    function updateSplatterEffects() {
+      for (let i = splatterEffects.length - 1; i >= 0; i--) {
+        const effect = splatterEffects[i];
+        effect.x += effect.dx;
+        effect.y += effect.dy;
+        effect.alpha -= 0.02;
+        if (effect.alpha <= 0) splatterEffects.splice(i, 1);
       }
     }
-    function drawSplatterEffects(){
-      splatterEffects.forEach(({x,y,alpha,size})=>{
-        ctx.fillStyle=`rgba(255,0,0,${alpha})`;
+    function drawSplatterEffects() {
+      splatterEffects.forEach(({ x, y, alpha, size }) => {
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(x,y,size,0,Math.PI*0.5);
+        ctx.arc(x, y, size, 0, Math.PI * 0.5);
         ctx.fill();
       });
     }
-    function applyScreenShake(intensity,duration){ screenShake.intensity = intensity; screenShake.duration = duration; }
-    function updateScreenShake(){
-      if(screenShake.duration>0){
-        screenShake.x = (Math.random()-0.5)*screenShake.intensity;
-        screenShake.y = (Math.random()-0.5)*screenShake.intensity;
+    function applyScreenShake(intensity, duration) {
+      screenShake.intensity = intensity;
+      screenShake.duration = duration;
+    }
+    function updateScreenShake() {
+      if (screenShake.duration > 0) {
+        screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+        screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
         screenShake.duration--;
-      } else { screenShake.x = 0; screenShake.y = 0; }
+      } else {
+        screenShake.x = 0;
+        screenShake.y = 0;
+      }
     }
 
     /* ========= GAME UPDATES ========= */
-    function updatePlayer(){
-      if(player.isDead)return;
+    function updatePlayer() {
+      if (player.isDead) return;
       player.x += player.velocityX;
       player.y += player.velocityY;
-      player.x = Math.max(0, Math.min(canvas.width-player.width, player.x));
-      player.y = Math.max(0, Math.min(GROUND_LEVEL-player.height, player.y));
-      if(!player.isAttacking && !player.isKicking){ player.cycle += 0.1; }
-      if(player.isAttacking){ player.attackFrame++; if(player.attackFrame>15){ player.isAttacking = false; player.attackFrame = 0; } }
-      if(player.isKicking){ player.kickFrame++; if(player.kickFrame>20){ player.isKicking = false; player.kickFrame = 0; } }
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.y = Math.max(0, Math.min(GROUND_LEVEL - player.height, player.y));
+      if (!player.isAttacking && !player.isKicking) { player.cycle += 0.1; }
+      if (player.isAttacking) {
+        player.attackFrame++;
+        if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; }
+      }
+      if (player.isKicking) {
+        player.kickFrame++;
+        if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; }
+      }
       const now = performance.now();
-      if(now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
-      if(now - player.lastKickTime > player.comboTimeout && !player.isKicking) player.kickCombo = 0;
-      if(player.hp<=0 && !player.isDead){
+      if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
+      if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) player.kickCombo = 0;
+      if (player.hp <= 0 && !player.isDead) {
         player.isDead = true;
-        document.getElementById('gameOverScreen').style.display='flex';
-        gameStarted = false; gameOver = true; deathSound.play();
-        player.vx = (Math.random()-0.5)*10; player.vy = -Math.random()*10;
-        player.angularVelocity = (Math.random()-0.5)*0.2; player.groundLevel = GROUND_LEVEL;
+        document.getElementById('gameOverScreen').style.display = 'flex';
+        gameStarted = false;
+        gameOver = true;
+        deathSound.play();
+        player.vx = (Math.random() - 0.5) * 10;
+        player.vy = -Math.random() * 10;
+        player.angularVelocity = (Math.random() - 0.5) * 0.2;
+        player.groundLevel = GROUND_LEVEL;
         deadBodies.push({ ...player });
         clearInterval(enemySpawnInterval);
       }
     }
-    function updateEnemies(){
-      enemies.forEach((enemy, index)=>{
-        if(enemy.isDead){
+    function updateEnemies() {
+      enemies.forEach((enemy, index) => {
+        if (enemy.isDead) {
           enemy.fadeCounter++;
-          if(enemy.fadeCounter>6) enemies.splice(index,1);
+          if (enemy.fadeCounter > 6) enemies.splice(index, 1);
           return;
         }
-        // Calculate distance to player
-        const dx = player.x - enemy.x, dy = player.y - enemy.y,
-              dist = Math.sqrt(dx*dx+dy*dy);
-        // Update walk cycle if moving
-        if(dist > 80){ 
-          // Move toward player
-          enemy.x += (dx/dist)*enemy.speed;
-          enemy.y += (dy/dist)*enemy.speed;
-          enemy.cycle = (enemy.cycle||0) + 0.15;
+        const dx = player.x - enemy.x,
+              dy = player.y - enemy.y,
+              dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 80) {
+          // Move toward the player
+          enemy.x += (dx / dist) * enemy.speed;
+          enemy.y += (dy / dist) * enemy.speed;
+          enemy.cycle = (enemy.cycle || 0) + 0.15;
           enemy.isAttacking = false;
           enemy.attackFrame = 0;
         } else {
-          // Within attack range: if not already attacking, begin an attack
-          if(!enemy.isAttacking){
+          // Within attack range; start an attack if not already attacking
+          if (!enemy.isAttacking) {
             enemy.isAttacking = true;
             enemy.attackFrame = 0;
-            // Randomly select an attack type ("punch" or "kick")
-            enemy.currentAttackType = Math.random()<0.5 ? "punch" : "kick";
+            enemy.currentAttackType = Math.random() < 0.5 ? "punch" : "kick";
           }
         }
-        // Attack processing for enemy
-        if(enemy.isAttacking){
+        // Process enemy attack
+        if (enemy.isAttacking) {
           enemy.attackFrame++;
-          // When attackFrame reaches a trigger frame, apply damage if player is in range.
-          if(enemy.attackFrame===10){
-            if(enemy.currentAttackType==="punch"){
-              // Punch: check range and then damage player if close
-              if(Math.abs(player.x-enemy.x)<50 && Math.abs(player.y-enemy.y)<50){
+          if (enemy.attackFrame === 10) {
+            // At frame 10, apply damage to the player if in range.
+            if (enemy.currentAttackType === "punch") {
+              // Use distance-based collision check for punch:
+              const hitThreshold = 50;
+              if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
                 player.hp -= 10;
-                // Apply a knockback to player
-                player.vx = (player.x-enemy.x)*0.5;
-                player.vy = (player.y-enemy.y)*0.5;
+                player.vx = (player.x - enemy.x) * 0.5;
+                player.vy = (player.y - enemy.y) * 0.5;
               }
-            } else { // kick
-              if(Math.abs(player.x-enemy.x)<60 && Math.abs(player.y-enemy.y)<60){
+            } else {
+              const hitThreshold = 60;
+              if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
                 player.hp -= 15;
-                player.vx = (player.x-enemy.x)*0.7;
-                player.vy = (player.y-enemy.y)*0.7;
+                player.vx = (player.x - enemy.x) * 0.7;
+                player.vy = (player.y - enemy.y) * 0.7;
               }
             }
           }
-          if(enemy.attackFrame>15){ enemy.isAttacking = false; enemy.attackFrame = 0; }
+          if (enemy.attackFrame > 15) { enemy.isAttacking = false; enemy.attackFrame = 0; }
         }
-        // Process enemy knockback if any
-        if(enemy.knockback){
+        if (enemy.knockback) {
           enemy.x += enemy.knockback.x;
           enemy.y += enemy.knockback.y;
           enemy.knockback.frames--;
-          if(enemy.knockback.frames<=0) enemy.knockback = null;
+          if (enemy.knockback.frames <= 0) enemy.knockback = null;
         }
         // Clamp enemy so they do not fall below ground
-        if(enemy.y > GROUND_LEVEL - enemy.height) { enemy.y = GROUND_LEVEL - enemy.height; }
-        if(enemy.hp<=0 && !enemy.isDead){
+        if (enemy.y > GROUND_LEVEL - enemy.height) {
+          enemy.y = GROUND_LEVEL - enemy.height;
+        }
+        if (enemy.hp <= 0 && !enemy.isDead) {
           enemy.isDead = true;
-          enemy.rotation = Math.PI/2;
+          enemy.rotation = Math.PI / 2;
           enemy.fadeCounter = 0;
-          enemy.vx = (Math.random()-0.5)*10;
-          enemy.vy = -Math.random()*10;
-          enemy.angularVelocity = (Math.random()-0.5)*0.2;
+          enemy.vx = (Math.random() - 0.5) * 10;
+          enemy.vy = -Math.random() * 10;
+          enemy.angularVelocity = (Math.random() - 0.5) * 0.2;
           enemy.groundLevel = GROUND_LEVEL;
           deadBodies.push({ ...enemy });
           killCount++;
         }
       });
-      // Boss logic remains unchanged (if any)
-      if(killCount>0 && killCount%50===0 && bossEnemies.length===0){
+      // Boss spawn logic (unchanged)
+      if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
-          x: Math.random()*canvas.width,
-          y: Math.random()*(GROUND_LEVEL-150)+50,
-          width:40, height:80, hp:200, speed:1.5,
-          isAttacking:false, attackFrame:0, isDead:false, rotation:0,
-          knockback:null, fadeCounter:0, color:'purple', cycle:0, groundLevel:GROUND_LEVEL
+          x: Math.random() * canvas.width,
+          y: Math.random() * (GROUND_LEVEL - 150) + 50,
+          width: 40,
+          height: 80,
+          hp: 200,
+          speed: 1.5,
+          isAttacking: false,
+          attackFrame: 0,
+          isDead: false,
+          rotation: 0,
+          knockback: null,
+          fadeCounter: 0,
+          color: 'purple',
+          cycle: 0,
+          groundLevel: GROUND_LEVEL
         });
       }
-      bossEnemies.forEach((boss, index)=>{
-        if(boss.isDead){
+      bossEnemies.forEach((boss, index) => {
+        if (boss.isDead) {
           boss.fadeCounter++;
-          if(boss.fadeCounter>6) bossEnemies.splice(index,1);
+          if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
           return;
         }
-        const dx = player.x - boss.x, dy = player.y - boss.y,
-              dist = Math.sqrt(dx*dx+dy*dy);
-        if(dist>80){
-          boss.x += (dx/dist)*boss.speed;
-          boss.y += (dy/dist)*boss.speed;
-          boss.cycle = (boss.cycle||0) + 0.1;
+        const dx = player.x - boss.x,
+              dy = player.y - boss.y,
+              dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 80) {
+          boss.x += (dx / dist) * boss.speed;
+          boss.y += (dy / dist) * boss.speed;
+          boss.cycle = (boss.cycle || 0) + 0.1;
           boss.isAttacking = false;
           boss.attackFrame = 0;
         } else {
-          if(!boss.isAttacking){
+          if (!boss.isAttacking) {
             boss.isAttacking = true;
             boss.attackFrame = 0;
-            boss.currentAttackType = Math.random()<0.5 ? "punch" : "kick";
+            boss.currentAttackType = Math.random() < 0.5 ? "punch" : "kick";
           }
         }
-        if(boss.isAttacking){
+        if (boss.isAttacking) {
           boss.attackFrame++;
-          if(boss.attackFrame===10){
-            if(boss.currentAttackType==="punch"){
-              if(Math.abs(player.x-boss.x)<60 && Math.abs(player.y-boss.y)<60){ player.hp -= 10; }
+          if (boss.attackFrame === 10) {
+            if (boss.currentAttackType === "punch") {
+              const hitThreshold = 60;
+              if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
+                player.hp -= 10;
+              }
             } else {
-              if(Math.abs(player.x-boss.x)<70 && Math.abs(player.y-boss.y)<70){ player.hp -= 15; }
+              const hitThreshold = 70;
+              if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
+                player.hp -= 15;
+              }
             }
           }
-          if(boss.attackFrame>15){ boss.isAttacking = false; boss.attackFrame = 0; }
+          if (boss.attackFrame > 15) { boss.isAttacking = false; boss.attackFrame = 0; }
         }
-        if(boss.knockback){
+        if (boss.knockback) {
           boss.x += boss.knockback.x;
           boss.y += boss.knockback.y;
           boss.knockback.frames--;
-          if(boss.knockback.frames<=0) boss.knockback = null;
+          if (boss.knockback.frames <= 0) boss.knockback = null;
         }
-        if(boss.y > GROUND_LEVEL - boss.height) { boss.y = GROUND_LEVEL - boss.height; }
-        if(boss.hp<=0 && !boss.isDead){
+        if (boss.y > GROUND_LEVEL - boss.height) { boss.y = GROUND_LEVEL - boss.height; }
+        if (boss.hp <= 0 && !boss.isDead) {
           boss.isDead = true;
-          boss.rotation = Math.PI/2;
+          boss.rotation = Math.PI / 2;
           boss.fadeCounter = 0;
-          boss.vx = (Math.random()-0.5)*10;
-          boss.vy = -Math.random()*10;
-          boss.angularVelocity = (Math.random()-0.5)*0.2;
+          boss.vx = (Math.random() - 0.5) * 10;
+          boss.vy = -Math.random() * 10;
+          boss.angularVelocity = (Math.random() - 0.5) * 0.2;
           boss.groundLevel = GROUND_LEVEL;
           deadBodies.push({ ...boss });
           killCount += 5;
         }
       });
     }
-    function updateDeadBodies(){
+    function updateDeadBodies() {
       const gravity = 0.5, friction = 0.98, footOffset = 15;
-      for(let i=deadBodies.length-1;i>=0;i--){
-        let body = deadBodies[i];
+      for (let i = deadBodies.length - 1; i >= 0; i--) {
+        const body = deadBodies[i];
         body.fadeCounter++;
         body.vy += gravity;
         body.x += body.vx;
         body.y += body.vy;
-        if(body.y + (body.height/2)+footOffset > body.groundLevel){
-          body.y = body.groundLevel - (body.height/2) - footOffset;
+        if (body.y + (body.height / 2) + footOffset > body.groundLevel) {
+          body.y = body.groundLevel - (body.height / 2) - footOffset;
           body.vy *= -0.5;
-          body.vx *= friction; body.vy *= friction;
+          body.vx *= friction;
+          body.vy *= friction;
         }
         body.rotation += body.angularVelocity;
         body.angularVelocity *= friction;
-        if(body.fadeCounter>600) deadBodies.splice(i,1);
+        if (body.fadeCounter > 600) deadBodies.splice(i, 1);
       }
     }
-    function updateHUD(){
+    function updateHUD() {
       document.getElementById('killCountText').innerText = `${killCount} Enemies Killed`;
       document.getElementById('rankText').innerText = `Rank: ${getCurrentRank(killCount)}`;
-      const hpPercent = Math.max(0,(player.hp/player.maxHp)*100);
+      const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
       document.getElementById('healthFill').style.width = `${hpPercent}%`;
     }
 
     /* ========= DRAWING ========= */
-    function drawStickman({x,y,width,height,rotation,isAttacking,attackFrame,isKicking,kickFrame,color,fadeCounter,cycle}){
+    function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter, cycle }) {
       ctx.save();
-      ctx.translate(x,y);
+      ctx.translate(x, y);
       ctx.rotate(rotation);
       ctx.strokeStyle = color || "black";
       ctx.fillStyle = color || "black";
-      ctx.globalAlpha = fadeCounter ? 1 - fadeCounter/600 : 1;
+      ctx.globalAlpha = fadeCounter ? 1 - fadeCounter / 600 : 1;
       ctx.lineWidth = 2;
       // Head
       ctx.beginPath();
-      ctx.arc(0,-height/2,10,0,Math.PI*2);
+      ctx.arc(0, -height / 2, 10, 0, Math.PI * 2);
       ctx.fill();
       // Body
       ctx.beginPath();
-      ctx.moveTo(0,-height/2);
-      ctx.lineTo(0,height/2);
+      ctx.moveTo(0, -height / 2);
+      ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms: if attacking use fixed positions, else a subtle swing using cycle
+      // Arms: if attacking use fixed positions; otherwise, use a subtle swing based on cycle
       ctx.beginPath();
-      if(isAttacking && attackFrame<7){
-        if(player.currentPunchType==="high"){
-          ctx.moveTo(0,-10);
-          ctx.lineTo(35,-15);
+      if (isAttacking && attackFrame < 7) {
+        if (player.currentPunchType === "high") {
+          ctx.moveTo(0, -10);
+          ctx.lineTo(35, -15);
         } else {
-          ctx.moveTo(0,-10);
-          ctx.lineTo(30,-10);
+          ctx.moveTo(0, -10);
+          ctx.lineTo(30, -10);
         }
       } else {
-        const offset = Math.sin(cycle||0)*5;
-        ctx.moveTo(0,-10+offset);
-        ctx.lineTo(-15,10+offset);
-        ctx.moveTo(0,-10-offset);
-        ctx.lineTo(15,10-offset);
+        const offset = Math.sin(cycle || 0) * 5;
+        ctx.moveTo(0, -10 + offset);
+        ctx.lineTo(-15, 10 + offset);
+        ctx.moveTo(0, -10 - offset);
+        ctx.lineTo(15, 10 - offset);
       }
       ctx.stroke();
-      // Legs:
+      // Legs
       ctx.beginPath();
-      const legOffset = Math.sin(cycle||0)*2;
-      ctx.moveTo(0,20+legOffset);
-      ctx.lineTo(-10,40+legOffset);
-      if(isKicking && kickFrame<10){
-        ctx.moveTo(0,20);
-        if(player.currentKickType==="high"){
-          ctx.lineTo(20,-10);
+      const legOffset = Math.sin(cycle || 0) * 2;
+      ctx.moveTo(0, 20 + legOffset);
+      ctx.lineTo(-10, 40 + legOffset);
+      if (isKicking && kickFrame < 10) {
+        ctx.moveTo(0, 20);
+        if (player.currentKickType === "high") {
+          ctx.lineTo(20, -10);
         } else {
-          ctx.lineTo(30,40);
+          ctx.lineTo(30, 40);
         }
       } else {
-        ctx.moveTo(0,20);
-        ctx.lineTo(10,40);
+        ctx.moveTo(0, 20);
+        ctx.lineTo(10, 40);
       }
       ctx.stroke();
       ctx.restore();
     }
 
     /* ========= MAIN GAME LOOP ========= */
-    function gameLoop(){
-      // Draw a translucent rectangle to create a motion-blur effect
+    function gameLoop() {
+      // Draw a translucent rectangle each frame for subtle motion blur
       ctx.fillStyle = "rgba(242,242,242,0.8)";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.save();
-      ctx.translate(screenShake.x,screenShake.y);
+      ctx.translate(screenShake.x, screenShake.y);
       updateGamepadInput();
-      if(!gamePaused){
+      if (!gamePaused) {
         updateScreenShake();
         updatePunchEffects();
         updateSplatterEffects();
@@ -639,11 +750,11 @@
         updatePlayer();
         updateEnemies();
         deadBodies.forEach(drawStickman);
-        if(!player.isDead){
-          drawStickman({ ...player, isAttacking:player.isAttacking, isKicking:player.isKicking });
+        if (!player.isDead) {
+          drawStickman({ ...player, isAttacking: player.isAttacking, isKicking: player.isKicking });
         }
-        enemies.forEach(enemy=> drawStickman({ ...enemy, color:"red" }));
-        bossEnemies.forEach(boss=> drawStickman({ ...boss, color: boss.color || "purple" }));
+        enemies.forEach(enemy => drawStickman({ ...enemy, color: "red" }));
+        bossEnemies.forEach(boss => drawStickman({ ...boss, color: boss.color || "purple" }));
         drawPunchEffects();
         drawSplatterEffects();
       }
@@ -654,11 +765,11 @@
     gameLoop();
 
     /* ========= WINDOW RESIZE ========= */
-    window.addEventListener('resize', ()=>{
+    window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      player.x = canvas.width/2;
-      player.y = canvas.height/2;
+      player.x = canvas.width / 2;
+      player.y = canvas.height / 2;
     });
   </script>
 </body>
