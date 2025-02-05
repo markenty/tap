@@ -164,7 +164,6 @@
     const backgroundMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/old_cinema.ogg');
     backgroundMusic.loop = true;
     backgroundMusic.volume = 0.3;
-
     function triggerHapticFeedback() {
       if (navigator.vibrate) navigator.vibrate(50);
     }
@@ -204,10 +203,19 @@
       velocityX: 0,
       velocityY: 0,
       speed: 5,
-      isAttacking: false, // Punch attack flag
+      // Attack states for punch and kick
+      isAttacking: false,
       attackFrame: 0,
-      isKicking: false,   // Kick attack flag
+      punchCombo: 0,
+      lastPunchTime: 0,
+      currentPunchType: 'low', // alternates between "low" and "high"
+
+      isKicking: false,
       kickFrame: 0,
+      kickCombo: 0,
+      lastKickTime: 0,
+      currentKickType: 'low',
+
       isDead: false,
       rotation: 0,
       // For ragdoll physics
@@ -216,13 +224,14 @@
       angularVelocity: 0,
       groundLevel: canvas.height,
       fadeCounter: 0,
+      comboTimeout: 500 // milliseconds to reset combo if no follow-up
     };
 
     const enemies = [];
     const deadBodies = [];
     const punchEffects = [];
     const splatterEffects = [];
-    const bossEnemies = []; // placeholder for boss-type enemies
+    const bossEnemies = [];
 
     let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
 
@@ -265,13 +274,29 @@
       player.velocityX = axisX * player.speed;
       player.velocityY = axisY * player.speed;
 
+      const now = performance.now();
       // A button for punch
       if (gp.buttons[0].pressed && !player.isAttacking && !player.isKicking && !player.isDead) {
+        if (now - player.lastPunchTime < player.comboTimeout) {
+          player.punchCombo = (player.punchCombo % 4) + 1;
+        } else {
+          player.punchCombo = 1;
+        }
+        player.lastPunchTime = now;
+        // Alternate: odd combos are "low", even are "high"
+        player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
         player.isAttacking = true;
         player.attackFrame = 0;
       }
-      // X button for kick (for example)
+      // X button for kick (example)
       if (gp.buttons[2].pressed && !player.isKicking && !player.isAttacking && !player.isDead) {
+        if (now - player.lastKickTime < player.comboTimeout) {
+          player.kickCombo = (player.kickCombo % 4) + 1;
+        } else {
+          player.kickCombo = 1;
+        }
+        player.lastKickTime = now;
+        player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
         player.isKicking = true;
         player.kickFrame = 0;
       }
@@ -319,41 +344,45 @@
       player.velocityY = 0;
       joystick.style.transform = 'translate(-50%, -50%)';
     });
-    // Punch button touch
-    punchButton.addEventListener('touchstart', (e) => {
-      e.preventDefault();
+    // Punch button events
+    function triggerPunch() {
       if (!player.isDead && !player.isKicking) {
+        const now = performance.now();
+        if (now - player.lastPunchTime < player.comboTimeout) {
+          player.punchCombo = (player.punchCombo % 4) + 1;
+        } else {
+          player.punchCombo = 1;
+        }
+        player.lastPunchTime = now;
+        player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
         player.isAttacking = true;
         player.attackFrame = 0;
       }
-    });
-    // Kick button touch
-    kickButton.addEventListener('touchstart', (e) => {
-      e.preventDefault();
+    }
+    punchButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerPunch(); });
+    punchButton.addEventListener('click', triggerPunch);
+    // Kick button events
+    function triggerKick() {
       if (!player.isDead && !player.isAttacking) {
+        const now = performance.now();
+        if (now - player.lastKickTime < player.comboTimeout) {
+          player.kickCombo = (player.kickCombo % 4) + 1;
+        } else {
+          player.kickCombo = 1;
+        }
+        player.lastKickTime = now;
+        player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
         player.isKicking = true;
         player.kickFrame = 0;
       }
-    });
-    // Also allow click events for desktop
-    punchButton.addEventListener('click', () => {
-      if (!player.isDead && !player.isKicking) {
-        player.isAttacking = true;
-        player.attackFrame = 0;
-      }
-    });
-    kickButton.addEventListener('click', () => {
-      if (!player.isDead && !player.isAttacking) {
-        player.isKicking = true;
-        player.kickFrame = 0;
-      }
-    });
+    }
+    kickButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKick(); });
+    kickButton.addEventListener('click', triggerKick);
 
     /* ========= UI BUTTONS ========= */
     document.getElementById('fightButton').addEventListener('click', startGame);
     document.getElementById('tryAgainButton').addEventListener('click', () => location.reload());
     document.getElementById('resumeButton').addEventListener('click', resumeGame);
-
     function togglePause() {
       if (!gameStarted || gameOver) return;
       gamePaused = !gamePaused;
@@ -403,7 +432,6 @@
       triggerHapticFeedback();
     }
     function addKickEffect(x, y) {
-      // A slightly different visual effect for kicks
       punchEffects.push({ x, y, alpha: 1 });
       kickSound.currentTime = 0;
       kickSound.play();
@@ -480,7 +508,7 @@
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
 
-      // Punch attack update
+      // Update punch attack
       if (player.isAttacking) {
         player.attackFrame++;
         if (player.attackFrame > 15) {
@@ -488,13 +516,21 @@
           player.attackFrame = 0;
         }
       }
-      // Kick attack update
+      // Update kick attack
       if (player.isKicking) {
         player.kickFrame++;
         if (player.kickFrame > 20) {
           player.isKicking = false;
           player.kickFrame = 0;
         }
+      }
+      // Reset combos if timeout expires
+      const now = performance.now();
+      if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) {
+        player.punchCombo = 0;
+      }
+      if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) {
+        player.kickCombo = 0;
       }
       if (player.hp <= 0 && !player.isDead) {
         player.isDead = true;
@@ -528,11 +564,12 @@
         } else if (!player.isDead) {
           enemy.isAttacking = true;
           enemy.attackFrame++;
-          // Punch damage if within range during punch phase
+          // Check for punch collision (range/damage depend on high vs low)
           if (player.isAttacking && player.attackFrame < 7 &&
-              Math.abs(player.x - enemy.x) < 50 &&
+              Math.abs(player.x - enemy.x) < (player.currentPunchType === "high" ? 55 : 50) &&
               Math.abs(player.y - enemy.y) < 50) {
-            enemy.hp -= 10;
+            const damage = player.currentPunchType === "high" ? 12 : 10;
+            enemy.hp -= damage;
             enemy.knockback = {
               x: (enemy.x - player.x) * 0.5,
               y: (enemy.y - player.y) * 0.5,
@@ -542,11 +579,12 @@
             addSplatterEffect(enemy.x, enemy.y);
             applyScreenShake(10, 10);
           }
-          // Kick damage uses a longer range and deals more damage
+          // Check for kick collision (longer range and higher damage)
           if (player.isKicking && player.kickFrame < 10 &&
-              Math.abs(player.x - enemy.x) < 70 &&
+              Math.abs(player.x - enemy.x) < (player.currentKickType === "high" ? 75 : 70) &&
               Math.abs(player.y - enemy.y) < 70) {
-            enemy.hp -= 15;
+            const damage = player.currentKickType === "high" ? 18 : 15;
+            enemy.hp -= damage;
             enemy.knockback = {
               x: (enemy.x - player.x) * 0.7,
               y: (enemy.y - player.y) * 0.7,
@@ -576,6 +614,7 @@
         }
       });
 
+      // Boss spawn logic (unchanged)
       if (killCount > 0 && killCount % 50 === 0 && bossEnemies.length === 0) {
         bossEnemies.push({
           x: Math.random() * canvas.width,
@@ -676,7 +715,7 @@
     }
 
     /* ========= DRAWING ========= */
-    // Modified drawStickman function to show attack animations.
+    // The drawStickman function now reflects both punch and kick animations.
     // For punch, arms extend; for kick, one leg extends.
     function drawStickman({ x, y, width, height, rotation, isAttacking, attackFrame, isKicking, kickFrame, color, fadeCounter }) {
       ctx.save();
@@ -695,11 +734,17 @@
       ctx.moveTo(0, -height / 2);
       ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms (punch animation)
+      // Arms for punch attack
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
-        ctx.moveTo(0, -10);
-        ctx.lineTo(30, -10);
+        // Different arm extension for high vs low punch:
+        if (player.currentPunchType === "high") {
+          ctx.moveTo(0, -10);
+          ctx.lineTo(35, -15);
+        } else {
+          ctx.moveTo(0, -10);
+          ctx.lineTo(30, -10);
+        }
       } else {
         ctx.moveTo(0, -10);
         ctx.lineTo(-15, 10);
@@ -710,12 +755,17 @@
       // Legs: if kicking, extend one leg
       ctx.beginPath();
       if (isKicking && kickFrame < 10) {
-        // Draw the non-kicking leg normally...
+        // Draw non-kicking leg normally...
         ctx.moveTo(0, 20);
         ctx.lineTo(-10, 40);
-        // Draw extended kicking leg
-        ctx.moveTo(0, 20);
-        ctx.lineTo(30, 40);
+        // Draw extended kicking leg; high kicks have a longer extension.
+        if (player.currentKickType === "high") {
+          ctx.moveTo(0, 20);
+          ctx.lineTo(35, 45);
+        } else {
+          ctx.moveTo(0, 20);
+          ctx.lineTo(30, 40);
+        }
       } else {
         ctx.moveTo(0, 20);
         ctx.lineTo(-10, 40);
@@ -741,7 +791,6 @@
         updateEnemies();
         deadBodies.forEach(drawStickman);
         if (!player.isDead) {
-          // Pass both attack flags to the drawing routine
           drawStickman({
             ...player,
             isAttacking: player.isAttacking,
