@@ -15,7 +15,7 @@
     canvas {
       display: block;
       margin: auto;
-      /* We redraw a semi‑transparent background each frame for a subtle motion blur */
+      /* The canvas background is redrawn each frame for a motion-blur effect */
     }
     /* Onscreen Controls */
     .joystick-container {
@@ -24,7 +24,7 @@
       left: 20px;
       width: 120px;
       height: 120px;
-      background: rgba(0,0,0,0.2);
+      background: rgba(0, 0, 0, 0.2);
       border-radius: 50%;
     }
     .joystick {
@@ -61,6 +61,44 @@
       right: 100px;
       background: darkorange;
     }
+    /* New Block Button */
+    .block {
+      position: fixed;
+      bottom: 150px;
+      left: 20px;
+      width: 70px;
+      height: 70px;
+      background: blue;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      touch-action: none;
+    }
+    /* New Jump Button */
+    .jump {
+      position: fixed;
+      bottom: 20px;
+      right: 180px;
+      width: 70px;
+      height: 70px;
+      background: green;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      touch-action: none;
+    }
     /* Overlays */
     .overlay {
       position: fixed;
@@ -68,7 +106,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0, 0, 0, 0.8);
       color: white;
       display: flex;
       justify-content: center;
@@ -133,20 +171,20 @@
   <div class="joystick-container" id="joystickContainer">
     <div class="joystick" id="joystick"></div>
   </div>
+  <!-- Existing Attack Buttons -->
   <div class="attack" id="attack">Punch</div>
   <div class="attack kick" id="kick">Kick</div>
+  <!-- New Block Button -->
+  <div class="block" id="block">Block</div>
+  <!-- New Jump Button -->
+  <div class="jump" id="jump">Jump</div>
 
   <script>
     /* ========= CORE GAME STATE ========= */
-    let gameStarted = false,
-        gameOver = false,
-        gamePaused = false,
-        killCount = 0;
-    const canvas = document.getElementById('gameCanvas'),
-          ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    // Define a ground level for all characters (player/enemies stand on this)
+    let gameStarted = false, gameOver = false, gamePaused = false, killCount = 0;
+    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    // Ground level – characters stand on this horizontal line.
     const GROUND_LEVEL = canvas.height - 20;
 
     /* ========= AUDIO & HAPTIC ========= */
@@ -154,11 +192,8 @@
           kickSound = new Audio('https://actions.google.com/sounds/v1/foley/cloth_swish.ogg'),
           deathSound = new Audio('https://actions.google.com/sounds/v1/human_voices/female_scream.ogg'),
           backgroundMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/old_cinema.ogg');
-    backgroundMusic.loop = true;
-    backgroundMusic.volume = 0.3;
-    function triggerHapticFeedback() {
-      if (navigator.vibrate) navigator.vibrate(50);
-    }
+    backgroundMusic.loop = true; backgroundMusic.volume = 0.3;
+    function triggerHapticFeedback() { if (navigator.vibrate) navigator.vibrate(50); }
 
     /* ========= RANK SYSTEM ========= */
     const rankThresholds = [
@@ -192,7 +227,7 @@
       velocityX: 0,
       velocityY: 0,
       speed: 5,
-      // Attack state and combo system
+      // Attack states and combo system:
       isAttacking: false,
       attackFrame: 0,
       punchCombo: 0,
@@ -203,39 +238,33 @@
       kickCombo: 0,
       lastKickTime: 0,
       currentKickType: 'low',
+      // New Block state:
+      isBlocking: false,
+      // Jump mechanics:
+      isJumping: false,
+      jumpCount: 0,
+      maxJumps: 3,
+      jumpVelocity: 0,
+      // Other player properties:
       isDead: false,
       rotation: 0,
-      // For ragdoll physics
       vx: 0,
       vy: 0,
       angularVelocity: 0,
       groundLevel: GROUND_LEVEL,
       fadeCounter: 0,
       comboTimeout: 500,
-      // Idle/walk cycle for subtle animation
       cycle: 0
     };
 
-    // Normal enemies have a simple martial arts state
-    const enemies = [],
-          deadBodies = [],
-          punchEffects = [],
-          splatterEffects = [],
-          bossEnemies = [];
+    // Normal enemies (and bosses) keep their martial arts state.
+    const enemies = [], deadBodies = [], punchEffects = [], splatterEffects = [], bossEnemies = [];
     let screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
 
     /* ========= INPUT HANDLING ========= */
     let gamepadIndex = null;
-    window.addEventListener('gamepadconnected', (e) => {
-      gamepadIndex = e.gamepad.index;
-      console.log("Gamepad connected at index", gamepadIndex);
-    });
-    window.addEventListener('gamepaddisconnected', (e) => {
-      if (gamepadIndex === e.gamepad.index) {
-        gamepadIndex = null;
-        console.log("Gamepad disconnected.");
-      }
-    });
+    window.addEventListener('gamepadconnected', (e) => { gamepadIndex = e.gamepad.index; console.log("Gamepad connected at index", gamepadIndex); });
+    window.addEventListener('gamepaddisconnected', (e) => { if (gamepadIndex === e.gamepad.index) { gamepadIndex = null; console.log("Gamepad disconnected."); } });
     function updateGamepadInput() {
       if (!gameStarted || gamePaused) {
         if (gamepadIndex !== null) {
@@ -254,43 +283,38 @@
       const deadzone = 0.2;
       let axisX = Math.abs(gp.axes[0]) > deadzone ? gp.axes[0] : 0;
       let axisY = Math.abs(gp.axes[1]) > deadzone ? gp.axes[1] : 0;
+      // For horizontal movement only when jumping, we ignore vertical joystick input.
       player.velocityX = axisX * player.speed;
-      player.velocityY = axisY * player.speed;
+      if (!player.isJumping) player.velocityY = axisY * player.speed;
       const now = performance.now();
       // Punch attack (A button)
       if (gp.buttons[0].pressed && !player.isAttacking && !player.isKicking && !player.isDead) {
-        if (now - player.lastPunchTime < player.comboTimeout) {
-          player.punchCombo = (player.punchCombo % 4) + 1;
-        } else {
-          player.punchCombo = 1;
-        }
+        if (now - player.lastPunchTime < player.comboTimeout) { player.punchCombo = (player.punchCombo % 4) + 1; }
+        else { player.punchCombo = 1; }
         player.lastPunchTime = now;
         player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
-        player.isAttacking = true;
-        player.attackFrame = 0;
+        player.isAttacking = true; player.attackFrame = 0;
       }
       // Kick attack (X button)
       if (gp.buttons[2].pressed && !player.isKicking && !player.isAttacking && !player.isDead) {
-        if (now - player.lastKickTime < player.comboTimeout) {
-          player.kickCombo = (player.kickCombo % 4) + 1;
-        } else {
-          player.kickCombo = 1;
-        }
+        if (now - player.lastKickTime < player.comboTimeout) { player.kickCombo = (player.kickCombo % 4) + 1; }
+        else { player.kickCombo = 1; }
         player.lastKickTime = now;
         player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
-        player.isKicking = true;
-        player.kickFrame = 0;
+        player.isKicking = true; player.kickFrame = 0;
       }
-      if (gp.buttons[1].pressed) togglePause();
+      // Block (B button) – here we set block state
+      if (gp.buttons[1].pressed) { player.isBlocking = true; } else { player.isBlocking = false; }
     }
 
     /* ========= TOUCH & MOUSE INPUT ========= */
     const joystickContainer = document.getElementById('joystickContainer'),
           joystick = document.getElementById('joystick'),
           punchButton = document.getElementById('attack'),
-          kickButton = document.getElementById('kick');
-    const r = joystickContainer.offsetWidth / 2,
-          c = { x: r, y: r };
+          kickButton = document.getElementById('kick'),
+          blockButton = document.getElementById('block'),
+          jumpButton = document.getElementById('jump');
+    const r = joystickContainer.offsetWidth / 2, c = { x: r, y: r };
     let joystickPosition = { x: c.x, y: c.y }, isDragging = false;
     joystick.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; });
     joystick.addEventListener('touchmove', (e) => {
@@ -300,8 +324,7 @@
               touch = e.touches[0],
               x = touch.clientX - rect.left,
               y = touch.clientY - rect.top,
-              dx = x - c.x,
-              dy = y - c.y,
+              dx = x - c.x, dy = y - c.y,
               dist = Math.sqrt(dx * dx + dy * dy),
               distance = Math.min(dist, r),
               angle = Math.atan2(dy, dx);
@@ -325,8 +348,7 @@
         else { player.punchCombo = 1; }
         player.lastPunchTime = now;
         player.currentPunchType = (player.punchCombo % 2 === 0) ? "high" : "low";
-        player.isAttacking = true;
-        player.attackFrame = 0;
+        player.isAttacking = true; player.attackFrame = 0;
       }
     }
     punchButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerPunch(); });
@@ -338,12 +360,29 @@
         else { player.kickCombo = 1; }
         player.lastKickTime = now;
         player.currentKickType = (player.kickCombo % 2 === 0) ? "high" : "low";
-        player.isKicking = true;
-        player.kickFrame = 0;
+        player.isKicking = true; player.kickFrame = 0;
       }
     }
     kickButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKick(); });
     kickButton.addEventListener('click', triggerKick);
+    // Block button: while pressed, set block flag.
+    blockButton.addEventListener('touchstart', (e) => { e.preventDefault(); player.isBlocking = true; });
+    blockButton.addEventListener('touchend', () => { player.isBlocking = false; });
+    blockButton.addEventListener('mousedown', () => { player.isBlocking = true; });
+    blockButton.addEventListener('mouseup', () => { player.isBlocking = false; });
+    // Jump button: when pressed, if jumps available, initiate jump.
+    jumpButton.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
+    jumpButton.addEventListener('click', triggerJump);
+    function triggerJump() {
+      if (player.isDead) return;
+      if (player.jumpCount < player.maxJumps) {
+        // Initiate or continue jump
+        player.isJumping = true;
+        player.jumpCount++;
+        // Set an initial upward velocity; adjust as needed.
+        player.jumpVelocity = -12;
+      }
+    }
 
     /* ========= UI BUTTONS ========= */
     document.getElementById('fightButton').addEventListener('click', startGame);
@@ -468,11 +507,26 @@
     /* ========= GAME UPDATES ========= */
     function updatePlayer() {
       if (player.isDead) return;
+      // Horizontal movement from joystick:
       player.x += player.velocityX;
-      player.y += player.velocityY;
       player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
-      player.y = Math.max(0, Math.min(GROUND_LEVEL - player.height, player.y));
-      if (!player.isAttacking && !player.isKicking) { player.cycle += 0.1; }
+      // Jump physics override vertical joystick input.
+      if (player.isJumping) {
+        // Apply jump velocity and gravity.
+        player.y += player.jumpVelocity;
+        player.jumpVelocity += 0.8; // gravity
+        // When reaching the ground, reset jump state.
+        if (player.y >= GROUND_LEVEL - player.height) {
+          player.y = GROUND_LEVEL - player.height;
+          player.isJumping = false;
+          player.jumpCount = 0;
+          player.jumpVelocity = 0;
+        }
+      } else {
+        // If not jumping, keep player on ground.
+        player.y = GROUND_LEVEL - player.height;
+      }
+      // Process attack animation (if any)
       if (player.isAttacking) {
         player.attackFrame++;
         if (player.attackFrame > 15) { player.isAttacking = false; player.attackFrame = 0; }
@@ -481,9 +535,13 @@
         player.kickFrame++;
         if (player.kickFrame > 20) { player.isKicking = false; player.kickFrame = 0; }
       }
+      // Update idle/walk cycle if not attacking
+      if (!player.isAttacking && !player.isKicking) { player.cycle += 0.1; }
       const now = performance.now();
       if (now - player.lastPunchTime > player.comboTimeout && !player.isAttacking) player.punchCombo = 0;
       if (now - player.lastKickTime > player.comboTimeout && !player.isKicking) player.kickCombo = 0;
+      // If blocking, no extra update needed.
+      // Check death.
       if (player.hp <= 0 && !player.isDead) {
         player.isDead = true;
         document.getElementById('gameOverScreen').style.display = 'flex';
@@ -505,10 +563,9 @@
           if (enemy.fadeCounter > 6) enemies.splice(index, 1);
           return;
         }
-        // First, check if the player’s attack is active and close enough to damage this enemy.
-        const dx = enemy.x - player.x,
-              dy = enemy.y - player.y,
-              distance = Math.sqrt(dx * dx + dy * dy);
+        // First, let the player’s attack damage this enemy.
+        const dx = enemy.x - player.x, dy = enemy.y - player.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
         if (player.isAttacking && player.attackFrame < 7) {
           const threshold = player.currentPunchType === "high" ? 55 : 50;
           if (distance < threshold) {
@@ -531,10 +588,8 @@
             applyScreenShake(15, 15);
           }
         }
-        // Now process enemy AI (movement and their own attacks on the player).
-        const dxp = player.x - enemy.x,
-              dyp = player.y - enemy.y,
-              dist = Math.sqrt(dxp * dxp + dyp * dyp);
+        // Next, process enemy AI for attacking the player.
+        const dxp = player.x - enemy.x, dyp = player.y - enemy.y, dist = Math.sqrt(dxp * dxp + dyp * dyp);
         if (dist > 80) {
           enemy.x += (dxp / dist) * enemy.speed;
           enemy.y += (dyp / dist) * enemy.speed;
@@ -551,22 +606,24 @@
         if (enemy.isAttacking) {
           enemy.attackFrame++;
           if (enemy.attackFrame === 10) {
-            // At frame 10, enemy applies damage to player if in range.
-            if (enemy.currentAttackType === "punch") {
-              const hitThreshold = 50;
-              if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
-                player.hp -= 10;
-                player.vx = (player.x - enemy.x) * 0.5;
-                player.vy = (player.y - enemy.y) * 0.5;
-                addPunchEffect(player.x, player.y - 20);
-              }
-            } else { // kick
-              const hitThreshold = 60;
-              if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
-                player.hp -= 15;
-                player.vx = (player.x - enemy.x) * 0.7;
-                player.vy = (player.y - enemy.y) * 0.7;
-                addKickEffect(player.x, player.y - 20);
+            // Only apply damage if player is not blocking.
+            if (!player.isBlocking) {
+              if (enemy.currentAttackType === "punch") {
+                const hitThreshold = 50;
+                if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
+                  player.hp -= 10;
+                  player.vx = (player.x - enemy.x) * 0.5;
+                  player.vy = (player.y - enemy.y) * 0.5;
+                  addPunchEffect(player.x, player.y - 20);
+                }
+              } else {
+                const hitThreshold = 60;
+                if (Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < hitThreshold) {
+                  player.hp -= 15;
+                  player.vx = (player.x - enemy.x) * 0.7;
+                  player.vy = (player.y - enemy.y) * 0.7;
+                  addKickEffect(player.x, player.y - 20);
+                }
               }
             }
           }
@@ -617,9 +674,7 @@
           if (boss.fadeCounter > 6) bossEnemies.splice(index, 1);
           return;
         }
-        const dx = player.x - boss.x,
-              dy = player.y - boss.y,
-              dist = Math.sqrt(dx * dx + dy * dy);
+        const dx = player.x - boss.x, dy = player.y - boss.y, dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 80) {
           boss.x += (dx / dist) * boss.speed;
           boss.y += (dy / dist) * boss.speed;
@@ -636,21 +691,23 @@
         if (boss.isAttacking) {
           boss.attackFrame++;
           if (boss.attackFrame === 10) {
-            if (boss.currentAttackType === "punch") {
-              const hitThreshold = 60;
-              if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
-                player.hp -= 10;
-                player.vx = (player.x - boss.x) * 0.5;
-                player.vy = (player.y - boss.y) * 0.5;
-                addPunchEffect(player.x, player.y - 20);
-              }
-            } else {
-              const hitThreshold = 70;
-              if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
-                player.hp -= 15;
-                player.vx = (player.x - boss.x) * 0.7;
-                player.vy = (player.y - boss.y) * 0.7;
-                addKickEffect(player.x, player.y - 20);
+            if (!player.isBlocking) {
+              if (boss.currentAttackType === "punch") {
+                const hitThreshold = 60;
+                if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
+                  player.hp -= 10;
+                  player.vx = (player.x - boss.x) * 0.5;
+                  player.vy = (player.y - boss.y) * 0.5;
+                  addPunchEffect(player.x, player.y - 20);
+                }
+              } else {
+                const hitThreshold = 70;
+                if (Math.sqrt((player.x - boss.x) ** 2 + (player.y - boss.y) ** 2) < hitThreshold) {
+                  player.hp -= 15;
+                  player.vx = (player.x - boss.x) * 0.7;
+                  player.vy = (player.y - boss.y) * 0.7;
+                  addKickEffect(player.x, player.y - 20);
+                }
               }
             }
           }
@@ -720,7 +777,7 @@
       ctx.moveTo(0, -height / 2);
       ctx.lineTo(0, height / 2);
       ctx.stroke();
-      // Arms: if attacking, fixed positions; otherwise, subtle swing via cycle.
+      // Arms: if attacking use fixed positions; otherwise, subtle swing via cycle.
       ctx.beginPath();
       if (isAttacking && attackFrame < 7) {
         if (player.currentPunchType === "high") {
@@ -760,7 +817,7 @@
 
     /* ========= MAIN GAME LOOP ========= */
     function gameLoop() {
-      // Draw a translucent rectangle for motion blur
+      // Draw a translucent rectangle for a subtle motion-blur effect
       ctx.fillStyle = "rgba(242,242,242,0.8)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.save();
