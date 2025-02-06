@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible World with AI & Single-Instance Characters</title>
+  <title>Destructible World with AI, HP Bars & Realistic Bubble Busting</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -81,6 +81,22 @@
       pointer-events: none;
       transition: transform 0.5s ease, opacity 0.5s ease;
     }
+    /* HP bar container and inner bar */
+    .hp-bar-container {
+      position: absolute;
+      width: 50px;
+      height: 6px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #000;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .hp-bar {
+      width: 100%;
+      height: 100%;
+      background: lime;
+      border-radius: 3px;
+    }
     /* Bubble style for player (green) */
     .player-part {
       background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
@@ -93,7 +109,7 @@
       border: 2px solid rgba(255,255,255,0.7);
       box-shadow: 0 0 8px rgba(255,0,0,0.7);
     }
-    /* Burst animation: enlarge and fade out */
+    /* Burst animation for bubble busting */
     .bubble-burst {
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
@@ -135,14 +151,13 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // Destructure Matter modules.
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     engine.world.gravity.y = 3.2;
     const world = engine.world;
     const game = document.getElementById("game");
 
-    // Define game dimensions.
+    // Game dimensions.
     const levelWidth = 3000;
     const playAreaHeight = document.getElementById("screen").getBoundingClientRect().height;
     const groundExtraHeight = 200;
@@ -150,7 +165,7 @@
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Create ground element (visual only).
+    // Ground visual element.
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
     groundEl.style.top = playAreaHeight + "px";
@@ -160,7 +175,7 @@
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
-    // Create DOM element for Matter bodies.
+    // Helper: create a DOM element for a Matter body.
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
       el.className = "entity " + cls;
@@ -177,7 +192,7 @@
     const rightWall = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     World.add(world, [groundBody, leftWall, rightWall]);
 
-    // Safety floor (non-destructible).
+    // Safety floor.
     const safetyFloorY = playAreaHeight + 50;
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, {
       isStatic: true,
@@ -186,8 +201,7 @@
     World.add(world, safetyFloor);
 
     // --- Character Factory ---
-    // Creates a character (player or enemy) with bubble-style parts.
-    // Each character has an HP value, an "alive" flag, and a spawn point.
+    // Creates a character (player or enemy) with bubble-style parts and an HP bar.
     function createCharacter(x, y, isEnemy) {
       const char = { hp: 100, alive: true, isEnemy: isEnemy, spawn: { x, y }, shootCooldown: 0 };
       const size = 20;
@@ -195,13 +209,23 @@
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
       const partClass = isEnemy ? "enemy-part" : "player-part";
 
+      // Create an HP bar container and inner bar.
+      const hpContainer = document.createElement("div");
+      hpContainer.className = "hp-bar-container";
+      const hpBar = document.createElement("div");
+      hpBar.className = "hp-bar";
+      hpContainer.appendChild(hpBar);
+      game.appendChild(hpContainer);
+      char.hpContainer = hpContainer;
+      char.hpBar = hpBar;
+
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
         return body;
       }
 
-      // Build parts.
+      // Build character parts.
       const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       addPart(head, partClass, size, size);
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
@@ -225,7 +249,7 @@
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
-      // Link parts together.
+      // Create constraints between parts.
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a, pointA: offA, bodyB: b, pointB: offB,
@@ -243,7 +267,7 @@
       link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
-      // Save references.
+      // Save part references.
       char.head = head; char.torso = torso;
       char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
       char.leftUpperArm = leftUpperArm; char.leftHand = leftHand;
@@ -252,12 +276,12 @@
       return char;
     }
 
-    // Global single instances.
+    // Global characters (single instance of each).
     let playerChar = createCharacter(100, 100, false);
     let enemyChar = createCharacter(400, 100, true);
 
     // --- Bullet Shooting ---
-    // Bullets record their owner to prevent friendly fire.
+    // Bullets record their owner.
     function shootBullet(x, y, tx, ty, owner) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       bullet.owner = owner;
@@ -268,7 +292,7 @@
       createDomElement(bullet, "bullet", 10, 10);
       bullets.push(bullet);
     }
-    // Player shooting from input.
+    // Player shooting.
     function playerShoot() {
       let dx = 0, dy = 0;
       if (keys["ArrowUp"])    dy = -1;
@@ -288,7 +312,7 @@
       }
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
     }
-    // Enemy shooting aimed at player.
+    // Enemy shooting aimed at the player.
     function enemyShoot() {
       const origin = { x: enemyChar.rightHand.position.x, y: enemyChar.rightHand.position.y };
       let dx = playerChar.torso.position.x - origin.x;
@@ -298,23 +322,44 @@
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, enemyChar);
     }
 
-    // --- Damage & Burst Logic ---
-    // When a bullet hits a character (that isn’t its owner), reduce HP.
-    // If HP drops to zero, mark the character as dead, trigger a burst, and then respawn.
-    function takeDamage(character, damage) {
+    // --- Damage, Knockback & Bubble Busting ---
+    // When a bullet hits a character (that isn’t its owner) the character takes damage,
+    // a knockback force is applied, and if HP falls to zero, the character bursts.
+    function takeDamage(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
+      // Apply knockback force (opposite bullet direction).
+      const knockbackFactor = 0.001;
+      if (bullet && bullet.velocity) {
+        Body.applyForce(character.torso, character.torso.position, {
+          x: -bullet.velocity.x * knockbackFactor,
+          y: -bullet.velocity.y * knockbackFactor
+        });
+      }
+      // Update HP bar.
+      if (character.hpBar) {
+        const percent = Math.max(character.hp, 0) / 100;
+        character.hpBar.style.width = (percent * 100) + "%";
+      }
+      // If HP depleted, burst.
       if (character.hp <= 0) {
         character.alive = false;
-        // Apply burst animation to each part.
+        // Optionally, remove constraints here to let parts fly apart.
+        // (For simplicity, we apply random forces to simulate bubble bursting.)
         [character.head, character.torso, character.rightUpperArm, character.rightHand,
          character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
          character.leftUpperLeg, character.leftFoot].forEach(part => {
-           if (part.domElement) {
-             part.domElement.classList.add("bubble-burst");
+           if (part) {
+             Body.applyForce(part, part.position, {
+               x: (Math.random() - 0.5) * 0.02,
+               y: (Math.random() - 0.5) * 0.02
+             });
+             if (part.domElement) {
+               part.domElement.classList.add("bubble-burst");
+             }
            }
          });
-        // Remove parts after the burst animation, then respawn.
+        // Remove parts and HP bar after animation, then respawn.
         setTimeout(() => {
           [character.head, character.torso, character.rightUpperArm, character.rightHand,
            character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
@@ -324,6 +369,9 @@
                part.domElement.parentNode.removeChild(part.domElement);
              }
            });
+          if (character.hpContainer && character.hpContainer.parentNode) {
+            character.hpContainer.parentNode.removeChild(character.hpContainer);
+          }
           if (character.isEnemy) {
             enemyChar = createCharacter(character.spawn.x, character.spawn.y, true);
           } else {
@@ -342,7 +390,7 @@
             if (pair.bodyA.domElement && pair.bodyA.domElement.parentNode) {
               pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
             }
-            takeDamage(pair.bodyB.character, 20);
+            takeDamage(pair.bodyB.character, 20, pair.bodyA);
           }
         } else if (pair.bodyB.label === "bullet" && pair.bodyA.character) {
           if (pair.bodyA.character !== pair.bodyB.owner) {
@@ -350,7 +398,7 @@
             if (pair.bodyB.domElement && pair.bodyB.domElement.parentNode) {
               pair.bodyB.domElement.parentNode.removeChild(pair.bodyB.domElement);
             }
-            takeDamage(pair.bodyA.character, 20);
+            takeDamage(pair.bodyA.character, 20, pair.bodyB);
           }
         }
       });
@@ -402,7 +450,7 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Smoothed Camera ---
+    // --- Smoothed Dynamic Camera ---
     let currentOffsetX = 0, currentOffsetY = 0, currentZoom = 1;
     function lerp(a, b, t) { return a + (b - a) * t; }
     function updateCamera() {
@@ -493,7 +541,7 @@
         }
       });
       
-      // Player movement input.
+      // Player movement.
       if (keys["ArrowLeft"]) {
         playerChar.facingDirection = -1;
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
@@ -509,7 +557,7 @@
       if (keys["KeyB"] || keys["Space"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -22 });
       }
-      // Keep head positioned.
+      // Keep head aligned.
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
 
@@ -518,13 +566,24 @@
       updateWalkCycle();
       updateEnemyAI();
 
-      // Fallback: if player falls too far while still alive, mark as dead and respawn.
+      // Fallback: if player falls too far while alive, mark dead and respawn.
       if (playerChar.alive && playerChar.torso.position.y > safetyFloorY + 100) {
         playerChar.alive = false;
         setTimeout(() => {
           playerChar = createCharacter(playerChar.spawn.x, playerChar.spawn.y, false);
         }, 500);
       }
+
+      // Update HP bars: position them above the character's torso.
+      function updateHpBar(character) {
+        if (!character.hpContainer) return;
+        // Position the HP bar a fixed offset above the torso.
+        character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
+        character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
+      }
+      if (playerChar) updateHpBar(playerChar);
+      if (enemyChar) updateHpBar(enemyChar);
+
       requestAnimationFrame(update);
     }
     update();
