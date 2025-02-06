@@ -361,7 +361,7 @@
       if (mag === 0) return;
       dx /= mag; dy /= mag;
       // Apply a strong velocity impulse for a realistic punch.
-      Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
+      Body.setVelocity(hand, { x: dx * 90, y: dy * 90 });
       // After 100ms, if the enemy is within 50 world units, apply melee damage.
       setTimeout(() => {
         const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
@@ -377,7 +377,7 @@
       if (!character.alive) return;
       character.hp -= damage;
       // More realistic knockback.
-      const knockbackFactor = 0.005;
+      const knockbackFactor = 0.015;
       if (bullet && bullet.velocity) {
         Body.applyForce(character.torso, character.torso.position, {
           x: -bullet.velocity.x * knockbackFactor,
