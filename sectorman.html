@@ -406,7 +406,7 @@
 
     // --- Melee Attack (Physical Punch) ---
     function meleeAttack() {
-      // Choose the punching hand based on enemy position relative to the player.
+      // Determine which hand to use based on enemy's position.
       const playerPos = playerChar.torso.position;
       const enemyPos = enemyChar.torso.position;
       let hand;
@@ -421,13 +421,15 @@
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
       dx /= mag; dy /= mag;
-      // Apply a strong velocity impulse for a realistic punch.
-      Body.setVelocity(hand, { x: dx * 390, y: dy * 390 });
-      // After 100ms, if the enemy is within 50 world units, apply melee damage.
+      // Apply a high velocity impulse (increased to 30).
+      Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
+      // After 100ms, if enemy is within 50 world units, apply melee damage.
       setTimeout(() => {
         const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
                                         enemyChar.torso.position.y - hand.position.y);
         if (currentDist < 50) {
+          // Trigger a single screen shake for a melee hit.
+          screenShake();
           takeDamage(enemyChar, 30, null);
         }
       }, 100);
@@ -491,8 +493,17 @@
 
     // --- Collision Handling for Bullets ---
     Events.on(engine, "collisionStart", function(event) {
-      // Trigger screen shake on collision.
-      screenShake();
+      let bulletCollisionDetected = false;
+      event.pairs.forEach(pair => {
+        if ((pair.bodyA.label === "bullet" && pair.bodyB.character) ||
+            (pair.bodyB.label === "bullet" && pair.bodyA.character)) {
+          bulletCollisionDetected = true;
+        }
+      });
+      // Trigger a single screen shake if any bullet collision occurred.
+      if (bulletCollisionDetected) {
+        screenShake();
+      }
       event.pairs.forEach(pair => {
         if (pair.bodyA.label === "bullet" && pair.bodyB.character) {
           if (pair.bodyB.character !== pair.bodyA.owner) {
@@ -514,7 +525,8 @@
       });
     });
 
-    // --- Destructible World Collisions (Unchanged, but now with screen shake) ---
+    // --- Destructible World Collisions ---
+    // Removed screen shake from world collisions to limit shakes to bullet and melee events.
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
       return body === playerChar.head || body === playerChar.torso ||
@@ -529,8 +541,6 @@
              body === enemyChar.leftUpperLeg || body === enemyChar.leftFoot;
     }
     Events.on(engine, "collisionStart", function(event) {
-      // Also shake the screen for world collisions.
-      screenShake();
       event.pairs.forEach(pair => {
         let playerPart = null, other = null;
         if (isPlayerPart(pair.bodyA) && pair.bodyB.isStatic) {
@@ -605,7 +615,6 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
 
-      // For static camera, we don't update transform dynamically.
       // Clamp characters within level boundaries.
       function clampWithinBounds(character) {
         const margin = 50;
@@ -685,7 +694,7 @@
         });
         
         // Random horizontal movement for unpredictability.
-        if (Math.random() < 0.01) { // Adjust probability as desired.
+        if (Math.random() < 0.01) {
           const randomForce = (Math.random() - 0.5) * 0.02;
           Body.applyForce(
             enemyChar.torso,
@@ -724,35 +733,6 @@
       requestAnimationFrame(update);
     }
     update();
-
-    // --- Melee Attack: Triggered by Button "C" ---
-    function meleeAttack() {
-      // Determine which hand to use based on enemy's position.
-      const playerPos = playerChar.torso.position;
-      const enemyPos = enemyChar.torso.position;
-      let hand;
-      if (enemyPos.x < playerPos.x) {
-        hand = playerChar.leftHand;
-      } else {
-        hand = playerChar.rightHand;
-      }
-      const handPos = hand.position;
-      let dx = enemyPos.x - handPos.x;
-      let dy = enemyPos.y - handPos.y;
-      let mag = Math.hypot(dx, dy);
-      if (mag === 0) return;
-      dx /= mag; dy /= mag;
-      // Apply a high velocity impulse (increased to 30).
-      Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
-      // After 100ms, if enemy is within 50 world units, apply melee damage.
-      setTimeout(() => {
-        const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
-                                        enemyChar.torso.position.y - hand.position.y);
-        if (currentDist < 50) {
-          takeDamage(enemyChar, 30, null);
-        }
-      }, 100);
-    }
 
     // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
