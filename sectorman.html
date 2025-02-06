@@ -179,7 +179,7 @@
     (function createPlayer(x, y) {
       const size = 20;
       // Increase torso frictionAir for extra damping
-      const torsoOptions = { friction: 1.0, frictionAir: 0.1, restitution: 0 };
+      const torsoOptions = { friction: 0.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
@@ -437,7 +437,7 @@
       const speed = Math.hypot(vx, vy);
       const zoomIn = 1.2;
       const zoomOut = 0.8;
-      const maxSpeed = 20;
+      const maxSpeed = 10;
       const t = Math.min(speed / maxSpeed, 1);
       const zoom = zoomIn * (1 - t) + zoomOut * t;
       const visibleWidth = screenWidth / zoom;
