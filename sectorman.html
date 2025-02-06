@@ -2,14 +2,17 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Life-Size Game Boy Platformer</title>
+  <!-- Prevent zooming on tap and set an appropriate viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Optimized Touch Game Boy Platformer</title>
   <style>
     /* ——— Reset & Full-Screen Setup ——— */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; }
+    html, body { width: 100%; height: 100%; touch-action: manipulation; }
     body {
       background: #666;
       font-family: sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
     /* ——— Full-Screen Game Boy Shell ——— */
     #gameboy {
@@ -25,12 +28,12 @@
       top: 0;
       left: 0;
       width: 100vw; /* Full viewport width */
-      height: calc(100vw * 0.75); /* 4:3 aspect ratio: height = 3/4 of width */
+      height: calc(100vw * 0.75); /* 4:3 aspect ratio */
       background: #000;
       border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* The Matter.js-rendered game area sits inside the screen */
+    /* Matter.js game area inside the screen */
     #game {
       position: absolute;
       top: 0;
@@ -43,41 +46,42 @@
       position: absolute;
       bottom: 5%;
       width: 100vw;
-      /* Reserve enough vertical space for life-size buttons */
-      height: 40vh;
+      height: 40vh; /* Reserve ample vertical space for life-size buttons */
     }
-    /* ——— D-Pad ——— */
+    /* ——— D-Pad Styling ——— */
     #dpad {
       position: absolute;
       left: 5%;
       bottom: 5%;
-      width: 150px;  /* Life-size d-pad width */
-      height: 150px; /* Life-size d-pad height */
+      width: 150px;
+      height: 150px;
     }
     #dpad button {
       position: absolute;
       background: #333;
-      color: #fff;
       border: 3px solid #777;
-      font-weight: bold;
+      border-radius: 10px;
       cursor: pointer;
+      touch-action: manipulation;
+      /* Remove any default inner text */
+      font-size: 0;
     }
     #dpad button:active { background: #777; }
-    /* Larger D-Pad buttons */
+    /* Oversized D-Pad buttons */
     #dpad .up,
     #dpad .down,
     #dpad .left,
     #dpad .right {
       width: 60px;
       height: 60px;
-      font-size: 1.5rem;
     }
-    /* Position D-Pad buttons (roughly mimicking a physical layout) */
+    /* Evenly space buttons in a cross layout */
     #dpad .up    { top: 0; left: 45px; }
     #dpad .down  { bottom: 0; left: 45px; }
     #dpad .left  { top: 45px; left: 0; }
     #dpad .right { top: 45px; right: 0; }
-    /* ——— A/B Buttons ——— */
+    
+    /* ——— A/B Buttons Styling ——— */
     #ab-buttons {
       position: absolute;
       right: 5%;
@@ -88,24 +92,23 @@
     #ab-buttons button {
       position: absolute;
       background: #333;
-      color: #fff;
       border: 3px solid #777;
-      font-weight: bold;
+      border-radius: 50%;
       cursor: pointer;
+      touch-action: manipulation;
+      font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
-    /* Life-size circular buttons */
+    /* Oversized A/B buttons */
     #ab-buttons .A,
     #ab-buttons .B {
       width: 70px;
       height: 70px;
-      font-size: 1.5rem;
-      border-radius: 50%;
     }
-    /* Arrange A/B buttons so one is in the top-right corner and one in the bottom-left of their container */
+    /* Evenly position A/B buttons within container */
     #ab-buttons .A { top: 0; right: 0; }
     #ab-buttons .B { bottom: 0; left: 0; }
-
+    
     /* ——— In-Game Entity Styles ——— */
     .entity {
       position: absolute;
@@ -137,21 +140,21 @@
 </head>
 <body>
   <div id="gameboy">
-    <!-- Game Boy Screen -->
+    <!-- Game Screen -->
     <div id="screen">
       <div id="game"></div>
     </div>
-    <!-- Controls: Life-size buttons -->
+    <!-- Controls -->
     <div id="controls">
       <div id="dpad">
-        <button class="up">↑</button>
-        <button class="down">↓</button>
-        <button class="left">←</button>
-        <button class="right">→</button>
+        <button class="up"></button>
+        <button class="down"></button>
+        <button class="left"></button>
+        <button class="right"></button>
       </div>
       <div id="ab-buttons">
-        <button class="A">A</button>
-        <button class="B">B</button>
+        <button class="A"></button>
+        <button class="B"></button>
       </div>
     </div>
   </div>
@@ -177,7 +180,7 @@
     let coins       = [];
     let bullets     = [];
 
-    // Utility: Create a DOM element and link it with a Matter body.
+    // Utility: Create and link a DOM element to a Matter body.
     function createDomElement(body, className, width, height) {
       const el = document.createElement('div');
       el.className = 'entity ' + className;
@@ -199,7 +202,6 @@
     const player = { jumpCount: 0 };
     (function createPlayer(x, y) {
       const size = 20;
-      // Create six circular parts for a simple ragdoll.
       const head = Bodies.circle(x, y - 40, size / 2, { friction: 0.5 });
       createDomElement(head, 'player-part', size, size);
 
@@ -220,7 +222,6 @@
 
       World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
 
-      // Link parts with constraints.
       function link(bodyA, bodyB, offsetA, offsetB) {
         const con = Constraint.create({
           bodyA,
@@ -370,28 +371,32 @@
     }
     update();
 
-    // ——— Map Physical Button Clicks to Controls ———
-    // D-Pad: Up for jump; left/right for horizontal movement.
+    // ——— Map Touch on Physical Buttons to Controls ———
     const dpad = document.getElementById('dpad');
-    dpad.querySelector('.up').addEventListener('click', () => {
+    dpad.querySelector('.up').addEventListener('touchstart', (e) => {
+      e.preventDefault();
       keys['Space'] = true;
       setTimeout(() => keys['Space'] = false, 150);
     });
-    dpad.querySelector('.left').addEventListener('click', () => {
+    dpad.querySelector('.left').addEventListener('touchstart', (e) => {
+      e.preventDefault();
       keys['ArrowLeft'] = true;
       setTimeout(() => keys['ArrowLeft'] = false, 150);
     });
-    dpad.querySelector('.right').addEventListener('click', () => {
+    dpad.querySelector('.right').addEventListener('touchstart', (e) => {
+      e.preventDefault();
       keys['ArrowRight'] = true;
       setTimeout(() => keys['ArrowRight'] = false, 150);
     });
-    // A and B buttons trigger shooting in opposite directions.
+    // A/B buttons for shooting actions.
     const abButtons = document.getElementById('ab-buttons');
-    abButtons.querySelector('.A').addEventListener('click', () => {
+    abButtons.querySelector('.A').addEventListener('touchstart', (e) => {
+      e.preventDefault();
       shootBullet(player.torso.position.x, player.torso.position.y,
                   player.torso.position.x + 100, player.torso.position.y);
     });
-    abButtons.querySelector('.B').addEventListener('click', () => {
+    abButtons.querySelector('.B').addEventListener('touchstart', (e) => {
+      e.preventDefault();
       shootBullet(player.torso.position.x, player.torso.position.y,
                   player.torso.position.x - 100, player.torso.position.y);
     });
