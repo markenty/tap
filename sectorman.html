@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fully Destructible World Platformer</title>
+  <title>Fully Destructible World with Player Bounding</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -142,6 +142,7 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
+    // Increase frictionAir for the player's torso to add extra damping
     engine.world.gravity.y = 3.3;
     const world = engine.world;
     const game = document.getElementById("game");
@@ -164,7 +165,7 @@
       domEntities.push(body);
     }
 
-    // World boundaries (ground & walls are now destructible too)
+    // World boundaries (ground & walls are destructible, but we'll add extra bounding for the player)
     const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
@@ -177,7 +178,8 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      const torsoOptions = { friction: 1.0, frictionAir: .05, restitution: 0 };
+      // Increase torso frictionAir for extra damping
+      const torsoOptions = { friction: 1.0, frictionAir: 0.1, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
@@ -326,8 +328,7 @@
     });
 
     // --- Destructible World: Player Breaking Through Objects ---
-    // When any player part hits a static body while moving fast, remove that object.
-    const destructionSpeedThreshold = 20; // Define max speed threshold
+    const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
       return body === player.head || body === player.torso ||
              body === player.rightUpperArm || body === player.rightHand ||
@@ -346,7 +347,6 @@
           other = pair.bodyA;
         }
         if (other) {
-          // Check if player's torso velocity meets or exceeds the threshold.
           const vx = player.torso.velocity.x, vy = player.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
           if (playerSpeed >= destructionSpeedThreshold) {
@@ -354,7 +354,6 @@
             if (other.domElement && other.domElement.parentNode) {
               other.domElement.parentNode.removeChild(other.domElement);
             }
-            // Remove from platforms or TVs arrays if needed.
             const platIndex = platforms.indexOf(other);
             if (platIndex !== -1) platforms.splice(platIndex, 1);
             const tvIndex = tvs.indexOf(other);
@@ -433,29 +432,45 @@
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-
-      // Calculate player's speed from torso velocity.
       const vx = player.torso.velocity.x;
       const vy = player.torso.velocity.y;
       const speed = Math.hypot(vx, vy);
-
-      // Define zoom levels.
-      const zoomIn = 1.2;  // When nearly stationary.
-      const zoomOut = 0.8; // When at maximum speed.
-      const maxSpeed = 20; // Maximum speed for full zoom-out.
+      const zoomIn = 1.2;
+      const zoomOut = 0.8;
+      const maxSpeed = 20;
       const t = Math.min(speed / maxSpeed, 1);
       const zoom = zoomIn * (1 - t) + zoomOut * t;
-
-      // Clamp camera view within level boundaries.
       const visibleWidth = screenWidth / zoom;
       const visibleHeight = screenHeight / zoom;
       let cameraCenterX = player.torso.position.x;
       let cameraCenterY = player.torso.position.y;
       const offsetX = Math.max(0, Math.min(cameraCenterX - visibleWidth / 2, levelWidth - visibleWidth));
       const offsetY = Math.max(0, cameraCenterY - visibleHeight / 2);
-
       game.style.transformOrigin = "top left";
       game.style.transform = `scale(${zoom}) translate(-${offsetX}px, -${offsetY}px)`;
+    }
+
+    // --- Player Bounding & Damping ---
+    function clampPlayer() {
+      // Define margins for player bounding
+      const margin = 50;
+      const pos = player.torso.position;
+      const vel = player.torso.velocity;
+      
+      // Clamp horizontal position and adjust velocity if needed.
+      if (pos.x < margin) {
+        Body.setPosition(player.torso, { x: margin, y: pos.y });
+        if (vel.x < 0) Body.setVelocity(player.torso, { x: vel.x * 0.5, y: vel.y });
+      } else if (pos.x > levelWidth - margin) {
+        Body.setPosition(player.torso, { x: levelWidth - margin, y: pos.y });
+        if (vel.x > 0) Body.setVelocity(player.torso, { x: vel.x * 0.5, y: vel.y });
+      }
+      
+      // Clamp vertical position at the top (player shouldn't fly off upward)
+      if (pos.y < margin) {
+        Body.setPosition(player.torso, { x: pos.x, y: margin });
+        if (vel.y < 0) Body.setVelocity(player.torso, { x: vel.x, y: vel.y * 0.5 });
+      }
     }
 
     // --- Walk Cycle for Leg Animation ---
@@ -502,7 +517,7 @@
         Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
       }
 
-      if ((keys["KeyB"] || keys["Space"])) {
+      if (keys["KeyB"] || keys["Space"]) {
         if (!jumpKeyActive) {
           jumpBufferTimer = Date.now();
           jumpKeyActive = true;
@@ -538,7 +553,9 @@
       Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
       Body.setVelocity(player.head, player.torso.velocity);
 
+      // Call our dynamic camera update and then clamp the player's position/velocity.
       updateCamera();
+      clampPlayer();
       updateWalkCycle();
       requestAnimationFrame(update);
     }
