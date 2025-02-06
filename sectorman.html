@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Static Camera Entire Map with Melee Attack</title>
+  <title>Static Camera Entire Map with Melee Attack (Row Buttons)</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,19 +24,17 @@
     /* Screen – contains the game world */
     #screen {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 100vw;
       height: 100vh;
       background: #000;
       overflow: hidden;
     }
-    /* Game World Container – will be scaled statically */
+    /* Game World Container – will be statically scaled */
     #game {
       position: absolute;
-      top: 0;
-      left: 0;
-      /* Transform applied via JS in setupStaticCamera() */
+      top: 0; left: 0;
+      /* Static transform applied via JS below */
     }
     /* Ground styling (example) */
     #ground {
@@ -74,15 +72,15 @@
     #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
     #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
-    /* A/B/C Buttons: Use flex layout to evenly separate three buttons */
+    /* A/B/C Buttons – now arranged in a single horizontal row */
     #ab-buttons {
       position: absolute;
       right: 5%;
       bottom: 5%;
-      width: 150px;
-      height: 150px;
+      width: 250px;
+      height: 80px;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       justify-content: space-around;
       align-items: center;
     }
@@ -93,6 +91,7 @@
       background: #333;
       border: 3px solid #777;
       cursor: pointer;
+      touch-action: manipulation;
       font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
@@ -120,7 +119,7 @@
       background: lime;
       border-radius: 3px;
     }
-    /* Bubble styles */
+    /* Bubble styles for characters */
     .player-part {
       background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
       border: 2px solid rgba(255,255,255,0.7);
@@ -187,8 +186,8 @@
     const game = document.getElementById("game");
 
     // Level dimensions.
-    const levelWidth = 460;
-    const playAreaHeight = 600;  // Example play area height.
+    const levelWidth = 3000;
+    const playAreaHeight = 600;
     const groundExtraHeight = 200;
     const gameHeight = playAreaHeight + groundExtraHeight;
     game.style.width = levelWidth + "px";
@@ -204,7 +203,7 @@
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
-    // Helper to create DOM element for a Matter body.
+    // Helper: create DOM element for a Matter body.
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
       el.className = "entity " + cls;
@@ -301,7 +300,7 @@
       return char;
     }
 
-    // Global characters.
+    // Global single instances.
     let playerChar = createCharacter(100, 100, false);
     let enemyChar = createCharacter(400, 100, true);
 
@@ -344,9 +343,9 @@
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, enemyChar);
     }
 
-    // --- Melee Attack: Physical Punch ---
+    // --- Melee Attack (Physical Punch) ---
     function meleeAttack() {
-      // Choose hand based on enemy's position relative to player.
+      // Choose the punching hand based on enemy position relative to the player.
       const playerPos = playerChar.torso.position;
       const enemyPos = enemyChar.torso.position;
       let hand;
@@ -361,9 +360,9 @@
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
       dx /= mag; dy /= mag;
-      // Increase punch velocity factor (e.g. 30 instead of 20).
+      // Apply a strong velocity impulse for a realistic punch.
       Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
-      // After 100ms, if enemy is within 50 world units, apply melee damage.
+      // After 100ms, if the enemy is within 50 world units, apply melee damage.
       setTimeout(() => {
         const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
                                         enemyChar.torso.position.y - hand.position.y);
@@ -377,7 +376,7 @@
     function takeDamage(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
-      // Increase knockback for more realistic effect.
+      // More realistic knockback.
       const knockbackFactor = 0.005;
       if (bullet && bullet.velocity) {
         Body.applyForce(character.torso, character.torso.position, {
@@ -385,7 +384,6 @@
           y: -bullet.velocity.y * knockbackFactor
         });
       }
-      // Update HP bar.
       if (character.hpBar) {
         const percent = Math.max(character.hp, 0) / 100;
         character.hpBar.style.width = (percent * 100) + "%";
@@ -496,6 +494,7 @@
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
     // --- Static Camera Setup ---
+    // This function computes a constant scale factor and offset so that the entire map is visible.
     function setupStaticCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
@@ -537,8 +536,8 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
 
-      // For static camera, no dynamic update of transform.
-      // Clamp both characters within world boundaries.
+      // For static camera, we don't update transform dynamically.
+      // Clamp characters within level boundaries.
       function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
@@ -554,7 +553,7 @@
       clampWithinBounds(playerChar);
       clampWithinBounds(enemyChar);
 
-      // Leg animation.
+      // Leg Animation.
       let walkCycle = 0, lastTime = Date.now();
       function updateWalkCycle() {
         const now = Date.now();
@@ -613,7 +612,7 @@
 
     // --- Melee Attack: Triggered by Button "C" ---
     function meleeAttack() {
-      // Choose hand based on enemy's position relative to the player.
+      // Determine which hand to use based on enemy's position.
       const playerPos = playerChar.torso.position;
       const enemyPos = enemyChar.torso.position;
       let hand;
@@ -628,9 +627,9 @@
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
       dx /= mag; dy /= mag;
-      // Increase punch velocity factor to 30.
+      // Apply a high velocity impulse (increased to 30).
       Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
-      // After 100ms, if the enemy is within 50 world units, apply melee damage.
+      // After 100ms, if enemy is within 50 world units, apply melee damage.
       setTimeout(() => {
         const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
                                         enemyChar.torso.position.y - hand.position.y);
@@ -651,7 +650,6 @@
     dpad.querySelector(".right").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
     dpad.querySelector(".right").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
     const abButtons = document.getElementById("ab-buttons");
-    // Buttons now evenly spaced by flexbox.
     abButtons.querySelector(".A").addEventListener("touchstart", (e) => { e.preventDefault(); playerShoot(); });
     abButtons.querySelector(".B").addEventListener("touchstart", (e) => { e.preventDefault(); keys["Space"] = true; });
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
