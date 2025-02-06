@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent zooming on tap and set an appropriate viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Optimized Touch Game Boy Platformer</title>
+  <title>Camera-Clamped Game Boy Platformer</title>
   <style>
     /* ——— Reset & Full-Screen Setup ——— */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,26 +27,27 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 100vw; /* Full viewport width */
-      height: calc(100vw * 0.75); /* 4:3 aspect ratio */
+      width: 100vw;            /* Full viewport width */
+      height: calc(100vw * 0.75);/* 4:3 aspect ratio */
       background: #000;
       border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* Matter.js game area inside the screen */
+    /* The #game container now represents the entire level.
+       It is wider than the screen and will be translated (camera) */
     #game {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      /* The level width is defined in JavaScript (levelWidth) */
+      /* Height matches the screen height */
     }
     /* ——— Controls Area ——— */
     #controls {
       position: absolute;
       bottom: 5%;
       width: 100vw;
-      height: 40vh; /* Reserve ample vertical space for life-size buttons */
+      height: 40vh;
     }
     /* ——— D-Pad Styling ——— */
     #dpad {
@@ -63,7 +64,6 @@
       border-radius: 10px;
       cursor: pointer;
       touch-action: manipulation;
-      /* Remove any default inner text */
       font-size: 0;
     }
     #dpad button:active { background: #777; }
@@ -113,6 +113,7 @@
     .entity {
       position: absolute;
       border-radius: 50%;
+      /* Center each entity at its (x,y) */
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
@@ -162,25 +163,36 @@
   <!-- Matter.js physics engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // ——— Matter.js Setup ———
+    // ——— Basic Setup ———
     const Engine     = Matter.Engine,
           World      = Matter.World,
           Bodies     = Matter.Bodies,
           Body       = Matter.Body,
           Constraint = Matter.Constraint,
           Events     = Matter.Events;
-
+    
     const engine = Engine.create();
     const world  = engine.world;
     const game   = document.getElementById('game');
 
+    // Define level dimensions (levelWidth >> screen width)
+    const levelWidth = 3000;
+    const screenRect = document.getElementById('screen').getBoundingClientRect();
+    const screenWidth = screenRect.width; // viewport width
+    const gameHeight = screenRect.height;
+
+    // Set #game container size to cover the entire level
+    game.style.width = levelWidth + "px";
+    game.style.height = gameHeight + "px";
+
+    // Arrays to track Matter bodies with DOM elements
     let domEntities = [];
     let platforms   = [];
     let tvs         = [];
     let coins       = [];
     let bullets     = [];
 
-    // Utility: Create and link a DOM element to a Matter body.
+    // Utility: create DOM element for a body
     function createDomElement(body, className, width, height) {
       const el = document.createElement('div');
       el.className = 'entity ' + className;
@@ -191,12 +203,13 @@
       domEntities.push(body);
     }
 
-    // ——— Setup the Ground ———
-    const screenRect = document.getElementById('screen').getBoundingClientRect();
-    const gameWidth  = screenRect.width;
-    const gameHeight = screenRect.height;
-    const ground = Bodies.rectangle(gameWidth/2, gameHeight, gameWidth, 40, { isStatic: true });
-    World.add(world, ground);
+    // ——— World Boundaries ———
+    // Create a ground spanning the level
+    const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
+    // Add left and right walls to prevent leaving the level
+    const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
+    const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
+    World.add(world, [ground, leftWall, rightWall]);
 
     // ——— Build the Ragdoll Player ———
     const player = { jumpCount: 0 };
@@ -259,10 +272,11 @@
       plat.domElement = el;
       platforms.push(plat);
     }
-    for (let i = 0; i < 10; i++) {
+    // Random platforms spread along the level width (avoid edges)
+    for (let i = 0; i < 15; i++) {
       const w = 100 + Math.random() * 100;
       const h = 20;
-      const x = 100 + Math.random() * (gameWidth - 200);
+      const x = 100 + Math.random() * (levelWidth - 200);
       const y = 50 + i * 50;
       createPlatform(x, y, w, h);
     }
@@ -282,8 +296,8 @@
       tv.domElement = el;
       tvs.push(tv);
     }
-    for (let i = 0; i < 5; i++) {
-      const x = 150 + Math.random() * (gameWidth - 300);
+    for (let i = 0; i < 8; i++) {
+      const x = 150 + Math.random() * (levelWidth - 300);
       const y = 50 + Math.random() * (gameHeight - 100);
       createTV(x, y);
     }
@@ -336,6 +350,7 @@
     const keys = {};
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+    // Reset jump count when legs hit any static body (ground/walls/platforms)
     Events.on(engine, 'collisionStart', function(event) {
       event.pairs.forEach(pair => {
         [player.leftLeg, player.rightLeg].forEach(leg => {
@@ -347,26 +362,48 @@
         });
       });
     });
+
+    // Utility: clamp a value
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(val, max));
+    }
+
+    // ——— Camera Update: Clamp camera to player within level bounds ———
+    function updateCamera() {
+      // Compute camera offset: we want to center the screen on the player,
+      // clamped so the #game container never reveals empty space.
+      const camOffset = clamp(player.torso.position.x - screenWidth/2, 0, levelWidth - screenWidth);
+      game.style.transform = "translateX(-" + camOffset + "px)";
+    }
+
+    // ——— Game Loop: Update Physics, Entities, and Camera ———
     function update() {
       Engine.update(engine, 1000 / 60);
+      
+      // Update each entity’s position (their parent #game container is translated by the camera)
       domEntities.forEach(body => {
         if (body.domElement) {
-          body.domElement.style.left = body.position.x + 'px';
-          body.domElement.style.top  = body.position.y + 'px';
-          body.domElement.style.transform = 'translate(-50%, -50%) rotate(' + body.angle + 'rad)';
+          body.domElement.style.left = body.position.x + "px";
+          body.domElement.style.top  = body.position.y + "px";
+          body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
         }
       });
+      
+      // Apply horizontal movement
       if (keys['ArrowLeft'] || keys['KeyA']) {
         Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
       }
       if (keys['ArrowRight'] || keys['KeyD']) {
         Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
       }
+      // Jump/double jump with Space
       if (keys['Space'] && player.jumpCount < 2) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
         player.jumpCount++;
         keys['Space'] = false;
       }
+      
+      updateCamera();
       requestAnimationFrame(update);
     }
     update();
@@ -388,7 +425,6 @@
       keys['ArrowRight'] = true;
       setTimeout(() => keys['ArrowRight'] = false, 150);
     });
-    // A/B buttons for shooting actions.
     const abButtons = document.getElementById('ab-buttons');
     abButtons.querySelector('.A').addEventListener('touchstart', (e) => {
       e.preventDefault();
