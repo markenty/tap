@@ -174,16 +174,16 @@
     World.add(world, [ground, leftWall, rightWall]);
 
     // --- Player Setup with Extra Limb Segments ---
-    // Adjust constraint offsets so that limb segments do not overlap.
-    // Legs will stack vertically, and arms will droop (hand below the upper arm).
+    // Adjusted physics for tighter platformer feel.
     const player = { jumpCount: 0, facingDirection: 1, isGrounded:true, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      const torsoOptions = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
-      const defaultOptions = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
+      // Updated options for tighter control:
+      const torsoOptions = { friction: 0.5, frictionAir: 0.02, restitution: 0 };
+      const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head (anchored later)
       const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
@@ -192,28 +192,28 @@
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
       createDomElement(torso, "player-part", size*2, size*2);
 
-      // Right Arm: Upper arm and hand (at rest, hand droops below the upper arm)
+      // Right Arm: Upper arm and hand (hand droops below upper arm)
       const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
-      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
+      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(rightHand, "player-part", size, size);
 
       // Left Arm: Upper arm and hand (hand droops below)
       const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
       createDomElement(leftUpperArm, "player-part", size, size);
-      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
+      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(leftHand, "player-part", size, size);
 
       // Right Leg: Upper leg and foot (stack vertically)
       const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
-      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(rightFoot, "player-part", size, size);
 
       // Left Leg: Upper leg and foot (stack vertically)
       const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
-      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(leftFoot, "player-part", size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
@@ -383,20 +383,20 @@
         }
       });
 
-      // Continuous horizontal movement
+      // Continuous horizontal movement: increased force for tighter control.
       if (keys["ArrowLeft"]) {
         player.facingDirection = -1;
-        Body.applyForce(player.torso, player.torso.position, { x: -0.007, y: 0 });
+        Body.applyForce(player.torso, player.torso.position, { x: -0.01, y: 0 });
       }
       if (keys["ArrowRight"]) {
         player.facingDirection = 1;
-        Body.applyForce(player.torso, player.torso.position, { x: 0.007, y: 0 });
+        Body.applyForce(player.torso, player.torso.position, { x: 0.01, y: 0 });
       }
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
       }
 
-      // Jumping: impulse of -24 for higher jump.
+      // Jumping: use a slightly lower impulse for more controlled jumps.
       if ((keys["KeyB"] || keys["Space"])) {
         if (!jumpKeyActive) {
           jumpBufferTimer = Date.now();
@@ -412,9 +412,9 @@
           (Date.now() - lastGroundedTime) < coyoteTime) {
         if ((keys["KeyB"] || keys["Space"]) && player.jumpCount < 2) {
           if (player.wallSide !== 0) {
-            Body.setVelocity(player.torso, { x: player.torso.velocity.x + 5 * -player.wallSide, y: -24 });
+            Body.setVelocity(player.torso, { x: player.torso.velocity.x + 5 * -player.wallSide, y: -22 });
           } else {
-            Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -24 });
+            Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -22 });
           }
           player.jumpCount++;
           jumpBufferTimer = 0;
@@ -425,9 +425,9 @@
       const correction = -player.torso.angle * 0.2;
       Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
 
-      // Wall sliding: cap downward speed.
-      if (player.wallSide !== 0 && player.torso.velocity.y > 4) {
-        Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 4 });
+      // Wall sliding: cap downward speed (lowered for smoother descent).
+      if (player.wallSide !== 0 && player.torso.velocity.y > 3) {
+        Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 3 });
       }
 
       // Anchor head: keep it locked 40px above the torso.
