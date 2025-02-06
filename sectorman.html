@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Full Screen Game Boy Platformer</title>
+  <title>Life-Size Game Boy Platformer</title>
   <style>
     /* ——— Reset & Full-Screen Setup ——— */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,19 +17,17 @@
       width: 100vw;
       height: 100vh;
       background: #a3c1a3;  /* Game Boy body color */
+      overflow: hidden;
     }
     /* ——— Screen (Game Canvas) ——— */
     #screen {
       position: absolute;
-      top: 10%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 60vw;
-      max-width: 800px;
-      aspect-ratio: 4 / 3;
+      top: 0;
+      left: 0;
+      width: 100vw; /* Full viewport width */
+      height: calc(100vw * 0.75); /* 4:3 aspect ratio: height = 3/4 of width */
       background: #000;
-      border: 4px solid #666;
-      border-radius: 4px;
+      border-bottom: 8px solid #444;
       overflow: hidden;
     }
     /* The Matter.js-rendered game area sits inside the screen */
@@ -40,62 +38,71 @@
       width: 100%;
       height: 100%;
     }
-    /* ——— Controls Area (Physical Buttons) ——— */
+    /* ——— Controls Area ——— */
     #controls {
       position: absolute;
-      bottom: 10%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 60vw;
-      max-width: 800px;
-      height: 150px;
+      bottom: 5%;
+      width: 100vw;
+      /* Reserve enough vertical space for life-size buttons */
+      height: 40vh;
     }
-    /* D-Pad on bottom left */
+    /* ——— D-Pad ——— */
     #dpad {
       position: absolute;
-      left: 10%;
-      bottom: 0;
-      width: 100px;
-      height: 100px;
+      left: 5%;
+      bottom: 5%;
+      width: 150px;  /* Life-size d-pad width */
+      height: 150px; /* Life-size d-pad height */
     }
     #dpad button {
       position: absolute;
-      width: 35px;
-      height: 35px;
       background: #333;
       color: #fff;
-      border: 2px solid #777;
-      border-radius: 5px;
+      border: 3px solid #777;
       font-weight: bold;
       cursor: pointer;
     }
     #dpad button:active { background: #777; }
-    /* Position D-Pad buttons */
-    #dpad .up    { top: 0; left: 32.5px; }
-    #dpad .down  { bottom: 0; left: 32.5px; }
-    #dpad .left  { top: 32.5px; left: 0; }
-    #dpad .right { top: 32.5px; right: 0; }
-    /* A/B Buttons on bottom right */
+    /* Larger D-Pad buttons */
+    #dpad .up,
+    #dpad .down,
+    #dpad .left,
+    #dpad .right {
+      width: 60px;
+      height: 60px;
+      font-size: 1.5rem;
+    }
+    /* Position D-Pad buttons (roughly mimicking a physical layout) */
+    #dpad .up    { top: 0; left: 45px; }
+    #dpad .down  { bottom: 0; left: 45px; }
+    #dpad .left  { top: 45px; left: 0; }
+    #dpad .right { top: 45px; right: 0; }
+    /* ——— A/B Buttons ——— */
     #ab-buttons {
       position: absolute;
-      right: 10%;
-      bottom: 0;
-      width: 100px;
-      height: 100px;
+      right: 5%;
+      bottom: 5%;
+      width: 150px;
+      height: 150px;
     }
     #ab-buttons button {
       position: absolute;
-      width: 35px;
-      height: 35px;
       background: #333;
       color: #fff;
-      border: 2px solid #777;
-      border-radius: 50%;
+      border: 3px solid #777;
       font-weight: bold;
       cursor: pointer;
     }
     #ab-buttons button:active { background: #777; }
-    /* Arrange A/B buttons: one top-right and one bottom-left */
+    /* Life-size circular buttons */
+    #ab-buttons .A,
+    #ab-buttons .B {
+      width: 70px;
+      height: 70px;
+      font-size: 1.5rem;
+      border-radius: 50%;
+    }
+    /* Arrange A/B buttons so one is in the top-right corner and one in the bottom-left of their container */
     #ab-buttons .A { top: 0; right: 0; }
     #ab-buttons .B { bottom: 0; left: 0; }
 
@@ -134,7 +141,7 @@
     <div id="screen">
       <div id="game"></div>
     </div>
-    <!-- Physical Button Layout -->
+    <!-- Controls: Life-size buttons -->
     <div id="controls">
       <div id="dpad">
         <button class="up">↑</button>
@@ -170,7 +177,7 @@
     let coins       = [];
     let bullets     = [];
 
-    // Utility: Create and link a DOM element to a Matter body.
+    // Utility: Create a DOM element and link it with a Matter body.
     function createDomElement(body, className, width, height) {
       const el = document.createElement('div');
       el.className = 'entity ' + className;
@@ -182,7 +189,6 @@
     }
 
     // ——— Setup the Ground ———
-    // Use the screen dimensions to set the ground.
     const screenRect = document.getElementById('screen').getBoundingClientRect();
     const gameWidth  = screenRect.width;
     const gameHeight = screenRect.height;
@@ -193,7 +199,7 @@
     const player = { jumpCount: 0 };
     (function createPlayer(x, y) {
       const size = 20;
-      // Create six circular parts for a rudimentary ragdoll.
+      // Create six circular parts for a simple ragdoll.
       const head = Bodies.circle(x, y - 40, size / 2, { friction: 0.5 });
       createDomElement(head, 'player-part', size, size);
 
@@ -214,6 +220,7 @@
 
       World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
 
+      // Link parts with constraints.
       function link(bodyA, bodyB, offsetA, offsetB) {
         const con = Constraint.create({
           bodyA,
@@ -281,7 +288,6 @@
     }
 
     // ——— Shooting Mechanic ———
-    // Clicking on the screen fires a bullet from the player’s torso.
     window.addEventListener('mousedown', function(e) {
       const rect = game.getBoundingClientRect();
       const targetX = e.clientX - rect.left;
@@ -329,7 +335,6 @@
     const keys = {};
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-    // Reset jump count when legs contact a static body.
     Events.on(engine, 'collisionStart', function(event) {
       event.pairs.forEach(pair => {
         [player.leftLeg, player.rightLeg].forEach(leg => {
@@ -366,7 +371,7 @@
     update();
 
     // ——— Map Physical Button Clicks to Controls ———
-    // D-Pad: Up triggers jump; left/right for horizontal movement.
+    // D-Pad: Up for jump; left/right for horizontal movement.
     const dpad = document.getElementById('dpad');
     dpad.querySelector('.up').addEventListener('click', () => {
       keys['Space'] = true;
