@@ -143,7 +143,7 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    engine.world.gravity.y = 2.9;
+    engine.world.gravity.y = 3.4;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -182,7 +182,7 @@
     (function createPlayer(x, y) {
       const size = 20;
       // Updated options for tighter control:
-      const torsoOptions = { friction: 0.5, frictionAir: 0.02, restitution: 0 };
+      const torsoOptions = { friction: 0.0, frictionAir: 0.00, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head (anchored later)
