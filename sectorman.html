@@ -2,11 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <!-- Prevent zooming on tap -->
+  <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Incorporated Human Gait & Directional Shooting Platformer</title>
+  <title>Integrated Realistic Platformer</title>
   <style>
-    /* --- Reset & Full-Screen Setup --- */
+    /* Reset & full-screen setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; touch-action: manipulation; }
     body {
@@ -14,7 +14,7 @@
       font-family: sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
-    /* --- Full-Screen Game Boy Shell --- */
+    /* Game Boy shell */
     #gameboy {
       position: relative;
       width: 100vw;
@@ -22,32 +22,31 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* --- Screen (Game Canvas) --- */
+    /* Screen (4:3) */
     #screen {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
-      height: calc(100vw * 0.75); /* 4:3 aspect ratio */
+      height: calc(100vw * 0.75);
       background: #000;
       border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* The #game container holds the entire level */
+    /* Level container – level is wider than screen */
     #game {
       position: absolute;
       top: 0;
       left: 0;
-      /* Size set via JavaScript (levelWidth x screenHeight) */
     }
-    /* --- Controls Area --- */
+    /* Controls area */
     #controls {
       position: absolute;
       bottom: 5%;
       width: 100vw;
       height: 40vh;
     }
-    /* --- D-Pad Styling --- */
+    /* D-Pad */
     #dpad {
       position: absolute;
       left: 5%;
@@ -62,20 +61,14 @@
       border-radius: 10px;
       cursor: pointer;
       touch-action: manipulation;
-      font-size: 0; /* no text labels */
+      font-size: 0;
     }
     #dpad button:active { background: #777; }
-    /* Oversized D-Pad buttons */
-    #dpad .up, #dpad .down, #dpad .left, #dpad .right {
-      width: 60px;
-      height: 60px;
-    }
-    #dpad .up    { top: 0; left: 45px; }
-    #dpad .down  { bottom: 0; left: 45px; }
-    #dpad .left  { top: 45px; left: 0; }
-    #dpad .right { top: 45px; right: 0; }
-    
-    /* --- A/B Buttons Styling --- */
+    #dpad .up    { top: 0; left: 45px; width: 60px; height: 60px; }
+    #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
+    #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
+    #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
+    /* A/B Buttons */
     #ab-buttons {
       position: absolute;
       right: 5%;
@@ -90,19 +83,12 @@
       border-radius: 50%;
       cursor: pointer;
       touch-action: manipulation;
-      font-size: 0; /* no text labels */
+      font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
-    /* Oversized A/B buttons */
-    #ab-buttons .A, #ab-buttons .B {
-      width: 70px;
-      height: 70px;
-    }
-    /* Position: A is shoot (upper right), B is jump (bottom left) */
-    #ab-buttons .A { top: 0; right: 0; }
-    #ab-buttons .B { bottom: 0; left: 0; }
-    
-    /* --- In-Game Entity Styles --- */
+    #ab-buttons .A { width: 70px; height: 70px; top: 0; right: 0; }
+    #ab-buttons .B { width: 70px; height: 70px; bottom: 0; left: 0; }
+    /* In-game entity styles */
     .entity {
       position: absolute;
       border-radius: 50%;
@@ -133,11 +119,9 @@
 </head>
 <body>
   <div id="gameboy">
-    <!-- Game Screen -->
     <div id="screen">
       <div id="game"></div>
     </div>
-    <!-- Controls -->
     <div id="controls">
       <div id="dpad">
         <button class="up"></button>
@@ -152,303 +136,259 @@
     </div>
   </div>
 
-  <!-- Matter.js physics engine -->
+  <!-- Matter.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // --- Matter.js Setup ---
-    const Engine     = Matter.Engine,
-          World      = Matter.World,
-          Bodies     = Matter.Bodies,
-          Body       = Matter.Body,
-          Constraint = Matter.Constraint,
-          Events     = Matter.Events;
-    
+    // Setup
+    const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    const world  = engine.world;
-    const game   = document.getElementById('game');
+    const world = engine.world;
+    const game = document.getElementById("game");
 
-    // Level dimensions: wide level (3000px) with the screen width unchanged.
+    // Level dimensions
     const levelWidth = 3000;
-    const screenRect = document.getElementById('screen').getBoundingClientRect();
+    const screenRect = document.getElementById("screen").getBoundingClientRect();
     const screenWidth = screenRect.width;
     const gameHeight = screenRect.height;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Arrays to track bodies with associated DOM elements.
-    let domEntities = [];
-    let platforms   = [];
-    let tvs         = [];
-    let coins       = [];
-    let bullets     = [];
+    // Track DOM-linked bodies
+    let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
-    // Utility: Create and attach a DOM element to a body.
-    function createDomElement(body, className, width, height) {
-      const el = document.createElement('div');
-      el.className = 'entity ' + className;
-      el.style.width  = width + 'px';
-      el.style.height = height + 'px';
+    function createDomElement(body, cls, w, h) {
+      const el = document.createElement("div");
+      el.className = "entity " + cls;
+      el.style.width = w + "px";
+      el.style.height = h + "px";
       game.appendChild(el);
       body.domElement = el;
       domEntities.push(body);
     }
 
-    // --- World Boundaries ---
-    const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
-    const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
-    const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
+    // World boundaries
+    const ground = Bodies.rectangle(levelWidth/2, gameHeight, levelWidth, 40, { isStatic: true });
+    const leftWall = Bodies.rectangle(0, gameHeight/2, 40, gameHeight, { isStatic: true });
+    const rightWall = Bodies.rectangle(levelWidth, gameHeight/2, 40, gameHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
-    // --- Player Setup: 6-circle ragdoll with human gait properties ---
-    // The player object tracks jump count and facing direction.
-    const player = { jumpCount: 0, facingDirection: 1 };
+    // Player – 6-circle ragdoll with gait properties
+    const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
+    let lastGroundedTime = 0, jumpBufferTimer = 0;
+    const coyoteTime = 100, jumpBufferTime = 150, maxJumpHold = 200; // in ms
+    let jumpHoldTimer = 0, jumpKeyActive = false;
     (function createPlayer(x, y) {
-      const size = 20;
-      const options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
-      
-      // Create body parts as circles.
-      const head = Bodies.circle(x, y - 40, size / 2, options);
-      createDomElement(head, 'player-part', size, size);
-
-      const torso = Bodies.circle(x, y - 20, size, options);
-      createDomElement(torso, 'player-part', size * 2, size * 2);
-
-      const leftArm = Bodies.circle(x - 30, y - 20, size / 2, options);
-      createDomElement(leftArm, 'player-part', size, size);
-
-      const rightArm = Bodies.circle(x + 30, y - 20, size / 2, options);
-      createDomElement(rightArm, 'player-part', size, size);
-
-      const leftLeg = Bodies.circle(x - 10, y + 10, size / 2, options);
-      createDomElement(leftLeg, 'player-part', size, size);
-
-      const rightLeg = Bodies.circle(x + 10, y + 10, size / 2, options);
-      createDomElement(rightLeg, 'player-part', size, size);
-
+      const size = 20, options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
+      const head = Bodies.circle(x, y-40, size/2, options);
+      createDomElement(head, "player-part", size, size);
+      const torso = Bodies.circle(x, y-20, size, options);
+      createDomElement(torso, "player-part", size*2, size*2);
+      const leftArm = Bodies.circle(x-30, y-20, size/2, options);
+      createDomElement(leftArm, "player-part", size, size);
+      const rightArm = Bodies.circle(x+30, y-20, size/2, options);
+      createDomElement(rightArm, "player-part", size, size);
+      const leftLeg = Bodies.circle(x-10, y+10, size/2, options);
+      createDomElement(leftLeg, "player-part", size, size);
+      const rightLeg = Bodies.circle(x+10, y+10, size/2, options);
+      createDomElement(rightLeg, "player-part", size, size);
       World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
-
-      // Link body parts to create a rudimentary ragdoll.
-      function link(bodyA, bodyB, offsetA, offsetB) {
-        const con = Constraint.create({
-          bodyA,
-          pointA: offsetA,
-          bodyB,
-          pointB: offsetB,
-          stiffness: 0.8,
-          length: 20
-        });
+      function link(a, b, offA, offB) {
+        const con = Constraint.create({ bodyA: a, pointA: offA, bodyB: b, pointB: offB, stiffness: 0.8, length: 20 });
         World.add(world, con);
       }
-      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
-      link(torso, leftArm, { x: -size, y: 0 }, { x: 0, y: 0 });
-      link(torso, rightArm, { x: size, y: 0 }, { x: 0, y: 0 });
-      link(torso, leftLeg, { x: -size/2, y: size }, { x: 0, y: -size/2 });
-      link(torso, rightLeg, { x: size/2, y: size }, { x: 0, y: -size/2 });
-
-      player.head     = head;
-      player.torso    = torso;
-      player.leftLeg  = leftLeg;
-      player.rightLeg = rightLeg;
+      link(head, torso, {x:0, y:size/2}, {x:0, y:-size});
+      link(torso, leftArm, {x:-size, y:0}, {x:0, y:0});
+      link(torso, rightArm, {x:size, y:0}, {x:0, y:0});
+      link(torso, leftLeg, {x:-size/2, y:size}, {x:0, y:-size/2});
+      link(torso, rightLeg, {x:size/2, y:size}, {x:0, y:-size/2});
+      player.head = head; player.torso = torso; player.leftLeg = leftLeg; player.rightLeg = rightLeg;
     })(100, 100);
 
-    // --- Procedural Platforms ---
-    function createPlatform(x, y, width, height) {
-      const plat = Bodies.rectangle(x, y, width, height, { isStatic: true });
+    // Platforms, TVs, etc.
+    function createPlatform(x, y, w, h) {
+      const plat = Bodies.rectangle(x, y, w, h, { isStatic: true });
       World.add(world, plat);
-      const el = document.createElement('div');
-      el.className = 'platform';
-      el.style.width  = width + 'px';
-      el.style.height = height + 'px';
-      el.style.left   = (x - width/2) + 'px';
-      el.style.top    = (y - height/2) + 'px';
+      const el = document.createElement("div");
+      el.className = "platform";
+      el.style.width = w + "px";
+      el.style.height = h + "px";
+      el.style.left = (x - w/2) + "px";
+      el.style.top = (y - h/2) + "px";
       game.appendChild(el);
       plat.domElement = el;
       platforms.push(plat);
     }
     for (let i = 0; i < 15; i++) {
-      const w = 100 + Math.random() * 100;
-      const h = 20;
-      const x = 100 + Math.random() * (levelWidth - 200);
-      const y = 50 + i * 50;
+      const w = 100 + Math.random()*100, h = 20, x = 100 + Math.random()*(levelWidth-200), y = 50 + i*50;
       createPlatform(x, y, w, h);
     }
-
-    // --- Shootable TVs ---
     function createTV(x, y) {
       const tvW = 60, tvH = 40;
-      const tv = Bodies.rectangle(x, y, tvW, tvH, { isStatic: true, label: 'tv' });
+      const tv = Bodies.rectangle(x, y, tvW, tvH, { isStatic: true, label: "tv" });
       World.add(world, tv);
-      const el = document.createElement('div');
-      el.className = 'tv';
-      el.style.width  = tvW + 'px';
-      el.style.height = tvH + 'px';
-      el.style.left   = (x - tvW/2) + 'px';
-      el.style.top    = (y - tvH/2) + 'px';
+      const el = document.createElement("div");
+      el.className = "tv";
+      el.style.width = tvW + "px";
+      el.style.height = tvH + "px";
+      el.style.left = (x - tvW/2) + "px";
+      el.style.top = (y - tvH/2) + "px";
       game.appendChild(el);
       tv.domElement = el;
       tvs.push(tv);
     }
     for (let i = 0; i < 8; i++) {
-      const x = 150 + Math.random() * (levelWidth - 300);
-      const y = 50 + Math.random() * (gameHeight - 100);
+      const x = 150 + Math.random()*(levelWidth-300), y = 50 + Math.random()*(gameHeight-100);
       createTV(x, y);
     }
 
-    // --- Shooting Mechanic & Direction ---
-    // When the shoot button (A) is pressed, we check for active d-pad inputs.
-    // If none, the bullet fires in the last known horizontal facing direction.
+    // Shooting: A button fires in direction from d-pad or last facing.
     function shoot() {
       let dx = 0, dy = 0;
-      if (keys['ArrowUp'])    dy = -1;
-      if (keys['ArrowDown'])  dy =  1;
-      if (keys['ArrowLeft'])  dx = -1;
-      if (keys['ArrowRight']) dx =  1;
-      if (dx === 0 && dy === 0) {
-        dx = player.facingDirection; // default shoot horizontally
-      }
-      // Normalize direction vector.
-      const mag = Math.sqrt(dx * dx + dy * dy);
+      if (keys["ArrowUp"])    dy = -1;
+      if (keys["ArrowDown"])  dy =  1;
+      if (keys["ArrowLeft"])  dx = -1;
+      if (keys["ArrowRight"]) dx =  1;
+      if (dx === 0 && dy === 0) dx = player.facingDirection;
+      const mag = Math.sqrt(dx*dx + dy*dy);
       dx /= mag; dy /= mag;
       shootBullet(player.torso.position.x, player.torso.position.y,
-                  player.torso.position.x + dx * 100,
-                  player.torso.position.y + dy * 100);
+                  player.torso.position.x + dx*100,
+                  player.torso.position.y + dy*100);
     }
-    function shootBullet(x, y, targetX, targetY) {
-      const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: 'bullet' });
-      const angle = Math.atan2(targetY - y, targetX - x);
+    function shootBullet(x, y, tx, ty) {
+      const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label:"bullet" });
+      const angle = Math.atan2(ty-y, tx-x);
       const speed = 15;
-      Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
+      Body.setVelocity(bullet, { x: Math.cos(angle)*speed, y: Math.sin(angle)*speed });
       World.add(world, bullet);
-      createDomElement(bullet, 'bullet', 10, 10);
+      createDomElement(bullet, "bullet", 10, 10);
       bullets.push(bullet);
     }
 
-    // --- Collision Handling (TV Explosions) ---
-    Events.on(engine, 'collisionStart', function(event) {
+    // Collision handling for resetting jump/coyote time and wall contacts.
+    Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
-        const labels = [pair.bodyA.label, pair.bodyB.label];
-        if (labels.includes('bullet') && labels.includes('tv')) {
-          const tvBody = (pair.bodyA.label === 'tv') ? pair.bodyA : pair.bodyB;
-          const bulletBody = (pair.bodyA.label === 'bullet') ? pair.bodyA : pair.bodyB;
-          explodeTV(tvBody);
-          World.remove(world, bulletBody);
-          if (bulletBody.domElement) bulletBody.domElement.remove();
-        }
-      });
-    });
-    function explodeTV(tvBody) {
-      World.remove(world, tvBody);
-      if (tvBody.domElement) tvBody.domElement.remove();
-      tvs = tvs.filter(tv => tv !== tvBody);
-      const coinCount = 3 + Math.floor(Math.random() * 5);
-      for (let i = 0; i < coinCount; i++) {
-        const coin = Bodies.circle(tvBody.position.x, tvBody.position.y, 8, { restitution: 0.8, label: 'coin' });
-        World.add(world, coin);
-        createDomElement(coin, 'coin', 16, 16);
-        coin.domElement.textContent = '*';
-        coins.push(coin);
-      }
-    }
-
-    // --- Player Movement, Gait, and Upright Correction ---
-    const keys = {};
-    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
-    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-    // Reset jump count on collision with any static object.
-    Events.on(engine, 'collisionStart', function(event) {
-      event.pairs.forEach(pair => {
+        // If any of the player's legs contact a static body, consider grounded.
         [player.leftLeg, player.rightLeg].forEach(leg => {
           if (pair.bodyA === leg || pair.bodyB === leg) {
             if (pair.bodyA.isStatic || pair.bodyB.isStatic) {
+              player.isGrounded = true;
+              lastGroundedTime = Date.now();
               player.jumpCount = 0;
             }
           }
         });
+        // Detect wall collisions.
+        if (pair.bodyA === leftWall || pair.bodyB === leftWall) {
+          player.wallSide = -1;
+        }
+        if (pair.bodyA === rightWall || pair.bodyB === rightWall) {
+          player.wallSide = 1;
+        }
+      });
+    });
+    Events.on(engine, "collisionEnd", function(event) {
+      event.pairs.forEach(pair => {
+        // If no contact with ground, mark as airborne.
+        if (pair.bodyA === player.leftLeg || pair.bodyB === player.leftLeg ||
+            pair.bodyA === player.rightLeg || pair.bodyB === player.rightLeg) {
+          player.isGrounded = false;
+        }
+        // Clear wallSide when leaving wall.
+        if (pair.bodyA === leftWall || pair.bodyB === leftWall ||
+            pair.bodyA === rightWall || pair.bodyB === rightWall) {
+          player.wallSide = 0;
+        }
       });
     });
 
-    // --- Camera Update ---
+    // Input state
+    let keys = {};
+    window.addEventListener("keydown", (e) => { keys[e.code] = true; });
+    window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+    // Camera update: center on player but clamp within level bounds.
     function updateCamera() {
-      const camOffset = Math.max(0, Math.min(player.torso.position.x - screenWidth/2, levelWidth - screenWidth));
-      game.style.transform = "translateX(-" + camOffset + "px)";
+      const offset = Math.max(0, Math.min(player.torso.position.x - screenWidth/2, levelWidth - screenWidth));
+      game.style.transform = "translateX(-" + offset + "px)";
     }
 
-    // --- Game Loop ---
+    // Main game loop
     function update() {
-      Engine.update(engine, 1000 / 60);
-      
-      // Update positions for all DOM-linked bodies.
+      Engine.update(engine, 1000/60);
+      // Update DOM positions for each body.
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
-          body.domElement.style.top  = body.position.y + "px";
+          body.domElement.style.top = body.position.y + "px";
           body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
         }
       });
 
-      // Horizontal movement: Apply forces when left/right keys are held.
-      if (keys['ArrowLeft']) {
+      // Horizontal movement & air control
+      if (keys["ArrowLeft"]) {
         player.facingDirection = -1;
         Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
       }
-      if (keys['ArrowRight']) {
+      if (keys["ArrowRight"]) {
         player.facingDirection = 1;
         Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
       }
-      // Dampen horizontal velocity if no left/right input.
-      if (!keys['ArrowLeft'] && !keys['ArrowRight']) {
+      if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
       }
-      // Jump if Space or KeyB is pressed (B button mapped to jump).
-      if ((keys['Space'] || keys['KeyB']) && player.jumpCount < 2) {
-        Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
-        player.jumpCount++;
-        keys['Space'] = false;
-        keys['KeyB'] = false;
+
+      // Jump buffering and coyote time
+      if (keys["KeyB"] || keys["Space"]) {
+        if (!jumpKeyActive) {
+          jumpBufferTimer = Date.now();
+          jumpKeyActive = true;
+        }
+      } else {
+        jumpKeyActive = false;
+        // Variable jump height: if jump key released while ascending, cut velocity.
+        if (player.torso.velocity.y < -3) {
+          Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -3 });
+        }
       }
-      // Apply corrective torque to nudge the torso upright.
-      const angleCorrection = -player.torso.angle * 0.2;
-      Body.setAngularVelocity(player.torso, player.torso.angularVelocity + angleCorrection);
+      // Check if jump should occur (buffered or within coyote time)
+      if ((Date.now() - jumpBufferTimer) < jumpBufferTime ||
+          (Date.now() - lastGroundedTime) < coyoteTime) {
+        if ((keys["KeyB"] || keys["Space"]) && player.jumpCount < 2) {
+          // If wall sliding, add horizontal impulse away from wall.
+          if (player.wallSide !== 0) {
+            Body.setVelocity(player.torso, { x: player.torso.velocity.x + 5 * -player.wallSide, y: -10 });
+          } else {
+            Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
+          }
+          player.jumpCount++;
+          jumpBufferTimer = 0;
+        }
+      }
+
+      // Correct torso angle for upright stance
+      const correction = -player.torso.angle * 0.2;
+      Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
+
+      // Wall sliding: if touching a wall and falling, limit falling speed.
+      if (player.wallSide !== 0 && player.torso.velocity.y > 4) {
+        Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 4 });
+      }
 
       updateCamera();
       requestAnimationFrame(update);
     }
     update();
 
-    // --- Touch & Button Mappings ---
-    const dpad = document.getElementById('dpad');
-    dpad.querySelector('.up').addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      keys['ArrowUp'] = true;
-      setTimeout(() => keys['ArrowUp'] = false, 150);
-    });
-    dpad.querySelector('.left').addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      keys['ArrowLeft'] = true;
-      setTimeout(() => keys['ArrowLeft'] = false, 150);
-    });
-    dpad.querySelector('.right').addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      keys['ArrowRight'] = true;
-      setTimeout(() => keys['ArrowRight'] = false, 150);
-    });
-    dpad.querySelector('.down').addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      keys['ArrowDown'] = true;
-      setTimeout(() => keys['ArrowDown'] = false, 150);
-    });
-    // A button: Shoot.
-    const abButtons = document.getElementById('ab-buttons');
-    abButtons.querySelector('.A').addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      shoot();
-    });
-    // B button: Jump.
-    abButtons.querySelector('.B').addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      keys['Space'] = true;
-      setTimeout(() => keys['Space'] = false, 150);
-    });
+    // Touch & button mappings
+    const dpad = document.getElementById("dpad");
+    dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"]=true; setTimeout(()=>keys["ArrowUp"]=false,150); });
+    dpad.querySelector(".down").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowDown"]=true; setTimeout(()=>keys["ArrowDown"]=false,150); });
+    dpad.querySelector(".left").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowLeft"]=true; setTimeout(()=>keys["ArrowLeft"]=false,150); });
+    dpad.querySelector(".right").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"]=true; setTimeout(()=>keys["ArrowRight"]=false,150); });
+    const abButtons = document.getElementById("ab-buttons");
+    abButtons.querySelector(".A").addEventListener("touchstart", (e) => { e.preventDefault(); shoot(); });
+    abButtons.querySelector(".B").addEventListener("touchstart", (e) => { e.preventDefault(); keys["Space"]=true; setTimeout(()=>keys["Space"]=false,150); });
   </script>
 </body>
 </html>
