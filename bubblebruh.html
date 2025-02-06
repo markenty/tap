@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Full-Screen Level (3000px Wide) with Vertical Jump</title>
+  <title>Full-Screen Level (3000px Wide) with Joystick Jump</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,7 +27,7 @@
       background: #000;
       overflow: hidden;
     }
-    /* Game World Container – transformed so the camera follows the player */
+    /* Game World Container – its transform will be updated by the camera */
     #game {
       position: absolute;
       top: 0; left: 0;
@@ -38,7 +38,7 @@
       left: 0;
       background: #855;
     }
-    /* Controls remain unaffected by world transform */
+    /* Controls (always on top) */
     #controls {
       position: absolute;
       bottom: 5%;
@@ -252,13 +252,13 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Level is 3000px wide.
-    // For a full-screen height, we set playAreaHeight = window.innerHeight - 100 (reserve 100px for ground)
-    // so that the total gameHeight equals the full screen height.
+    // Level width is fixed at 3000px.
+    // For full-screen height, set gameHeight to window.innerHeight.
+    // We'll reserve 100px at the bottom for the ground.
     const levelWidth = 3000;
-    const playAreaHeight = window.innerHeight - 100;
-    const groundExtraHeight = 100;
     const gameHeight = window.innerHeight;
+    const playAreaHeight = window.innerHeight - 100; // visible play area
+    const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
@@ -438,13 +438,16 @@
         const mag = Math.hypot(dx, dy);
         dx /= mag; dy /= mag;
       }
-      // Use the right hand as the shooting origin.
-      Body.setPosition(playerChar.rightHand, { x: playerChar.rightUpperArm.position.x + 20, y: playerChar.rightUpperArm.position.y });
+      // Use right hand as shooting origin.
+      Body.setPosition(playerChar.rightHand, { 
+        x: playerChar.rightUpperArm.position.x + 20, 
+        y: playerChar.rightUpperArm.position.y 
+      });
       const origin = { x: playerChar.rightHand.position.x, y: playerChar.rightHand.position.y };
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
     }
     function meleeAttack() {
-      // Use right hand for a melee attack.
+      // Use right hand for melee attack.
       const hand = playerChar.rightHand;
       const handPos = hand.position;
       let dx = playerChar.torso.position.x - handPos.x;
@@ -584,13 +587,14 @@
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      const scale = Math.min(screenWidth / levelWidth, screenHeight / gameHeight);
-      const viewWidth = screenWidth / scale;
-      const viewHeight = screenHeight / scale;
+      // Use a fixed scale so the view is full-screen.
+      const scale = 1;
+      const viewWidth = screenWidth; 
+      const viewHeight = screenHeight;
       // Center the camera on the player's torso.
       let cameraX = playerChar.torso.position.x - viewWidth / 2;
       let cameraY = playerChar.torso.position.y - viewHeight / 2;
-      // Clamp the camera so it doesn't show outside the level.
+      // Clamp the camera within level bounds.
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - viewWidth));
       cameraY = Math.max(0, Math.min(cameraY, gameHeight - viewHeight));
       game.style.transformOrigin = "top left";
@@ -620,10 +624,16 @@
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x * 0.98, y: playerChar.torso.velocity.y });
       }
-      // Jump – always vertical.
+      // Jump: if the joystick is moved (magnitude > threshold), use its direction;
+      // otherwise, default to vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
-        Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
+        const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
+        if (aimMag > 0.1) {
+          Body.setVelocity(playerChar.torso, { x: joystickAim.x * jumpStrength, y: joystickAim.y * jumpStrength });
+        } else {
+          Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
+        }
       }
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
