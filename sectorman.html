@@ -149,11 +149,9 @@
 
     // Level dimensions
     const levelWidth = 3000;
-    const screenRect = document.getElementById("screen").getBoundingClientRect();
-    const screenWidth = screenRect.width;
-    const gameHeight = screenRect.height;
+    const levelHeight = 3000; // Ensure the map is 3000 pixels tall
     game.style.width = levelWidth + "px";
-    game.style.height = gameHeight + "px";
+    game.style.height = levelHeight + "px";
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
@@ -167,10 +165,10 @@
       domEntities.push(body);
     }
 
-    // World boundaries
-    const ground = Bodies.rectangle(levelWidth/2, gameHeight, levelWidth, 40, { isStatic: true });
-    const leftWall = Bodies.rectangle(0, gameHeight/2, 40, gameHeight, { isStatic: true });
-    const rightWall = Bodies.rectangle(levelWidth, gameHeight/2, 40, gameHeight, { isStatic: true });
+    // World boundaries (ground placed at the bottom of the level)
+    const ground = Bodies.rectangle(levelWidth / 2, levelHeight, levelWidth, 40, { isStatic: true });
+    const leftWall = Bodies.rectangle(0, levelHeight / 2, 40, levelHeight, { isStatic: true });
+    const rightWall = Bodies.rectangle(levelWidth, levelHeight / 2, 40, levelHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
     // --- Player Setup with Extra Limb Segments ---
@@ -185,34 +183,34 @@
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
-      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
+      const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       createDomElement(head, "player-part", size, size);
       // Torso
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
-      createDomElement(torso, "player-part", size*2, size*2);
+      createDomElement(torso, "player-part", size * 2, size * 2);
 
       // Right Arm: Upper arm and hand
-      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
-      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.05, restitution: 0 });
+      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(rightHand, "player-part", size, size);
 
       // Left Arm: Upper arm and hand
-      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
       createDomElement(leftUpperArm, "player-part", size, size);
-      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
+      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(leftHand, "player-part", size, size);
 
       // Right Leg: Upper leg and foot
-      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
-      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(rightFoot, "player-part", size, size);
 
       // Left Leg: Upper leg and foot
-      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
-      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(leftFoot, "player-part", size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
@@ -229,14 +227,14 @@
         World.add(world, con);
       }
       // Link body parts
-      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
       link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
       link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
       link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
       link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size / 2 });
       link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
       player.head = head;
@@ -259,14 +257,17 @@
       el.className = "platform";
       el.style.width = w + "px";
       el.style.height = h + "px";
-      el.style.left = (x - w/2) + "px";
-      el.style.top = (y - h/2) + "px";
+      el.style.left = (x - w / 2) + "px";
+      el.style.top = (y - h / 2) + "px";
       game.appendChild(el);
       plat.domElement = el;
       platforms.push(plat);
     }
     for (let i = 0; i < 15; i++) {
-      const w = 100 + Math.random() * 100, h = 20, x = 100 + Math.random() * (levelWidth - 200), y = 50 + i * 50;
+      const w = 100 + Math.random() * 100,
+            h = 20,
+            x = 100 + Math.random() * (levelWidth - 200),
+            y = 50 + i * 50;
       createPlatform(x, y, w, h);
     }
 
@@ -279,8 +280,8 @@
       el.className = "tv";
       el.style.width  = tvW + "px";
       el.style.height = tvH + "px";
-      el.style.left   = (x - tvW/2) + "px";
-      el.style.top    = (y - tvH/2) + "px";
+      el.style.left   = (x - tvW / 2) + "px";
+      el.style.top    = (y - tvH / 2) + "px";
       game.appendChild(el);
       tv.domElement = el;
       tvs.push(tv);
@@ -352,7 +353,7 @@
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       const angle = Math.atan2(ty - y, tx - x);
-      const speed = 55;
+      const speed = 35;
       Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
       World.add(world, bullet);
       createDomElement(bullet, "bullet", 10, 10);
@@ -396,7 +397,7 @@
 
     // --- Camera Update ---
     function updateCamera() {
-      const offset = Math.max(0, Math.min(player.torso.position.x - screenWidth / 2, levelWidth - screenWidth));
+      const offset = Math.max(0, Math.min(player.torso.position.x - (screen.width / 2), levelWidth - screen.width));
       game.style.transform = "translateX(-" + offset + "px)";
     }
 
@@ -485,11 +486,11 @@
       updateWalkCycle();
 
       // --- Neutral Buoyancy Force on Player Head ---
-      // The desired torso height is set relative to the game height.
-      // Here, gameHeight - 100 represents roughly two torso diameters above ground.
-      const desiredTorsoY = gameHeight - 100;
-      const springConstant = 0.0005; // Adjust this constant to fine-tune the buoyancy effect
-      const diff = desiredTorsoY - player.torso.position.y+20;
+      // The desired torso height is set relative to the level height.
+      // Here, levelHeight - 100 represents roughly two torso diameters above the ground.
+      const desiredTorsoY = levelHeight - 100;
+      const springConstant = 0.0001; // Adjust to fine-tune buoyancy
+      const diff = desiredTorsoY - player.torso.position.y;
       Body.applyForce(player.head, player.head.position, { x: 0, y: springConstant * diff });
 
       requestAnimationFrame(update);
