@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Normal Gravity & Locked Body Parts</title>
+  <title>Platformer with Normal Gravity & Locked Body Parts - Fixed Floating</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -143,6 +143,8 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
+    // Set gravity explicitly; increase if needed.
+    engine.world.gravity.y = 1;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -173,42 +175,44 @@
     World.add(world, [ground, leftWall, rightWall]);
 
     // --- Player Setup with Extra Limb Segments ---
-    // All body parts are locked tightly together via stiff constraints.
+    // Here we remove any override that reduces gravity on the torso.
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      const options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
+      // Use a slightly lower frictionAir for the torso if desired, but not so low that gravity is negligible.
+      const torsoOptions = { friction: 0.5, frictionAir: 0.03, restitution: 0 };
+      const defaultOptions = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
 
       // Head (anchored later)
-      const head = Bodies.circle(x, y-40, size/2, options);
+      const head = Bodies.circle(x, y-40, size/2, defaultOptions);
       createDomElement(head, "player-part", size, size);
-      // Torso: now applies normal gravity.
-      const torso = Bodies.circle(x, y-20, size, options);
+      // Torso: now uses torsoOptions so that it’s affected by gravity normally.
+      const torso = Bodies.circle(x, y-20, size, torsoOptions);
       createDomElement(torso, "player-part", size*2, size*2);
 
-      // Right Arm: Upper arm and hand (hand with lower frictionAir)
-      const rightUpperArm = Bodies.circle(x+30, y-20, size/2, options);
+      // Right Arm: Upper arm and hand (hand with lower frictionAir for smooth outstretch)
+      const rightUpperArm = Bodies.circle(x+30, y-20, size/2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
       const rightHand = Bodies.circle(x+45, y-20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
       createDomElement(rightHand, "player-part", size, size);
 
       // Left Arm: Upper arm and hand
-      const leftUpperArm = Bodies.circle(x-30, y-20, size/2, options);
+      const leftUpperArm = Bodies.circle(x-30, y-20, size/2, defaultOptions);
       createDomElement(leftUpperArm, "player-part", size, size);
       const leftHand = Bodies.circle(x-45, y-20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
       createDomElement(leftHand, "player-part", size, size);
 
-      // Right Leg: Upper leg and foot (foot with lower frictionAir)
-      const rightUpperLeg = Bodies.circle(x+10, y+10, size/2, options);
+      // Right Leg: Upper leg and foot
+      const rightUpperLeg = Bodies.circle(x+10, y+10, size/2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
       const rightFoot = Bodies.circle(x+15, y+20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
       createDomElement(rightFoot, "player-part", size, size);
 
       // Left Leg: Upper leg and foot
-      const leftUpperLeg = Bodies.circle(x-10, y+10, size/2, options);
+      const leftUpperLeg = Bodies.circle(x-10, y+10, size/2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
       const leftFoot = Bodies.circle(x-15, y+20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
       createDomElement(leftFoot, "player-part", size, size);
@@ -249,7 +253,7 @@
       player.leftFoot = leftFoot;
     })(100, 100);
 
-    // --- Platforms & TVs ---
+    // --- Platforms & TVs (same as before) ---
     function createPlatform(x, y, w, h) {
       const plat = Bodies.rectangle(x, y, w, h, { isStatic: true });
       World.add(world, plat);
@@ -287,8 +291,7 @@
     }
 
     // --- Shooting Mechanic ---
-    // When the A button is pressed, the appropriate hand is repositioned (outstretched)
-    // and the projectile is spawned from that hand.
+    // When A is pressed, extend the appropriate hand and spawn a projectile.
     function shoot() {
       let dx = 0, dy = 0;
       if (keys["ArrowUp"])    dy = -1;
@@ -310,7 +313,7 @@
     }
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label:"bullet" });
-      const angle = Math.atan2(ty - y, tx - x);
+      const angle = Math.atan2(ty-y, tx-x);
       const speed = 15;
       Body.setVelocity(bullet, { x: Math.cos(angle)*speed, y: Math.sin(angle)*speed });
       World.add(world, bullet);
@@ -383,7 +386,7 @@
         Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
       }
 
-      // Jumping: Higher jump impulse (-24) for 2x increased height.
+      // Jumping: impulse of -24 for higher jump.
       if ((keys["KeyB"] || keys["Space"])) {
         if (!jumpKeyActive) {
           jumpBufferTimer = Date.now();
@@ -408,11 +411,11 @@
         }
       }
 
-      // Correct torso angle for upright stance.
+      // Correct torso angle to remain upright.
       const correction = -player.torso.angle * 0.2;
       Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
 
-      // Wall sliding: cap downward speed when against a wall.
+      // Wall sliding: cap downward speed.
       if (player.wallSide !== 0 && player.torso.velocity.y > 4) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 4 });
       }
