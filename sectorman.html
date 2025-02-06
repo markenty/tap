@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fully Destructible World with Smooth Camera & Ground</title>
+  <title>Destructible World with Bubble-Style Player</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,7 +39,7 @@
       top: 0;
       left: 0;
     }
-    /* --- Ground Styling (within the game world) --- */
+    /* --- Ground Styling --- */
     #ground {
       position: absolute;
       left: 0;
@@ -102,7 +102,18 @@
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
-    .player-part { background: #0f0; }
+    /* Bubble-style player parts */
+    .player-part {
+      /* Radial gradient simulates a lighted bubble */
+      background: radial-gradient(circle, 
+                   rgba(0,255,0,0.7) 0%, 
+                   rgba(0,255,0,0.3) 60%, 
+                   rgba(0,255,0,0) 100%);
+      /* A subtle white border adds to the bubble effect */
+      border: 2px solid rgba(255,255,255,0.7);
+      /* Soft drop shadow for a glowing, floating effect */
+      box-shadow: 0 0 8px rgba(0,255,0,0.7);
+    }
     .bullet { background: #fff; }
     .coin {
       background: gold;
@@ -154,17 +165,13 @@
 
     // Map dimensions
     const levelWidth = 3000;
-    // Original play area height (ground level)
     const playAreaHeight = document.getElementById("screen").getBoundingClientRect().height;
-    // Extend game container height to include extra ground area (e.g., 200px)
     const groundExtraHeight = 200;
     const gameHeight = playAreaHeight + groundExtraHeight;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // --- Add a Ground Element ---
-    // This element visually colors the area from the play area's bottom (ground level)
-    // down to the bottom of the game container.
+    // Ground element to visually color the area below play area.
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
     groundEl.style.top = playAreaHeight + "px";
@@ -184,14 +191,13 @@
       domEntities.push(body);
     }
 
-    // World boundaries (ground & walls are destructible, but we'll add extra bounding for the player)
+    // World boundaries (ground & walls)
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     World.add(world, [groundBody, leftWall, rightWall]);
 
-    // --- Permanent Safety Floor ---
-    // This static body will not be destructible and prevents the player from falling infinitely.
+    // Permanent Safety Floor
     const safetyFloorY = playAreaHeight + 50;
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, {
       isStatic: true,
@@ -206,7 +212,7 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      const torsoOptions = { friction: 0.0, frictionAir: 0.051, restitution: 0 };
+      const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
@@ -373,7 +379,6 @@
           playerPart = pair.bodyB;
           other = pair.bodyA;
         }
-        // Skip removal if colliding with the safety floor.
         if (other && other.label !== "safetyFloor") {
           const vx = player.torso.velocity.x, vy = player.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
@@ -478,13 +483,10 @@
       const cameraCenterY = player.torso.position.y;
       const targetOffsetX = Math.max(0, Math.min(cameraCenterX - visibleWidth / 2, levelWidth - visibleWidth));
       const targetOffsetY = Math.max(0, cameraCenterY - visibleHeight / 2);
-
-      // Smooth transition using linear interpolation.
       const smoothingFactor = 0.1;
       currentZoom = lerp(currentZoom, zoom, smoothingFactor);
       currentOffsetX = lerp(currentOffsetX, targetOffsetX, smoothingFactor);
       currentOffsetY = lerp(currentOffsetY, targetOffsetY, smoothingFactor);
-
       game.style.transformOrigin = "top left";
       game.style.transform = `scale(${currentZoom}) translate(-${currentOffsetX}px, -${currentOffsetY}px)`;
     }
@@ -587,13 +589,11 @@
       Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
       Body.setVelocity(player.head, player.torso.velocity);
 
-      // Update the smoothed camera
       updateCamera();
       clampPlayer();
       updateWalkCycle();
 
-      // --- Fallback Reset ---
-      // Reset player if they fall below the safety floor.
+      // Fallback Reset if player falls too far.
       if (player.torso.position.y > safetyFloorY + 100) {
         const safeX = 100, safeY = 100;
         Body.setPosition(player.torso, { x: safeX, y: safeY });
