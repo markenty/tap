@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible Environment with Whip‐Style Melee Attack</title>
+  <title>Destructible Environment with Whip‐Style Directional Melee Attack</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -324,7 +324,6 @@
       tvs.push(tv);
     }
     function createWall(x, y, width, height) {
-      // Walls are initially static and breakable.
       const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
@@ -374,7 +373,6 @@
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
-      // HP bar.
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
       const hpBar = document.createElement("div");
@@ -462,7 +460,7 @@
       }
     }
 
-    // Break wall into smaller dynamic chunks that fly apart.
+    // Break wall into smaller dynamic chunks.
     function breakWall(wall) {
       World.remove(world, wall);
       if (wall.domElement && wall.domElement.parentNode) {
@@ -495,7 +493,7 @@
       }
     }
 
-    // Spawn coins as dynamic bodies (with gravity and restitution) so they fall and are collectible.
+    // Spawn coins as dynamic bodies so they fall and are collectible.
     function spawnCoins(x, y) {
       for (let i = 0; i < 3; i++) {
         let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
@@ -522,49 +520,58 @@
     }
 
     // ------------------------------
-    // Melee Attack with Whip Physics (Arms move like a whip)
+    // Melee Attack with Whip Physics and Directional Control (via D-Pad)
     // ------------------------------
     function meleeAttack() {
-      // Use the player's right hand as the starting point.
-      let hand = playerChar.rightHand;
-      let torsoPos = playerChar.torso.position;
-      // Compute vector from torso to hand.
-      let vx = hand.position.x - torsoPos.x;
-      let vy = hand.position.y - torsoPos.y;
-      let mag = Math.hypot(vx, vy);
-      if (mag === 0) return;
-      // Normalize vector.
-      let nx = vx / mag, ny = vy / mag;
+      // Check for D-Pad directional input.
+      let dpadDir = { x: 0, y: 0 };
+      if (keys["ArrowLeft"]) dpadDir.x -= 1;
+      if (keys["ArrowRight"]) dpadDir.x += 1;
+      if (keys["ArrowUp"]) dpadDir.y -= 1;
+      if (keys["ArrowDown"]) dpadDir.y += 1;
+      let attackDir;
+      if (dpadDir.x !== 0 || dpadDir.y !== 0) {
+        let mag = Math.hypot(dpadDir.x, dpadDir.y);
+        attackDir = { x: dpadDir.x / mag, y: dpadDir.y / mag };
+      } else {
+        // Fallback: use default direction from player's right hand relative to torso.
+        let hand = playerChar.rightHand;
+        let torsoPos = playerChar.torso.position;
+        let vx = hand.position.x - torsoPos.x;
+        let vy = hand.position.y - torsoPos.y;
+        let mag = Math.hypot(vx, vy);
+        if (mag === 0) return;
+        attackDir = { x: vx / mag, y: vy / mag };
+      }
       // Compute a tangent vector (rotate 90° clockwise).
-      let tx = ny, ty = -nx;
-      // Use a sine wave over a 300ms interval to simulate a whip swing.
-      let swingTime = 300; // total time in ms
+      let tangent = { x: attackDir.y, y: -attackDir.x };
+      // Use a sine–modulated force over 300ms to simulate a whip swing.
+      let swingTime = 300;
       let steps = 30;
       let stepTime = swingTime / steps;
       let step = 0;
       let interval = setInterval(() => {
-        // Use sine wave: force peaks in the middle.
         let amplitude = Math.sin(Math.PI * step / steps);
-        // Combine outward force and tangential force.
-        let forceOut = 0.05; // outward component
-        let forceTangential = 0.05; // tangential component
-        Body.applyForce(hand, hand.position, { 
-          x: (nx * forceOut + tx * forceTangential) * amplitude, 
-          y: (ny * forceOut + ty * forceTangential) * amplitude 
+        // Apply a combined force: along the chosen attack direction and a perpendicular (tangent) component.
+        let forceOut = 0.05;
+        let forceTangent = 0.05;
+        Body.applyForce(playerChar.rightHand, playerChar.rightHand.position, {
+          x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+          y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
         });
         step++;
         if (step >= steps) clearInterval(interval);
       }, stepTime);
       // After 100ms, check for nearby destructible objects.
       setTimeout(() => {
-        let attackPos = hand.position;
+        let attackPos = playerChar.rightHand.position;
         const meleeRange = 60;
         const damageAmount = 30;
         [platforms, tvs, walls].forEach(arr => {
           arr.forEach(obj => {
-            let dx2 = attackPos.x - obj.position.x;
-            let dy2 = attackPos.y - obj.position.y;
-            let dist = Math.hypot(dx2, dy2);
+            let dx = attackPos.x - obj.position.x;
+            let dy = attackPos.y - obj.position.y;
+            let dist = Math.hypot(dx, dy);
             if (dist <= meleeRange) {
               damageDestructible(obj, damageAmount);
             }
@@ -740,7 +747,7 @@
       if (Math.abs(joystickAim.x) > 0.1) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: joystickAim.x * 0.005, y: 0 });
       }
-      // Jump: if jump key pressed, use joystick aim if present; otherwise vertical.
+      // Jump: if jump key is pressed, use joystick aim if present; otherwise vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
