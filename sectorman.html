@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Vectorman-Inspired Platformer</title>
+  <style>
+    /* Basic reset */
+    body { margin: 0; overflow: hidden; background: #222; }
+    #game { position: relative; width: 800px; height: 600px; margin: auto; background: #333; }
+    .entity {
+      position: absolute;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    /* Player parts (green circles) */
+    .player-part {
+      background: #0f0;
+    }
+    /* Bullet (small white circle) */
+    .bullet {
+      background: #fff;
+    }
+    /* Coin (golden asterisk) */
+    .coin {
+      background: gold;
+      color: black;
+      font-size: 14px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 0;
+    }
+    /* TV elements (styled as rectangles) */
+    .tv {
+      position: absolute;
+      background: #444;
+      border: 2px solid #999;
+      border-radius: 4px;
+    }
+    /* Platform styling */
+    .platform {
+      position: absolute;
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <!-- Matter.js physics engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script>
+    // —————————————————————————————
+    // Setup Matter.js and Global Variables
+    // —————————————————————————————
+    const Engine      = Matter.Engine,
+          World       = Matter.World,
+          Bodies      = Matter.Bodies,
+          Body        = Matter.Body,
+          Constraint  = Matter.Constraint,
+          Events      = Matter.Events;
+
+    const engine = Engine.create();
+    const world  = engine.world;
+    const game   = document.getElementById('game');
+
+    // Arrays to track our bodies with associated DOM elements
+    let domEntities = [];
+    let platforms   = [];
+    let tvs         = [];
+    let coins       = [];
+    let bullets     = [];
+
+    // Utility: link a Matter body with a DOM element
+    function createDomElement(body, className, width, height) {
+      const el = document.createElement('div');
+      el.className = 'entity ' + className;
+      el.style.width  = width + 'px';
+      el.style.height = height + 'px';
+      game.appendChild(el);
+      body.domElement = el;
+      domEntities.push(body);
+    }
+
+    // —————————————————————————————
+    // Create the Static World (Ground)
+    // —————————————————————————————
+    const ground = Bodies.rectangle(400, 600, 800, 40, { isStatic: true });
+    World.add(world, ground);
+    // (Ground is not rendered as a DOM element since it’s part of the physics background.)
+
+    // —————————————————————————————
+    // Build the Player as a Ragdoll (CSS Circle Parts)
+    // —————————————————————————————
+    // The player will be constructed from six parts: head, torso, left/right arms, left/right legs.
+    const player = { jumpCount: 0 };
+    (function createPlayer(x, y) {
+      const size = 20; // basic size unit
+
+      // Create parts as Matter bodies and add a corresponding DOM element.
+      const head = Bodies.circle(x, y - 40, size / 2, { friction: 0.5 });
+      createDomElement(head, 'player-part', size, size);
+
+      const torso = Bodies.circle(x, y - 20, size, { friction: 0.5 });
+      createDomElement(torso, 'player-part', size * 2, size * 2);
+
+      const leftArm = Bodies.circle(x - 30, y - 20, size / 2, { friction: 0.5 });
+      createDomElement(leftArm, 'player-part', size, size);
+
+      const rightArm = Bodies.circle(x + 30, y - 20, size / 2, { friction: 0.5 });
+      createDomElement(rightArm, 'player-part', size, size);
+
+      const leftLeg = Bodies.circle(x - 10, y + 10, size / 2, { friction: 0.5 });
+      createDomElement(leftLeg, 'player-part', size, size);
+
+      const rightLeg = Bodies.circle(x + 10, y + 10, size / 2, { friction: 0.5 });
+      createDomElement(rightLeg, 'player-part', size, size);
+
+      // Add all parts to the physics world.
+      World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
+
+      // Helper: link two bodies with a constraint.
+      function link(bodyA, bodyB, offsetA, offsetB) {
+        const con = Constraint.create({
+          bodyA,
+          pointA: offsetA,
+          bodyB,
+          pointB: offsetB,
+          stiffness: 0.8,
+          length: 20
+        });
+        World.add(world, con);
+      }
+
+      // Link head to torso.
+      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      // Link arms and legs to torso.
+      link(torso, leftArm, { x: -size, y: 0 }, { x: 0, y: 0 });
+      link(torso, rightArm, { x: size, y: 0 }, { x: 0, y: 0 });
+      link(torso, leftLeg, { x: -size/2, y: size }, { x: 0, y: -size/2 });
+      link(torso, rightLeg, { x: size/2, y: size }, { x: 0, y: -size/2 });
+
+      // Store references for movement control and collision detection.
+      player.head     = head;
+      player.torso    = torso;
+      player.leftLeg  = leftLeg;
+      player.rightLeg = rightLeg;
+    })(100, 500);
+
+    // —————————————————————————————
+    // Procedural Platforms
+    // —————————————————————————————
+    function createPlatform(x, y, width, height) {
+      const plat = Bodies.rectangle(x, y, width, height, { isStatic: true });
+      World.add(world, plat);
+      // Create a simple DOM rectangle for the platform.
+      const el = document.createElement('div');
+      el.className = 'platform';
+      el.style.width  = width + 'px';
+      el.style.height = height + 'px';
+      el.style.left   = (x - width/2) + 'px';
+      el.style.top    = (y - height/2) + 'px';
+      game.appendChild(el);
+      plat.domElement = el;
+      platforms.push(plat);
+    }
+    // Generate 10 platforms at various positions.
+    for (let i = 0; i < 10; i++) {
+      const w = 100 + Math.random() * 100;
+      const h = 20;
+      const x = 100 + Math.random() * 600;
+      const y = 100 + i * 50;
+      createPlatform(x, y, w, h);
+    }
+
+    // —————————————————————————————
+    // Shootable TVs That Explode into Coins
+    // —————————————————————————————
+    function createTV(x, y) {
+      const tvW = 60, tvH = 40;
+      const tv = Bodies.rectangle(x, y, tvW, tvH, { isStatic: true, label: 'tv' });
+      World.add(world, tv);
+      const el = document.createElement('div');
+      el.className = 'tv';
+      el.style.width  = tvW + 'px';
+      el.style.height = tvH + 'px';
+      el.style.left   = (x - tvW/2) + 'px';
+      el.style.top    = (y - tvH/2) + 'px';
+      game.appendChild(el);
+      tv.domElement = el;
+      tvs.push(tv);
+    }
+    // Create a few TVs in the world.
+    for (let i = 0; i < 5; i++) {
+      const x = 150 + Math.random() * 500;
+      const y = 50 + Math.random() * 400;
+      createTV(x, y);
+    }
+
+    // —————————————————————————————
+    // Shooting Mechanic (Bullets)
+    // —————————————————————————————
+    window.addEventListener('mousedown', function(e) {
+      const rect = game.getBoundingClientRect();
+      const targetX = e.clientX - rect.left;
+      const targetY = e.clientY - rect.top;
+      shootBullet(player.torso.position.x, player.torso.position.y, targetX, targetY);
+    });
+    function shootBullet(x, y, targetX, targetY) {
+      const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: 'bullet' });
+      // Compute angle and velocity
+      const angle = Math.atan2(targetY - y, targetX - x);
+      const speed = 15;
+      Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
+      World.add(world, bullet);
+      createDomElement(bullet, 'bullet', 10, 10);
+      bullets.push(bullet);
+    }
+
+    // —————————————————————————————
+    // Bullet and TV Collision: Explode TV into Coins
+    // —————————————————————————————
+    Events.on(engine, 'collisionStart', function(event) {
+      event.pairs.forEach(pair => {
+        const labels = [pair.bodyA.label, pair.bodyB.label];
+        if (labels.includes('bullet') && labels.includes('tv')) {
+          const tvBody = (pair.bodyA.label === 'tv') ? pair.bodyA : pair.bodyB;
+          const bulletBody = (pair.bodyA.label === 'bullet') ? pair.bodyA : pair.bodyB;
+          explodeTV(tvBody);
+          World.remove(world, bulletBody);
+          if (bulletBody.domElement) bulletBody.domElement.remove();
+        }
+      });
+    });
+    function explodeTV(tvBody) {
+      // Remove the TV.
+      World.remove(world, tvBody);
+      if (tvBody.domElement) tvBody.domElement.remove();
+      tvs = tvs.filter(tv => tv !== tvBody);
+      // Create a random number of coin bodies (each rendered as an asterisk).
+      const coinCount = 3 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < coinCount; i++) {
+        const coin = Bodies.circle(tvBody.position.x, tvBody.position.y, 8, { restitution: 0.8, label: 'coin' });
+        World.add(world, coin);
+        createDomElement(coin, 'coin', 16, 16);
+        coin.domElement.textContent = '*';
+        coins.push(coin);
+      }
+    }
+
+    // —————————————————————————————
+    // Player Movement Controls (Run, Jump, Double Jump)
+    // —————————————————————————————
+    const keys = {};
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    // Basic collision event to reset jump count when legs contact a static body.
+    Events.on(engine, 'collisionStart', function(event) {
+      event.pairs.forEach(pair => {
+        [player.leftLeg, player.rightLeg].forEach(leg => {
+          if (pair.bodyA === leg || pair.bodyB === leg) {
+            if (pair.bodyA.isStatic || pair.bodyB.isStatic) {
+              player.jumpCount = 0;
+            }
+          }
+        });
+      });
+    });
+
+    // —————————————————————————————
+    // Game Loop: Update Physics and DOM Element Positions
+    // —————————————————————————————
+    function update() {
+      Engine.update(engine, 1000 / 60);
+
+      // Update each DOM-linked body's position and rotation.
+      domEntities.forEach(body => {
+        if (body.domElement) {
+          body.domElement.style.left = body.position.x + 'px';
+          body.domElement.style.top  = body.position.y + 'px';
+          body.domElement.style.transform = 'translate(-50%, -50%) rotate(' + body.angle + 'rad)';
+        }
+      });
+
+      // Player horizontal control: apply force to the torso.
+      if (keys['ArrowLeft'] || keys['KeyA']) {
+        Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
+      }
+      if (keys['ArrowRight'] || keys['KeyD']) {
+        Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
+      }
+      // Jump (and double jump) with Space. Only allow if jumpCount is less than 2.
+      if (keys['Space'] && player.jumpCount < 2) {
+        Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
+        player.jumpCount++;
+        keys['Space'] = false;  // Prevent holding space for repeated jumps.
+      }
+
+      requestAnimationFrame(update);
+    }
+    update();
+  </script>
+</body>
+</html>
