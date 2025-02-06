@@ -523,34 +523,33 @@
     // Melee Attack with Whip Physics and Directional Control (via D-Pad or Joystick)
     // ------------------------------
     function meleeAttack() {
-      // Check for directional input from D-Pad (arrow keys) or from the joystick.
+      // Build a directional input vector from D-Pad (arrow keys).
       let inputDir = { x: 0, y: 0 };
       if (keys["ArrowLeft"]) inputDir.x -= 1;
       if (keys["ArrowRight"]) inputDir.x += 1;
       if (keys["ArrowUp"]) inputDir.y -= 1;
       if (keys["ArrowDown"]) inputDir.y += 1;
-      // If no D-Pad input, try using joystickAim.
+      // If no D-Pad input, then try joystick.
       if (inputDir.x === 0 && inputDir.y === 0) {
         if (Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
           inputDir.x = joystickAim.x;
           inputDir.y = joystickAim.y;
         }
       }
-      // Determine the attack direction.
+      // If still zero, use default based on ground/air state.
       let attackDir;
       if (inputDir.x !== 0 || inputDir.y !== 0) {
         let mag = Math.hypot(inputDir.x, inputDir.y);
         attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
       } else {
-        // Fallback: use the vector from torso to right hand.
-        let hand = playerChar.rightHand;
-        let torsoPos = playerChar.torso.position;
-        let vx = hand.position.x - torsoPos.x;
-        let vy = hand.position.y - torsoPos.y;
-        let mag = Math.hypot(vx, vy);
-        if (mag === 0) return;
-        attackDir = { x: vx / mag, y: vy / mag };
+        // Determine if on ground.
+        let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
+        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
+      // Define a maximum whip distance from the whip origin.
+      let maxWhipDistance = 60;
+      // Use the player's right upper arm as the whip origin.
+      let whipOrigin = playerChar.rightUpperArm.position;
       // Compute a perpendicular (tangent) vector (rotate attackDir 90° clockwise).
       let tangent = { x: attackDir.y, y: -attackDir.x };
       // Use a sine–modulated force over 300ms (30 steps) to simulate a whip swing.
@@ -559,14 +558,19 @@
       let stepTime = swingTime / steps;
       let step = 0;
       let interval = setInterval(() => {
-        let amplitude = Math.sin(Math.PI * step / steps);
-        // Apply combined force: along the attack direction and a tangent component.
-        let forceOut = 0.05;
-        let forceTangent = 0.05;
-        Body.applyForce(playerChar.rightHand, playerChar.rightHand.position, {
-          x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
-          y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
-        });
+        // Check current distance from whip origin.
+        let currentDistance = Math.hypot(playerChar.rightHand.position.x - whipOrigin.x,
+                                         playerChar.rightHand.position.y - whipOrigin.y);
+        // Only apply force if within max distance.
+        if (currentDistance < maxWhipDistance) {
+          let amplitude = Math.sin(Math.PI * step / steps);
+          let forceOut = 0.05;
+          let forceTangent = 0.05;
+          Body.applyForce(playerChar.rightHand, playerChar.rightHand.position, {
+            x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+            y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+          });
+        }
         step++;
         if (step >= steps) clearInterval(interval);
       }, stepTime);
