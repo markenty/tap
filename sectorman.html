@@ -471,7 +471,6 @@
       // --- Improved Upright Correction & Angular Damping ---
       const correctionFactor = 0.3; // Lower factor to reduce overcorrection
       const angularCorrection = -player.torso.angle * correctionFactor;
-      // Apply correction and then damp the angular velocity
       const damping = 0.9;
       Body.setAngularVelocity(player.torso, (player.torso.angularVelocity + angularCorrection) * damping);
 
@@ -484,6 +483,15 @@
 
       updateCamera();
       updateWalkCycle();
+
+      // --- Neutral Buoyancy Force on Player Head ---
+      // The desired torso height is set relative to the game height.
+      // Here, gameHeight - 100 represents roughly two torso diameters above ground.
+      const desiredTorsoY = gameHeight - 100;
+      const springConstant = 0.0001; // Adjust this constant to fine-tune the buoyancy effect
+      const diff = desiredTorsoY - player.torso.position.y;
+      Body.applyForce(player.head, player.head.position, { x: 0, y: springConstant * diff });
+
       requestAnimationFrame(update);
     }
     update();
