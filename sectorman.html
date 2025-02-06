@@ -143,7 +143,7 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    engine.world.gravity.y = 3;
+    engine.world.gravity.y = 3.5;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -176,7 +176,7 @@
     // --- Player Setup with Extra Limb Segments ---
     // Adjust constraint offsets so that limb segments do not overlap.
     // Legs will stack vertically, and arms will droop (hand below the upper arm).
-    const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
+    const player = { jumpCount: 0, facingDirection: 1, isGrounded:true, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
