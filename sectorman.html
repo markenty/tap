@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Main Platform, Pitfalls & Player Bounding</title>
+  <title>Platformer with Main Platform & Responsive Controls</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,7 +22,7 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* --- Screen (original size: full width, height = 100vw) --- */
+    /* --- Screen (full width, height = 100vw) --- */
     #screen {
       position: absolute;
       top: 0;
@@ -95,7 +95,6 @@
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
-    /* All player parts are rendered as circles */
     .player-part { background: #0f0; border-radius: 50%; }
     .bullet { background: #fff; }
     .coin {
@@ -139,18 +138,21 @@
   <!-- Matter.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
+    // Global variables and aliases.
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    // Restore original gravity.
-    engine.world.gravity.y = 3.3;
+    engine.world.gravity.y = 3.3;  // Restored original gravity.
     const world = engine.world;
     const game = document.getElementById("game");
 
-    // Level dimensions
+    // Level dimensions.
     const levelWidth = 3000;
     const gameHeight = document.getElementById("screen").getBoundingClientRect().height;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
+
+    // Global keys object.
+    const keys = {};
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
@@ -164,19 +166,16 @@
       domEntities.push(body);
     }
 
-    // --- World Boundaries (ground & walls) ---
-    // These bodies are still static (and destructible).
+    // --- World Boundaries (Ground & Walls) ---
     const groundBoundary = Bodies.rectangle(levelWidth/2, gameHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, gameHeight/2, 40, gameHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, gameHeight/2, 40, gameHeight, { isStatic: true });
     World.add(world, [groundBoundary, leftWall, rightWall]);
 
     // --- Main Platform with Pitfalls ---
-    // Build a long segmented platform along the bottom with gaps.
     const mainPlatformY = gameHeight - 40;
     let xPos = 0;
     while (xPos < levelWidth) {
-      // Segment width between 200 and 500; gap between 50 and 150.
       const segmentWidth = 200 + Math.random() * 300;
       const gapWidth = 50 + Math.random() * 100;
       if (xPos + segmentWidth > levelWidth) break;
@@ -193,7 +192,7 @@
       platforms.push(plat);
       xPos += segmentWidth + gapWidth;
     }
-    // Optional extra platforms above.
+    // Extra platforms above.
     for (let i = 0; i < 8; i++) {
       const w = 100 + Math.random() * 100,
             h = 20,
@@ -212,43 +211,42 @@
       platforms.push(plat);
     }
 
-    // --- Player Setup (Original Version) ---
+    // --- Player Setup ---
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: true, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0.5;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      // Use slightly higher frictionAir on torso for damping without “tweaking” too much.
       const torsoOptions = { friction: 1.0, frictionAir: 0.05, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
-      // Head
+      // Head.
       const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
       createDomElement(head, "player-part", size, size);
-      // Torso
+      // Torso.
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
       createDomElement(torso, "player-part", size*2, size*2);
 
-      // Right Arm
+      // Right Arm.
       const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
       const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, defaultOptions);
       createDomElement(rightHand, "player-part", size, size);
 
-      // Left Arm
+      // Left Arm.
       const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
       createDomElement(leftUpperArm, "player-part", size, size);
       const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, defaultOptions);
       createDomElement(leftHand, "player-part", size, size);
 
-      // Right Leg
+      // Right Leg.
       const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
       const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, defaultOptions);
       createDomElement(rightFoot, "player-part", size, size);
 
-      // Left Leg
+      // Left Leg.
       const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
       const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, defaultOptions);
@@ -256,7 +254,7 @@
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
-      // Link body parts.
+      // Link parts.
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a,
@@ -443,7 +441,7 @@
       });
     });
 
-    // --- Player Bounding (prevent flying off the screen) ---
+    // --- Player Bounding ---
     function clampPlayer() {
       const margin = 50;
       const pos = player.torso.position;
@@ -461,7 +459,7 @@
       }
     }
 
-    // --- Dynamic Camera (smooth, clamped) ---
+    // --- Dynamic Camera ---
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
@@ -482,7 +480,6 @@
     }
 
     // --- Snap Feet When Grounded ---
-    // Force the feet to fixed offsets relative to the torso if grounded.
     function snapFeet() {
       if (player.isGrounded) {
         const torsoPos = player.torso.position;
@@ -548,7 +545,6 @@
       if (player.wallSide !== 0 && player.torso.velocity.y > 3) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 3 });
       }
-      // Keep head aligned.
       Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
       Body.setVelocity(player.head, player.torso.velocity);
       updateCamera();
@@ -556,10 +552,8 @@
       clampPlayer();
       requestAnimationFrame(update);
     }
-    update();
 
-    // --- Touch & Button Mappings ---
-    let keys = {};
+    // --- Event Listeners for Controls ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
     dpad.querySelector(".up").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
@@ -575,6 +569,9 @@
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+    // Start the game loop.
+    update();
   </script>
 </body>
 </html>
