@@ -467,7 +467,9 @@
         }
       }
 
-      const correction = -player.torso.angle * 0.2;
+      // --- Improved Upright Correction ---
+      const correctionFactor = 0.5; // Adjust for a stronger correction
+      const correction = -player.torso.angle * correctionFactor;
       Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
 
       if (player.wallSide !== 0 && player.torso.velocity.y > 3) {
