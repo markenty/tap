@@ -143,7 +143,7 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    engine.world.gravity.y = 3.2;
+    engine.world.gravity.y = 2.9;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -175,14 +175,14 @@
 
     // --- Player Setup with Extra Limb Segments ---
     // Adjusted physics for tighter platformer feel.
-    const player = { jumpCount: 0, facingDirection: 1, isGrounded:false, wallSide: 0 };
+    const player = { jumpCount: 0, facingDirection: 1, isGrounded: true, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
       // Updated options for tighter control:
-      const torsoOptions = { friction: 0, frictionAir: 0.0, restitution: 0 };
+      const torsoOptions = { friction: 0.5, frictionAir: 0.02, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head (anchored later)
@@ -372,6 +372,30 @@
       game.style.transform = "translateX(-" + offset + "px)";
     }
 
+    // --- Walk Cycle for Leg Animation ---
+    let walkCycle = 0;
+    let lastTime = Date.now();
+    function updateWalkCycle() {
+      const now = Date.now();
+      const dt = (now - lastTime) / 1000; // seconds elapsed
+      lastTime = now;
+      // Only advance the cycle if the player is on the ground and moving horizontally.
+      if (player.isGrounded && (keys["ArrowLeft"] || keys["ArrowRight"])) {
+        walkCycle += dt * 6; // frequency multiplier (adjust as needed)
+        const maxAngle = Math.PI / 12; // ~15° maximum swing
+        const leftLegOffset = Math.sin(walkCycle) * maxAngle;
+        const rightLegOffset = Math.sin(walkCycle + Math.PI) * maxAngle;
+        // Set upper leg and foot angles relative to the torso angle.
+        Body.setAngle(player.leftUpperLeg, player.torso.angle + leftLegOffset);
+        Body.setAngle(player.rightUpperLeg, player.torso.angle + rightLegOffset);
+        Body.setAngle(player.leftFoot, player.torso.angle + leftLegOffset);
+        Body.setAngle(player.rightFoot, player.torso.angle + rightLegOffset);
+      } else {
+        // When not moving or airborne, slowly reset the cycle.
+        walkCycle = 0;
+      }
+    }
+
     // --- Main Game Loop ---
     function update() {
       Engine.update(engine, 1000/60);
@@ -435,6 +459,7 @@
       Body.setVelocity(player.head, player.torso.velocity);
 
       updateCamera();
+      updateWalkCycle();
       requestAnimationFrame(update);
     }
     update();
