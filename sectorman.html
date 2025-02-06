@@ -74,16 +74,29 @@
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
     /* A/B/C Buttons – now arranged in a single horizontal row */
     #ab-buttons {
-      position: absolute;
-      right: 5%;
-      bottom: 5%;
-      width: 250px;
-      height: 80px;
-      display: flex;
-      flex-direction: row;
-      justify-content: space-around;
-      align-items: center;
-    }
+  position: absolute;
+  right: 5%;
+  bottom: 5%;
+  width: 250px;
+  height: 80px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: flex-end; /* align at the bottom for consistent baseline */
+}
+
+/* Offset each button upward so that each button to the right is higher */
+#ab-buttons button:nth-child(1) {
+  transform: translateY(0px);
+}
+
+#ab-buttons button:nth-child(2) {
+  transform: translateY(-10px);
+}
+
+#ab-buttons button:nth-child(3) {
+  transform: translateY(-20px);
+}
     #ab-buttons button {
       width: 70px;
       height: 70px;
