@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Enhanced Platformer with Sustained Acceleration & Anchored Head</title>
+  <title>Platformer with Extra Limb Segments & Outstretched Hand Shooting</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,7 +38,7 @@
       position: absolute;
       top: 0;
       left: 0;
-      /* Size set via JavaScript */
+      /* Width set via JavaScript */
     }
     /* --- Controls Area --- */
     #controls {
@@ -87,6 +87,7 @@
       font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
+    /* A is for shooting, B is for jumping */
     #ab-buttons .A { width: 70px; height: 70px; top: 0; right: 0; }
     #ab-buttons .B { width: 70px; height: 70px; bottom: 0; left: 0; }
     /* --- In-Game Entities --- */
@@ -171,8 +172,8 @@
     const rightWall = Bodies.rectangle(levelWidth, gameHeight/2, 40, gameHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
-    // Player setup: 6-circle ragdoll with gait properties
-    // The head will be re-anchored manually.
+    // --- Player Setup ---
+    // We now create extra segments on arms and legs.
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
@@ -180,34 +181,69 @@
     (function createPlayer(x, y) {
       const size = 20;
       const options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
-      // Create head normally—but later we will override its position.
+
+      // Head (will be anchored later)
       const head = Bodies.circle(x, y-40, size/2, options);
       createDomElement(head, "player-part", size, size);
-      // Torso and limbs
+      // Torso
       const torso = Bodies.circle(x, y-20, size, options);
       createDomElement(torso, "player-part", size*2, size*2);
-      const leftArm = Bodies.circle(x-30, y-20, size/2, options);
-      createDomElement(leftArm, "player-part", size, size);
-      const rightArm = Bodies.circle(x+30, y-20, size/2, options);
-      createDomElement(rightArm, "player-part", size, size);
-      const leftLeg = Bodies.circle(x-10, y+10, size/2, options);
-      createDomElement(leftLeg, "player-part", size, size);
-      const rightLeg = Bodies.circle(x+10, y+10, size/2, options);
-      createDomElement(rightLeg, "player-part", size, size);
-      World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
+
+      // Right Arm: upper arm and hand (hand uses lower frictionAir)
+      const rightUpperArm = Bodies.circle(x+30, y-20, size/2, options);
+      createDomElement(rightUpperArm, "player-part", size, size);
+      const rightHand = Bodies.circle(x+45, y-20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
+      createDomElement(rightHand, "player-part", size, size);
+
+      // Left Arm: upper arm and hand
+      const leftUpperArm = Bodies.circle(x-30, y-20, size/2, options);
+      createDomElement(leftUpperArm, "player-part", size, size);
+      const leftHand = Bodies.circle(x-45, y-20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
+      createDomElement(leftHand, "player-part", size, size);
+
+      // Right Leg: upper leg and foot
+      const rightUpperLeg = Bodies.circle(x+10, y+10, size/2, options);
+      createDomElement(rightUpperLeg, "player-part", size, size);
+      const rightFoot = Bodies.circle(x+15, y+20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
+      createDomElement(rightFoot, "player-part", size, size);
+
+      // Left Leg: upper leg and foot
+      const leftUpperLeg = Bodies.circle(x-10, y+10, size/2, options);
+      createDomElement(leftUpperLeg, "player-part", size, size);
+      const leftFoot = Bodies.circle(x-15, y+20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
+      createDomElement(leftFoot, "player-part", size, size);
+
+      // Add all parts to the world
+      World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
+
       function link(a, b, offA, offB) {
         const con = Constraint.create({ bodyA: a, pointA: offA, bodyB: b, pointB: offB, stiffness: 0.8, length: 20 });
         World.add(world, con);
       }
       link(head, torso, {x:0, y:size/2}, {x:0, y:-size});
-      link(torso, leftArm, {x:-size, y:0}, {x:0, y:0});
-      link(torso, rightArm, {x:size, y:0}, {x:0, y:0});
-      link(torso, leftLeg, {x:-size/2, y:size}, {x:0, y:-size/2});
-      link(torso, rightLeg, {x:size/2, y:size}, {x:0, y:-size/2});
-      player.head = head; player.torso = torso; player.leftLeg = leftLeg; player.rightLeg = rightLeg;
+      link(torso, rightUpperArm, {x: size, y:0}, {x:0, y:0});
+      link(rightUpperArm, rightHand, {x:0, y:0}, {x:0, y:0});
+      link(torso, leftUpperArm, {x:-size, y:0}, {x:0, y:0});
+      link(leftUpperArm, leftHand, {x:0, y:0}, {x:0, y:0});
+      link(torso, rightUpperLeg, {x: size/2, y: size}, {x:0, y:-size/2});
+      link(rightUpperLeg, rightFoot, {x:0, y:0}, {x:0, y:0});
+      link(torso, leftUpperLeg, {x: -size/2, y: size}, {x:0, y:-size/2});
+      link(leftUpperLeg, leftFoot, {x:0, y:0}, {x:0, y:0});
+
+      // Store parts for later use.
+      player.head = head;
+      player.torso = torso;
+      player.rightUpperArm = rightUpperArm;
+      player.rightHand = rightHand;
+      player.leftUpperArm = leftUpperArm;
+      player.leftHand = leftHand;
+      player.rightUpperLeg = rightUpperLeg;
+      player.rightFoot = rightFoot;
+      player.leftUpperLeg = leftUpperLeg;
+      player.leftFoot = leftFoot;
     })(100, 100);
 
-    // Create platforms and TVs (same as before)
+    // --- Platforms & TVs (as before) ---
     function createPlatform(x, y, w, h) {
       const plat = Bodies.rectangle(x, y, w, h, { isStatic: true });
       World.add(world, plat);
@@ -244,7 +280,9 @@
       createTV(x, y);
     }
 
-    // Shooting: A button fires in the direction based on d-pad keys or last facing.
+    // --- Shooting Mechanic ---
+    // When the A button is pressed, override the corresponding hand’s position to be outstretched,
+    // and spawn a projectile from that hand.
     function shoot() {
       let dx = 0, dy = 0;
       if (keys["ArrowUp"])    dy = -1;
@@ -254,13 +292,21 @@
       if (dx === 0 && dy === 0) dx = player.facingDirection;
       const mag = Math.sqrt(dx*dx + dy*dy);
       dx /= mag; dy /= mag;
-      shootBullet(player.torso.position.x, player.torso.position.y,
-                  player.torso.position.x + dx*100,
-                  player.torso.position.y + dy*100);
+      let origin;
+      if (player.facingDirection > 0) {
+        // Outstretch right hand: set it 20px to the right of rightUpperArm.
+        Body.setPosition(player.rightHand, { x: player.rightUpperArm.position.x + 20, y: player.rightUpperArm.position.y });
+        origin = { x: player.rightHand.position.x, y: player.rightHand.position.y };
+      } else {
+        // Outstretch left hand: set it 20px to the left of leftUpperArm.
+        Body.setPosition(player.leftHand, { x: player.leftUpperArm.position.x - 20, y: player.leftUpperArm.position.y });
+        origin = { x: player.leftHand.position.x, y: player.leftHand.position.y };
+      }
+      shootBullet(origin.x, origin.y, origin.x + dx*100, origin.y + dy*100);
     }
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label:"bullet" });
-      const angle = Math.atan2(ty-y, tx-x);
+      const angle = Math.atan2(ty - y, tx - x);
       const speed = 15;
       Body.setVelocity(bullet, { x: Math.cos(angle)*speed, y: Math.sin(angle)*speed });
       World.add(world, bullet);
@@ -268,11 +314,11 @@
       bullets.push(bullet);
     }
 
-    // Collision handling: reset jump, coyote time, and detect wall contacts.
+    // --- Collision Handling ---
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
-        [player.leftLeg, player.rightLeg].forEach(leg => {
-          if (pair.bodyA === leg || pair.bodyB === leg) {
+        [player.leftFoot, player.rightFoot, player.leftUpperLeg, player.rightUpperLeg, player.leftHand, player.rightHand].forEach(part => {
+          if (pair.bodyA === part || pair.bodyB === part) {
             if (pair.bodyA.isStatic || pair.bodyB.isStatic) {
               player.isGrounded = true;
               lastGroundedTime = Date.now();
@@ -286,8 +332,8 @@
     });
     Events.on(engine, "collisionEnd", function(event) {
       event.pairs.forEach(pair => {
-        if (pair.bodyA === player.leftLeg || pair.bodyB === player.leftLeg ||
-            pair.bodyA === player.rightLeg || pair.bodyB === player.rightLeg) {
+        if (pair.bodyA === player.leftFoot || pair.bodyB === player.leftFoot ||
+            pair.bodyA === player.rightFoot || pair.bodyB === player.rightFoot) {
           player.isGrounded = false;
         }
         if (pair.bodyA === leftWall || pair.bodyB === leftWall ||
@@ -297,30 +343,29 @@
       });
     });
 
-    // Input state
+    // --- Input State ---
     let keys = {};
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // Camera: center on player, clamp within level.
+    // --- Camera Update ---
     function updateCamera() {
       const offset = Math.max(0, Math.min(player.torso.position.x - screenWidth/2, levelWidth - screenWidth));
       game.style.transform = "translateX(-" + offset + "px)";
     }
 
-    // Main game loop
+    // --- Main Game Loop ---
     function update() {
       Engine.update(engine, 1000/60);
-      // Update DOM positions
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
-          body.domElement.style.top  = body.position.y + "px";
+          body.domElement.style.top = body.position.y + "px";
           body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
         }
       });
 
-      // Horizontal movement with sustained acceleration
+      // Horizontal movement with sustained acceleration.
       if (keys["ArrowLeft"]) {
         player.facingDirection = -1;
         Body.applyForce(player.torso, player.torso.position, { x: -0.007, y: 0 });
@@ -333,7 +378,7 @@
         Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
       }
 
-      // Jumping: Increase jump impulse for higher jumps.
+      // Jumping: higher jump impulse.
       if ((keys["KeyB"] || keys["Space"])) {
         if (!jumpKeyActive) {
           jumpBufferTimer = Date.now();
@@ -358,17 +403,16 @@
         }
       }
 
-      // Correct torso angle to keep upright
+      // Correct torso angle to remain upright.
       const correction = -player.torso.angle * 0.2;
       Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
 
-      // Wall sliding: cap falling speed if against a wall.
+      // Wall sliding: cap fall speed when against a wall.
       if (player.wallSide !== 0 && player.torso.velocity.y > 4) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 4 });
       }
 
-      // --- Override head position so it remains anchored above the torso ---
-      // This ensures the head is not affected by gravity independently.
+      // Anchor the head: override head position so it stays 40px above the torso.
       Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
       Body.setVelocity(player.head, player.torso.velocity);
 
@@ -377,7 +421,7 @@
     }
     update();
 
-    // Touch & button mappings
+    // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"]=true; setTimeout(()=>keys["ArrowUp"]=false,150); });
     dpad.querySelector(".down").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowDown"]=true; setTimeout(()=>keys["ArrowDown"]=false,150); });
