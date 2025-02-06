@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible World with AI, HP Bars & Realistic Bubble Busting</title>
+  <title>Destructible World with AI, HP Bars & Bubble Busting</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -81,7 +81,7 @@
       pointer-events: none;
       transition: transform 0.5s ease, opacity 0.5s ease;
     }
-    /* HP bar container and inner bar */
+    /* HP Bar Styling */
     .hp-bar-container {
       position: absolute;
       width: 50px;
@@ -109,23 +109,29 @@
       border: 2px solid rgba(255,255,255,0.7);
       box-shadow: 0 0 8px rgba(255,0,0,0.7);
     }
-    /* Burst animation for bubble busting */
+    /* Bubble burst effect */
     .bubble-burst {
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
     }
     .bullet { background: #fff; }
     .coin {
-      background: gold; color: black;
-      font-size: 14px; line-height: 16px;
-      text-align: center; border-radius: 0;
+      background: gold;
+      color: black;
+      font-size: 14px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 0;
     }
     .tv {
-      position: absolute; background: #444;
-      border: 2px solid #999; border-radius: 4px;
+      position: absolute;
+      background: #444;
+      border: 2px solid #999;
+      border-radius: 4px;
     }
     .platform {
-      position: absolute; background: #555;
+      position: absolute;
+      background: #555;
     }
   </style>
 </head>
@@ -151,6 +157,7 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
+    // Destructure Matter modules.
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     engine.world.gravity.y = 3.2;
@@ -209,7 +216,7 @@
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
       const partClass = isEnemy ? "enemy-part" : "player-part";
 
-      // Create an HP bar container and inner bar.
+      // Create an HP bar.
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
       const hpBar = document.createElement("div");
@@ -225,7 +232,7 @@
         return body;
       }
 
-      // Build character parts.
+      // Build parts.
       const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       addPart(head, partClass, size, size);
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
@@ -249,7 +256,7 @@
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
-      // Create constraints between parts.
+      // Create constraints.
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a, pointA: offA, bodyB: b, pointB: offB,
@@ -267,7 +274,6 @@
       link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
-      // Save part references.
       char.head = head; char.torso = torso;
       char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
       char.leftUpperArm = leftUpperArm; char.leftHand = leftHand;
@@ -276,12 +282,12 @@
       return char;
     }
 
-    // Global characters (single instance of each).
+    // Global single instances.
     let playerChar = createCharacter(100, 100, false);
     let enemyChar = createCharacter(400, 100, true);
 
     // --- Bullet Shooting ---
-    // Bullets record their owner.
+    // Bullets record their owner to avoid friendly fire.
     function shootBullet(x, y, tx, ty, owner) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       bullet.owner = owner;
@@ -323,12 +329,13 @@
     }
 
     // --- Damage, Knockback & Bubble Busting ---
-    // When a bullet hits a character (that isn’t its owner) the character takes damage,
-    // a knockback force is applied, and if HP falls to zero, the character bursts.
+    // When a bullet hits a character (that isn’t its owner), damage is subtracted,
+    // a knockback force (opposite bullet direction) is applied, and if HP is depleted,
+    // the character bursts (each part gets a random force and the bubble-burst effect is applied).
     function takeDamage(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
-      // Apply knockback force (opposite bullet direction).
+      // Knockback effect.
       const knockbackFactor = 0.001;
       if (bullet && bullet.velocity) {
         Body.applyForce(character.torso, character.torso.position, {
@@ -336,39 +343,38 @@
           y: -bullet.velocity.y * knockbackFactor
         });
       }
-      // Update HP bar.
+      // Update HP bar width.
       if (character.hpBar) {
         const percent = Math.max(character.hp, 0) / 100;
         character.hpBar.style.width = (percent * 100) + "%";
       }
-      // If HP depleted, burst.
+      // If HP is depleted, burst the bubble.
       if (character.hp <= 0) {
         character.alive = false;
-        // Optionally, remove constraints here to let parts fly apart.
-        // (For simplicity, we apply random forces to simulate bubble bursting.)
         [character.head, character.torso, character.rightUpperArm, character.rightHand,
          character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
          character.leftUpperLeg, character.leftFoot].forEach(part => {
-           if (part) {
-             Body.applyForce(part, part.position, {
-               x: (Math.random() - 0.5) * 0.02,
-               y: (Math.random() - 0.5) * 0.02
-             });
-             if (part.domElement) {
-               part.domElement.classList.add("bubble-burst");
-             }
-           }
-         });
+          if (part) {
+            // Apply random scattering force.
+            Body.applyForce(part, part.position, {
+              x: (Math.random() - 0.5) * 0.02,
+              y: (Math.random() - 0.5) * 0.02
+            });
+            if (part.domElement) {
+              part.domElement.classList.add("bubble-burst");
+            }
+          }
+        });
         // Remove parts and HP bar after animation, then respawn.
         setTimeout(() => {
           [character.head, character.torso, character.rightUpperArm, character.rightHand,
            character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
            character.leftUpperLeg, character.leftFoot].forEach(part => {
-             World.remove(world, part);
-             if (part.domElement && part.domElement.parentNode) {
-               part.domElement.parentNode.removeChild(part.domElement);
-             }
-           });
+            World.remove(world, part);
+            if (part.domElement && part.domElement.parentNode) {
+              part.domElement.parentNode.removeChild(part.domElement);
+            }
+          });
           if (character.hpContainer && character.hpContainer.parentNode) {
             character.hpContainer.parentNode.removeChild(character.hpContainer);
           }
@@ -541,7 +547,7 @@
         }
       });
       
-      // Player movement.
+      // Player movement input.
       if (keys["ArrowLeft"]) {
         playerChar.facingDirection = -1;
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
@@ -566,7 +572,7 @@
       updateWalkCycle();
       updateEnemyAI();
 
-      // Fallback: if player falls too far while alive, mark dead and respawn.
+      // Fallback: if player falls too far while alive, mark as dead and respawn.
       if (playerChar.alive && playerChar.torso.position.y > safetyFloorY + 100) {
         playerChar.alive = false;
         setTimeout(() => {
@@ -574,10 +580,9 @@
         }, 500);
       }
 
-      // Update HP bars: position them above the character's torso.
+      // Update HP bars.
       function updateHpBar(character) {
         if (!character.hpContainer) return;
-        // Position the HP bar a fixed offset above the torso.
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       }
