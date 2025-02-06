@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible Objects with Joystick Movement</title>
+  <title>Destructible Environment with Breakable Walls and Collectible Coins</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -94,7 +94,7 @@
       justify-content: space-around;
       align-items: flex-end;
     }
-    /* Staggered positions for buttons */
+    /* Staggered button positions */
     #ab-buttons button:nth-child(1) { transform: translateY(-30px); }
     #ab-buttons button:nth-child(2) { transform: translateY(-10px); }
     #ab-buttons button:nth-child(3) { transform: translateY(-20px); }
@@ -259,9 +259,7 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Level width is fixed at 3000px.
-    // The full game height equals window.innerHeight;
-    // Reserve 100px at the bottom for the ground.
+    // Level width fixed at 3000px; full game height is window.innerHeight (with 100px reserved at bottom for ground).
     const levelWidth = 3000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -325,6 +323,7 @@
       tvs.push(tv);
     }
     function createWall(x, y, width, height) {
+      // Walls are initially static and breakable.
       const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
@@ -440,33 +439,73 @@
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return; // not destructible
       obj.hp -= damage;
-      // Trigger a particle burst for damage feedback.
+      // Damage feedback.
       particleBurst(obj.position.x, obj.position.y, "orange");
       if (obj.hp <= 0) {
-        // Final burst effect.
+        // Final burst.
         particleBurst(obj.position.x, obj.position.y, "red");
-        World.remove(world, obj);
-        if (obj.domElement && obj.domElement.parentNode) {
-          obj.domElement.parentNode.removeChild(obj.domElement);
-        }
-        // Remove from the appropriate array.
-        if (obj.label === "platform") {
-          let idx = platforms.indexOf(obj);
-          if (idx !== -1) platforms.splice(idx, 1);
-        } else if (obj.label === "tv") {
-          let idx = tvs.indexOf(obj);
-          if (idx !== -1) tvs.splice(idx, 1);
-          spawnCoins(obj.position.x, obj.position.y);
-        } else if (obj.label === "wall") {
-          let idx = walls.indexOf(obj);
-          if (idx !== -1) walls.splice(idx, 1);
+        if (obj.label === "wall") {
+          // Break wall into chunks.
+          breakWall(obj);
+        } else {
+          World.remove(world, obj);
+          if (obj.domElement && obj.domElement.parentNode) {
+            obj.domElement.parentNode.removeChild(obj.domElement);
+          }
+          if (obj.label === "platform") {
+            let idx = platforms.indexOf(obj);
+            if (idx !== -1) platforms.splice(idx, 1);
+          } else if (obj.label === "tv") {
+            let idx = tvs.indexOf(obj);
+            if (idx !== -1) tvs.splice(idx, 1);
+            spawnCoins(obj.position.x, obj.position.y);
+          }
         }
       }
     }
+
+    // Break wall into smaller dynamic chunks.
+    function breakWall(wall) {
+      // Remove the original wall.
+      World.remove(world, wall);
+      if (wall.domElement && wall.domElement.parentNode) {
+        wall.domElement.parentNode.removeChild(wall.domElement);
+      }
+      let idx = walls.indexOf(wall);
+      if (idx !== -1) walls.splice(idx, 1);
+      // Divide the wall into 4 chunks.
+      const chunks = [];
+      const cols = 2, rows = 2;
+      const chunkWidth = wall.width / cols;
+      const chunkHeight = wall.height / rows;
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
+          const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
+          let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
+          // Give each chunk a random impulse.
+          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
+          chunks.push(chunk);
+          World.add(world, chunk);
+          // Create a DOM element for the chunk.
+          const chunkEl = document.createElement("div");
+          chunkEl.className = "platform";
+          chunkEl.style.width = chunkWidth + "px";
+          chunkEl.style.height = chunkHeight + "px";
+          chunkEl.style.left = cx + "px";
+          chunkEl.style.top = cy + "px";
+          game.appendChild(chunkEl);
+          chunk.domElement = chunkEl;
+          domEntities.push(chunk);
+        }
+      }
+    }
+
+    // Spawn coins as dynamic bodies that fall and are collectible.
     function spawnCoins(x, y) {
       // Spawn three coins.
       for (let i = 0; i < 3; i++) {
-        let coin = Bodies.circle(x, y, 10, { isStatic: true, label: "coin" });
+        let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
         coin.value = 1;
         World.add(world, coin);
         let coinEl = document.createElement("div");
@@ -483,7 +522,7 @@
         game.appendChild(coinEl);
         coin.domElement = coinEl;
         coins.push(coin);
-        // Scatter coin with a random velocity.
+        // Give coin a random scatter velocity.
         let angle = Math.random() * 2 * Math.PI;
         let speed = Math.random() * 5 + 2;
         Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
@@ -491,14 +530,13 @@
     }
 
     // ------------------------------
-    // Melee Attack (Damages Objects, Not Player)
+    // Melee Attack (Damages Environment, Not Player)
     // ------------------------------
     function meleeAttack() {
       // Use the player's right hand as the attack origin.
       let attackPos = playerChar.rightHand.position;
-      const meleeRange = 60;  // pixels.
+      const meleeRange = 60;  // in pixels.
       const damageAmount = 30;
-      // Check destructible objects in platforms, TVs, and walls.
       [platforms, tvs, walls].forEach(arr => {
         arr.forEach(obj => {
           let dx = attackPos.x - obj.position.x;
@@ -509,7 +547,7 @@
           }
         });
       });
-      // (Optionally add a visual melee effect here.)
+      // (You can add a visual melee swing effect here if desired.)
     }
 
     // ------------------------------
@@ -540,7 +578,7 @@
         const mag = Math.hypot(dx, dy);
         dx /= mag; dy /= mag;
       }
-      // Use the player's right hand as the shooting origin.
+      // Use player's right hand as shooting origin.
       Body.setPosition(playerChar.rightHand, { 
         x: playerChar.rightUpperArm.position.x + 20, 
         y: playerChar.rightUpperArm.position.y 
@@ -548,6 +586,29 @@
       const origin = { x: playerChar.rightHand.position.x, y: playerChar.rightHand.position.y };
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
     }
+
+    // ------------------------------
+    // Coin Collection (Player collects coins)
+    // ------------------------------
+    let coinCount = 0;
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        // Check if a coin collides with any player part.
+        if ((pair.bodyA.label === "coin" && pair.bodyB.character) ||
+            (pair.bodyB.label === "coin" && pair.bodyA.character)) {
+          let coinBody = pair.bodyA.label === "coin" ? pair.bodyA : pair.bodyB;
+          World.remove(world, coinBody);
+          if (coinBody.domElement && coinBody.domElement.parentNode) {
+            coinBody.domElement.parentNode.removeChild(coinBody.domElement);
+          }
+          // Remove from coins array.
+          let idx = coins.indexOf(coinBody);
+          if (idx !== -1) coins.splice(idx, 1);
+          coinCount++;
+          console.log("Coins collected: " + coinCount);
+        }
+      });
+    });
 
     // ------------------------------
     // Collision Handling for Bullets
@@ -559,7 +620,7 @@
             World.remove(world, pair.bodyA);
             if (pair.bodyA.domElement && pair.bodyA.domElement.parentNode)
               pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
-            // (Optional: damage character if needed)
+            // (Optional: Damage character if desired.)
           }
         } else if (pair.bodyB.label === "bullet" && pair.bodyA.character) {
           if (pair.bodyA.character !== pair.bodyB.owner) {
@@ -572,7 +633,7 @@
     });
 
     // ------------------------------
-    // Destructible World Collisions
+    // Destructible World Collisions (Gradual Damage on High-Speed Contact)
     // ------------------------------
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
@@ -592,11 +653,11 @@
           playerPart = pair.bodyB;
           other = pair.bodyA;
         }
-        if (other && other.label !== "safetyFloor") {
+        if (other && other.label !== "safetyFloor" &&
+           (other.label === "platform" || other.label === "tv" || other.label === "wall")) {
           const vx = playerChar.torso.velocity.x, vy = playerChar.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
-          if (playerSpeed >= destructionSpeedThreshold && 
-             (other.label === "platform" || other.label === "tv" || other.label === "wall")) {
+          if (playerSpeed >= destructionSpeedThreshold) {
             // Instead of immediately removing, apply damage.
             damageDestructible(other, 10);
           }
@@ -617,7 +678,7 @@
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      const scale = 1; // full-screen scale.
+      const scale = 1;
       const viewWidth = screenWidth;
       const viewHeight = screenHeight;
       let cameraX = playerChar.torso.position.x - viewWidth / 2;
@@ -647,7 +708,7 @@
         }
       });
       
-      // Player horizontal movement from arrow keys.
+      // Player movement via arrow keys.
       if (keys["ArrowLeft"]) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
       }
@@ -661,7 +722,7 @@
       if (Math.abs(joystickAim.x) > 0.1) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: joystickAim.x * 0.005, y: 0 });
       }
-      // Jump: if jump key is pressed, use joystick aim if moved; otherwise, vertical.
+      // Jump: if jump key is pressed, use joystick aim if present; otherwise, vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
@@ -763,8 +824,7 @@
         joystick.style.transform = "translate(0px, 0px)";
         setTimeout(() => { 
           joystick.style.transition = ""; 
-          // Reset joystick aim on release.
-          joystickAim.x = 0; 
+          joystickAim.x = 0;
           joystickAim.y = 0;
         }, 200);
       }
