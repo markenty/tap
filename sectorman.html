@@ -194,7 +194,7 @@
       // Right Arm: Upper arm and hand
       const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
-      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
+      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.05, restitution: 0 });
       createDomElement(rightHand, "player-part", size, size);
 
       // Left Arm: Upper arm and hand
@@ -489,7 +489,7 @@
       // Here, gameHeight - 100 represents roughly two torso diameters above ground.
       const desiredTorsoY = gameHeight - 100;
       const springConstant = 0.0005; // Adjust this constant to fine-tune the buoyancy effect
-      const diff = desiredTorsoY - player.torso.position.y-20;
+      const diff = desiredTorsoY - player.torso.position.y+20;
       Body.applyForce(player.head, player.head.position, { x: 0, y: springConstant * diff });
 
       requestAnimationFrame(update);
