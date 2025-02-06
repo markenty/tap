@@ -143,7 +143,7 @@
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     // Set world gravity to 5
-    engine.world.gravity.y = 4.0;
+    engine.world.gravity.y = 3.0;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -179,7 +179,7 @@
     (function createPlayer(x, y) {
       const size = 20;
       // Torso options adjusted slightly
-      const torsoOptions = { friction: 0.1, frictionAir: 0.005, restitution: 0 };
+      const torsoOptions = { friction: 0.1, frictionAir: 0.025, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
@@ -469,7 +469,7 @@
       }
 
       // --- Improved Upright Correction & Angular Damping ---
-      const correctionFactor = 0.8;
+      const correctionFactor = 1.8;
       const angularCorrection = -player.torso.angle * correctionFactor;
       const damping = 0.9;
       Body.setAngularVelocity(player.torso, (player.torso.angularVelocity + angularCorrection) * damping);
