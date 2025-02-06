@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Player-Following Camera with Platforms & TVs</title>
+  <title>Full-Screen Level (3000px Wide) with Vertical Jump</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,18 +27,18 @@
       background: #000;
       overflow: hidden;
     }
-    /* Game World Container – will be transformed (scaled & translated) so the camera follows the player */
+    /* Game World Container – transformed so the camera follows the player */
     #game {
       position: absolute;
       top: 0; left: 0;
     }
-    /* Ground styling (example) */
+    /* Ground styling */
     #ground {
       position: absolute;
       left: 0;
       background: #855;
     }
-    /* Controls – remain unaffected by world transform */
+    /* Controls remain unaffected by world transform */
     #controls {
       position: absolute;
       bottom: 5%;
@@ -82,7 +82,7 @@
       z-index: 3;
       touch-action: none;
     }
-    /* A/B/C Buttons – arranged in a horizontal row */
+    /* A/B/C Buttons */
     #ab-buttons {
       position: absolute;
       right: 0%;
@@ -94,7 +94,7 @@
       justify-content: space-around;
       align-items: flex-end;
     }
-    /* Offset buttons for a staggered look */
+    /* Stagger button positions */
     #ab-buttons button:nth-child(1) { transform: translateY(-30px); }
     #ab-buttons button:nth-child(2) { transform: translateY(-10px); }
     #ab-buttons button:nth-child(3) { transform: translateY(-20px); }
@@ -133,7 +133,7 @@
       background: lime;
       border-radius: 3px;
     }
-    /* Character part styling */
+    /* Character parts */
     .player-part {
       background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
       border: 2px solid rgba(255,255,255,0.7);
@@ -251,11 +251,14 @@
     // Global joystick aim vector.
     let joystickAim = { x: 0, y: 0 };
 
-    // Level dimensions (width increased to 3000).
+    // Level dimensions:
+    // Level is 3000px wide.
+    // For a full-screen height, we set playAreaHeight = window.innerHeight - 100 (reserve 100px for ground)
+    // so that the total gameHeight equals the full screen height.
     const levelWidth = 3000;
-    const playAreaHeight = 600;
-    const groundExtraHeight = 200;
-    const gameHeight = playAreaHeight + groundExtraHeight;
+    const playAreaHeight = window.innerHeight - 100;
+    const groundExtraHeight = 100;
+    const gameHeight = window.innerHeight;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
@@ -435,17 +438,17 @@
         const mag = Math.hypot(dx, dy);
         dx /= mag; dy /= mag;
       }
-      // Use right hand as the shooting origin.
+      // Use the right hand as the shooting origin.
       Body.setPosition(playerChar.rightHand, { x: playerChar.rightUpperArm.position.x + 20, y: playerChar.rightUpperArm.position.y });
       const origin = { x: playerChar.rightHand.position.x, y: playerChar.rightHand.position.y };
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
     }
     function meleeAttack() {
-      const playerPos = playerChar.torso.position;
-      // Choose right hand arbitrarily.
+      // Use right hand for a melee attack.
       const hand = playerChar.rightHand;
       const handPos = hand.position;
-      let dx = playerPos.x - handPos.x, dy = playerPos.y - handPos.y;
+      let dx = playerChar.torso.position.x - handPos.x;
+      let dy = playerChar.torso.position.y - handPos.y;
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
       dx /= mag; dy /= mag;
@@ -584,10 +587,10 @@
       const scale = Math.min(screenWidth / levelWidth, screenHeight / gameHeight);
       const viewWidth = screenWidth / scale;
       const viewHeight = screenHeight / scale;
-      // Center on the player's torso.
+      // Center the camera on the player's torso.
       let cameraX = playerChar.torso.position.x - viewWidth / 2;
       let cameraY = playerChar.torso.position.y - viewHeight / 2;
-      // Clamp the camera so it does not show outside the level.
+      // Clamp the camera so it doesn't show outside the level.
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - viewWidth));
       cameraY = Math.max(0, Math.min(cameraY, gameHeight - viewHeight));
       game.style.transformOrigin = "top left";
@@ -617,15 +620,10 @@
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x * 0.98, y: playerChar.torso.velocity.y });
       }
-      // Jump uses joystick aim if available.
+      // Jump – always vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
-        const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
-        if (aimMag > 0.1) {
-          Body.setVelocity(playerChar.torso, { x: joystickAim.x * jumpStrength, y: joystickAim.y * jumpStrength });
-        } else {
-          Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
-        }
+        Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
       }
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
@@ -672,7 +670,7 @@
       }
       updateHpBar(playerChar);
 
-      // Update camera to follow the player.
+      // Update camera.
       updateCamera();
 
       requestAnimationFrame(update);
