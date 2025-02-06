@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Breaking TVs & Exploding Coins</title>
+  <title>Platformer with Dynamic Camera</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -142,12 +142,11 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    // Set world gravity to 5
     engine.world.gravity.y = 3.3;
     const world = engine.world;
     const game = document.getElementById("game");
 
-    // Map dimensions: width from before and height equal to screen height
+    // Map dimensions
     const levelWidth = 3000;
     const gameHeight = document.getElementById("screen").getBoundingClientRect().height;
     game.style.width = levelWidth + "px";
@@ -165,7 +164,7 @@
       domEntities.push(body);
     }
 
-    // World boundaries (ground at bottom of the screen)
+    // World boundaries
     const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
@@ -178,7 +177,6 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      // Torso options adjusted slightly
       const torsoOptions = { friction: 1.0, frictionAir: .05, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
@@ -189,25 +187,25 @@
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
       createDomElement(torso, "player-part", size * 2, size * 2);
 
-      // Right Arm: Upper arm and hand
+      // Right Arm
       const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
       const rightHand = Bodies.circle(x + 30, y - 20 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(rightHand, "player-part", size, size);
 
-      // Left Arm: Upper arm and hand
+      // Left Arm
       const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
       createDomElement(leftUpperArm, "player-part", size, size);
       const leftHand = Bodies.circle(x - 30, y - 20 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(leftHand, "player-part", size, size);
 
-      // Right Leg: Upper leg and foot
+      // Right Leg
       const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
       const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
       createDomElement(rightFoot, "player-part", size, size);
 
-      // Left Leg: Upper leg and foot
+      // Left Leg
       const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
       const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, { friction: 0.5, frictionAir: 0.01, restitution: 0 });
@@ -226,7 +224,6 @@
         });
         World.add(world, con);
       }
-      // Link body parts
       link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
       link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
       link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
@@ -286,14 +283,12 @@
       tv.domElement = el;
       tvs.push(tv);
     }
-    // Create a few TVs
     for (let i = 0; i < 5; i++) {
       const x = 150 + Math.random() * 500;
       const y = 50 + Math.random() * 400;
       createTV(x, y);
     }
 
-    // Break TV on Bullet Collision and Spawn Coins
     function breakTV(tv) {
       World.remove(world, tv);
       if (tv.domElement && tv.domElement.parentNode) {
@@ -337,7 +332,7 @@
       if (keys["ArrowLeft"])  dx = -1;
       if (keys["ArrowRight"]) dx =  1;
       if (dx === 0 && dy === 0) dx = player.facingDirection;
-      const mag = Math.sqrt(dx * dx + dy * dy);
+      const mag = Math.hypot(dx, dy);
       dx /= mag; dy /= mag;
       let origin;
       if (player.facingDirection > 0) {
@@ -394,10 +389,33 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Camera Update ---
+    // --- Dynamic Camera Update ---
     function updateCamera() {
-      const offset = Math.max(0, Math.min(player.torso.position.x - (window.innerWidth / 2), levelWidth - window.innerWidth));
-      game.style.transform = "translateX(-" + offset + "px)";
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      // Calculate the player's speed using torso velocity
+      const vx = player.torso.velocity.x;
+      const vy = player.torso.velocity.y;
+      const speed = Math.hypot(vx, vy);
+
+      // Define minimum (zoom in) and maximum (zoom out) zoom levels
+      const zoomIn = 1.2;
+      const zoomOut = 0.8;
+      const maxSpeed = 20; // Adjust based on game feel
+      const t = Math.min(speed / maxSpeed, 1);
+      const zoom = zoomIn * (1 - t) + zoomOut * t;
+
+      // Center camera on the player while clamping to level boundaries
+      const visibleWidth = screenWidth / zoom;
+      const visibleHeight = screenHeight / zoom;
+      let cameraCenterX = player.torso.position.x;
+      let cameraCenterY = player.torso.position.y;
+      const offsetX = Math.max(0, Math.min(cameraCenterX - visibleWidth / 2, levelWidth - visibleWidth));
+      const offsetY = Math.max(0, cameraCenterY - visibleHeight / 2);
+
+      game.style.transformOrigin = "top left";
+      game.style.transform = `scale(${zoom}) translate(-${offsetX}px, -${offsetY}px)`;
     }
 
     // --- Walk Cycle for Leg Animation ---
@@ -468,7 +486,6 @@
         }
       }
 
-      // --- Improved Upright Correction & Angular Damping ---
       const correctionFactor = 1.8;
       const angularCorrection = -player.torso.angle * correctionFactor;
       const damping = 0.9;
