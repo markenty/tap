@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Static Camera Entire Map</title>
+  <title>Static Camera Entire Map with Melee Attack</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,7 +21,7 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* Screen – this will contain the game world (which is scaled) */
+    /* Screen – contains the game world */
     #screen {
       position: absolute;
       top: 0;
@@ -31,26 +31,26 @@
       background: #000;
       overflow: hidden;
     }
-    /* Game World Container – all game objects are placed here */
+    /* Game World Container – this will be statically scaled to show the entire map */
     #game {
       position: absolute;
       top: 0;
       left: 0;
-      /* The static transform will be applied via JavaScript */
+      /* The static transform is applied via JavaScript below */
     }
-    /* Ground (for example) */
+    /* Ground styling (example) */
     #ground {
       position: absolute;
       left: 0;
       background: #855;
     }
-    /* Controls – these remain unaffected by the world transform */
+    /* Controls – placed above the game so they remain unscaled */
     #controls {
       position: absolute;
       bottom: 5%;
       width: 100vw;
       height: 40vh;
-      z-index: 10; /* Ensure controls remain on top */
+      z-index: 10;
     }
     /* D-Pad */
     #dpad {
@@ -74,7 +74,7 @@
     #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
     #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
-    /* A/B Buttons */
+    /* A/B Buttons + New "C" Button */
     #ab-buttons {
       position: absolute;
       right: 5%;
@@ -92,8 +92,17 @@
       font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
+    /* Keep existing A and B */
     #ab-buttons .A { width: 70px; height: 70px; top: 0; right: 0; }
     #ab-buttons .B { width: 70px; height: 70px; bottom: 0; left: 0; }
+    /* New C button for melee attack – position it between A and B */
+    #ab-buttons .C {
+      width: 70px;
+      height: 70px;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+    }
     /* In-Game Entity Styling */
     .entity {
       position: absolute;
@@ -102,18 +111,7 @@
       pointer-events: none;
       transition: transform 0.5s ease, opacity 0.5s ease;
     }
-    /* Example styles for character parts */
-    .player-part {
-      background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 0 8px rgba(0,255,0,0.7);
-    }
-    .enemy-part {
-      background: radial-gradient(circle, rgba(255,0,0,0.7) 0%, rgba(255,0,0,0.3) 60%, rgba(255,0,0,0) 100%);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 0 8px rgba(255,0,0,0.7);
-    }
-    .bullet { background: #fff; }
+    /* HP Bar Styling */
     .hp-bar-container {
       position: absolute;
       width: 50px;
@@ -128,6 +126,41 @@
       height: 100%;
       background: lime;
       border-radius: 3px;
+    }
+    /* Bubble styles */
+    .player-part {
+      background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 0 8px rgba(0,255,0,0.7);
+    }
+    .enemy-part {
+      background: radial-gradient(circle, rgba(255,0,0,0.7) 0%, rgba(255,0,0,0.3) 60%, rgba(255,0,0,0) 100%);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 0 8px rgba(255,0,0,0.7);
+    }
+    /* Bubble burst effect */
+    .bubble-burst {
+      transform: translate(-50%, -50%) scale(2);
+      opacity: 0;
+    }
+    .bullet { background: #fff; }
+    .coin {
+      background: gold;
+      color: black;
+      font-size: 14px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 0;
+    }
+    .tv {
+      position: absolute;
+      background: #444;
+      border: 2px solid #999;
+      border-radius: 4px;
+    }
+    .platform {
+      position: absolute;
+      background: #555;
     }
   </style>
 </head>
@@ -146,6 +179,7 @@
       <div id="ab-buttons">
         <button class="A"></button>
         <button class="B"></button>
+        <button class="C"></button>
       </div>
     </div>
   </div>
@@ -161,7 +195,7 @@
     const game = document.getElementById("game");
 
     // Define level dimensions.
-    const levelWidth =  460;
+    const levelWidth = 460;
     const playAreaHeight = 600;         // Example play area height.
     const groundExtraHeight = 200;
     const gameHeight = playAreaHeight + groundExtraHeight;
@@ -178,7 +212,7 @@
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
-    // Helper: create DOM element for Matter body.
+    // Helper: create a DOM element for a Matter body.
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
       el.className = "entity " + cls;
@@ -189,7 +223,7 @@
       domEntities.push(body);
     }
 
-    // Add static boundaries.
+    // Static boundaries.
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
@@ -275,7 +309,7 @@
       return char;
     }
 
-    // Global characters.
+    // Global single instances.
     let playerChar = createCharacter(100, 100, false);
     let enemyChar = createCharacter(400, 100, true);
 
@@ -318,11 +352,37 @@
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, enemyChar);
     }
 
+    // --- Melee Attack (Physical Punch) ---
+    // When the new "C" button is pressed, the player's right hand is given a high velocity
+    // toward the enemy's torso to simulate a punch.
+    // If the enemy is close enough after a short delay, melee damage is applied.
+    function meleeAttack() {
+      // Use player's right hand for punching.
+      const hand = playerChar.rightHand;
+      const enemyPos = enemyChar.torso.position;
+      const handPos = hand.position;
+      let dx = enemyPos.x - handPos.x;
+      let dy = enemyPos.y - handPos.y;
+      let mag = Math.hypot(dx, dy);
+      if (mag === 0) return;
+      dx /= mag; dy /= mag;
+      // Apply a high velocity to simulate the punch.
+      Body.setVelocity(hand, { x: dx * 20, y: dy * 20 });
+      // After 100ms, if the enemy is within 50 world units of the hand, apply melee damage.
+      setTimeout(() => {
+        const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
+                                        enemyChar.torso.position.y - hand.position.y);
+        if (currentDist < 50) {
+          takeDamage(enemyChar, 30, null);  // Apply 30 melee damage.
+        }
+      }, 100);
+    }
+
     // --- Damage, Knockback & Bubble Busting ---
     function takeDamage(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
-      // Knockback.
+      // Knockback effect.
       const knockbackFactor = 0.001;
       if (bullet && bullet.velocity) {
         Body.applyForce(character.torso, character.torso.position, {
@@ -441,21 +501,16 @@
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
     // --- Static Camera Setup ---
-    // This function computes a scale factor and offset so that the entire game map is visible.
+    // Compute a constant scale factor and offset so that the entire map is visible.
     function setupStaticCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      // Compute scale factor.
       const scale = Math.min(screenWidth / levelWidth, screenHeight / gameHeight);
-      // Compute offset to center the level.
-      // (We want the game world to be centered inside the viewport.)
       const offsetX = (levelWidth * scale - screenWidth) / (2 * scale);
       const offsetY = (gameHeight * scale - screenHeight) / (2 * scale);
       game.style.transformOrigin = "top left";
       game.style.transform = `scale(${scale}) translate(-${offsetX}px, -${offsetY}px)`;
     }
-    
-    // Call static camera setup on load and on resize.
     setupStaticCamera();
     window.addEventListener("resize", setupStaticCamera);
 
@@ -488,9 +543,7 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
 
-      // With static camera, we no longer update transform in each frame.
-      // Instead, the level remains scaled and centered as computed in setupStaticCamera().
-
+      // Since the camera is static (entire map visible), we do not update transform dynamically.
       // Clamp characters within level boundaries.
       function clampWithinBounds(character) {
         const margin = 50;
@@ -508,6 +561,8 @@
       clampWithinBounds(enemyChar);
 
       // Leg Animation.
+      // (For static camera, we still update animations.)
+      // Simple leg animation for the player.
       let walkCycle = 0, lastTime = Date.now();
       function updateWalkCycle() {
         const now = Date.now();
@@ -544,7 +599,6 @@
       }
       updateEnemyAI();
 
-      // Respawn player if falling off.
       if (playerChar.alive && playerChar.torso.position.y > safetyFloorY + 100) {
         playerChar.alive = false;
         setTimeout(() => {
@@ -565,6 +619,30 @@
     }
     update();
 
+    // --- Melee Attack: Triggered by Button "C" ---
+    // When pressed, the player's right hand is punched toward the enemy.
+    function meleeAttack() {
+      // Use player's right hand.
+      const hand = playerChar.rightHand;
+      const enemyPos = enemyChar.torso.position;
+      const handPos = hand.position;
+      let dx = enemyPos.x - handPos.x;
+      let dy = enemyPos.y - handPos.y;
+      let mag = Math.hypot(dx, dy);
+      if (mag === 0) return;
+      dx /= mag; dy /= mag;
+      // Apply a high velocity impulse to simulate a punch.
+      Body.setVelocity(hand, { x: dx * 20, y: dy * 20 });
+      // After 100ms, if the enemy is close enough to the hand, apply melee damage.
+      setTimeout(() => {
+        const dist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
+                                enemyChar.torso.position.y - hand.position.y);
+        if (dist < 50) {
+          takeDamage(enemyChar, 30, null); // 30 melee damage.
+        }
+      }, 100);
+    }
+
     // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
@@ -579,6 +657,9 @@
     abButtons.querySelector(".A").addEventListener("touchstart", (e) => { e.preventDefault(); playerShoot(); });
     abButtons.querySelector(".B").addEventListener("touchstart", (e) => { e.preventDefault(); keys["Space"] = true; });
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
+    // New button for melee attack.
+    abButtons.querySelector(".C").addEventListener("touchstart", (e) => { e.preventDefault(); meleeAttack(); });
+    abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
   </script>
 </body>
 </html>
