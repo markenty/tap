@@ -180,7 +180,7 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      const torsoOptions = { friction: 0.0, frictionAir: 0.05, restitution: 0 };
+      const torsoOptions = { friction: 0.4, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
@@ -351,7 +351,7 @@
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       const angle = Math.atan2(ty - y, tx - x);
-      const speed = 15;
+      const speed = 35;
       Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
       World.add(world, bullet);
       createDomElement(bullet, "bullet", 10, 10);
