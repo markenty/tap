@@ -94,7 +94,7 @@
       justify-content: space-around;
       align-items: flex-end;
     }
-    /* Staggered button positions */
+    /* Staggered positions for buttons */
     #ab-buttons button:nth-child(1) { transform: translateY(-30px); }
     #ab-buttons button:nth-child(2) { transform: translateY(-10px); }
     #ab-buttons button:nth-child(3) { transform: translateY(-20px); }
@@ -259,7 +259,8 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Level width fixed at 3000px; full game height is window.innerHeight (with 100px reserved at bottom for ground).
+    // Level width fixed at 3000px; full game height equals window.innerHeight,
+    // with 100px reserved at the bottom for ground.
     const levelWidth = 3000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -437,15 +438,12 @@
     // Destructible Object Damage Handling
     // ------------------------------
     function damageDestructible(obj, damage) {
-      if (typeof obj.hp !== "number") return; // not destructible
+      if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
-      // Damage feedback.
       particleBurst(obj.position.x, obj.position.y, "orange");
       if (obj.hp <= 0) {
-        // Final burst.
         particleBurst(obj.position.x, obj.position.y, "red");
         if (obj.label === "wall") {
-          // Break wall into chunks.
           breakWall(obj);
         } else {
           World.remove(world, obj);
@@ -464,16 +462,14 @@
       }
     }
 
-    // Break wall into smaller dynamic chunks.
+    // Break wall into smaller dynamic chunks that fly apart.
     function breakWall(wall) {
-      // Remove the original wall.
       World.remove(world, wall);
       if (wall.domElement && wall.domElement.parentNode) {
         wall.domElement.parentNode.removeChild(wall.domElement);
       }
       let idx = walls.indexOf(wall);
       if (idx !== -1) walls.splice(idx, 1);
-      // Divide the wall into 4 chunks.
       const chunks = [];
       const cols = 2, rows = 2;
       const chunkWidth = wall.width / cols;
@@ -483,11 +479,9 @@
           const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
           const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
           let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
-          // Give each chunk a random impulse.
           Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
           chunks.push(chunk);
           World.add(world, chunk);
-          // Create a DOM element for the chunk.
           const chunkEl = document.createElement("div");
           chunkEl.className = "platform";
           chunkEl.style.width = chunkWidth + "px";
@@ -501,9 +495,8 @@
       }
     }
 
-    // Spawn coins as dynamic bodies that fall and are collectible.
+    // Spawn coins as dynamic bodies with gravity (collectible).
     function spawnCoins(x, y) {
-      // Spawn three coins.
       for (let i = 0; i < 3; i++) {
         let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
         coin.value = 1;
@@ -522,7 +515,6 @@
         game.appendChild(coinEl);
         coin.domElement = coinEl;
         coins.push(coin);
-        // Give coin a random scatter velocity.
         let angle = Math.random() * 2 * Math.PI;
         let speed = Math.random() * 5 + 2;
         Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
@@ -530,24 +522,36 @@
     }
 
     // ------------------------------
-    // Melee Attack (Damages Environment, Not Player)
+    // Melee Attack (Arms Move and Damage Environment)
     // ------------------------------
     function meleeAttack() {
       // Use the player's right hand as the attack origin.
-      let attackPos = playerChar.rightHand.position;
-      const meleeRange = 60;  // in pixels.
-      const damageAmount = 30;
-      [platforms, tvs, walls].forEach(arr => {
-        arr.forEach(obj => {
-          let dx = attackPos.x - obj.position.x;
-          let dy = attackPos.y - obj.position.y;
-          let dist = Math.hypot(dx, dy);
-          if (dist <= meleeRange) {
-            damageDestructible(obj, damageAmount);
-          }
+      let hand = playerChar.rightHand;
+      let torsoPos = playerChar.torso.position;
+      let handPos = hand.position;
+      let dx = torsoPos.x - handPos.x;
+      let dy = torsoPos.y - handPos.y;
+      let mag = Math.hypot(dx, dy);
+      if (mag === 0) return;
+      dx /= mag; dy /= mag;
+      // Impulse the hand outward to simulate a strike.
+      Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
+      // After 100ms, check for nearby environment objects.
+      setTimeout(() => {
+        let attackPos = hand.position;
+        const meleeRange = 60;
+        const damageAmount = 30;
+        [platforms, tvs, walls].forEach(arr => {
+          arr.forEach(obj => {
+            let dx2 = attackPos.x - obj.position.x;
+            let dy2 = attackPos.y - obj.position.y;
+            let dist = Math.hypot(dx2, dy2);
+            if (dist <= meleeRange) {
+              damageDestructible(obj, damageAmount);
+            }
+          });
         });
-      });
-      // (You can add a visual melee swing effect here if desired.)
+      }, 100);
     }
 
     // ------------------------------
@@ -578,7 +582,6 @@
         const mag = Math.hypot(dx, dy);
         dx /= mag; dy /= mag;
       }
-      // Use player's right hand as shooting origin.
       Body.setPosition(playerChar.rightHand, { 
         x: playerChar.rightUpperArm.position.x + 20, 
         y: playerChar.rightUpperArm.position.y 
@@ -593,7 +596,6 @@
     let coinCount = 0;
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
-        // Check if a coin collides with any player part.
         if ((pair.bodyA.label === "coin" && pair.bodyB.character) ||
             (pair.bodyB.label === "coin" && pair.bodyA.character)) {
           let coinBody = pair.bodyA.label === "coin" ? pair.bodyA : pair.bodyB;
@@ -601,7 +603,6 @@
           if (coinBody.domElement && coinBody.domElement.parentNode) {
             coinBody.domElement.parentNode.removeChild(coinBody.domElement);
           }
-          // Remove from coins array.
           let idx = coins.indexOf(coinBody);
           if (idx !== -1) coins.splice(idx, 1);
           coinCount++;
@@ -620,7 +621,6 @@
             World.remove(world, pair.bodyA);
             if (pair.bodyA.domElement && pair.bodyA.domElement.parentNode)
               pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
-            // (Optional: Damage character if desired.)
           }
         } else if (pair.bodyB.label === "bullet" && pair.bodyA.character) {
           if (pair.bodyA.character !== pair.bodyB.owner) {
@@ -658,7 +658,6 @@
           const vx = playerChar.torso.velocity.x, vy = playerChar.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
           if (playerSpeed >= destructionSpeedThreshold) {
-            // Instead of immediately removing, apply damage.
             damageDestructible(other, 10);
           }
         }
@@ -718,11 +717,11 @@
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x * 0.98, y: playerChar.torso.velocity.y });
       }
-      // Also allow joystick horizontal movement.
+      // Also allow horizontal movement from joystick.
       if (Math.abs(joystickAim.x) > 0.1) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: joystickAim.x * 0.005, y: 0 });
       }
-      // Jump: if jump key is pressed, use joystick aim if present; otherwise, vertical.
+      // Jump: if jump key pressed, use joystick aim if present; otherwise vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
@@ -736,7 +735,7 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level boundaries.
+      // Clamp player within level bounds.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
