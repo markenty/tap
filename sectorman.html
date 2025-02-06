@@ -74,29 +74,26 @@
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
     /* A/B/C Buttons – now arranged in a single horizontal row */
     #ab-buttons {
-  position: absolute;
-  right: 0%;
-  bottom: 5%;
-  width: 250px;
-  height: 80px;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-  align-items: flex-end; /* align at the bottom for consistent baseline */
-}
-
-/* Offset each button upward so that each button to the right is higher */
-#ab-buttons button:nth-child(1) {
-  transform: translateY(-30px);
-}
-
-#ab-buttons button:nth-child(2) {
-  transform: translateY(-10px);
-}
-
-#ab-buttons button:nth-child(3) {
-  transform: translateY(-20px);
-}
+      position: absolute;
+      right: 0%;
+      bottom: 5%;
+      width: 250px;
+      height: 80px;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: flex-end; /* align at the bottom for consistent baseline */
+    }
+    /* Offset each button upward so that each button to the right is higher */
+    #ab-buttons button:nth-child(1) {
+      transform: translateY(-30px);
+    }
+    #ab-buttons button:nth-child(2) {
+      transform: translateY(-10px);
+    }
+    #ab-buttons button:nth-child(3) {
+      transform: translateY(-20px);
+    }
     #ab-buttons button {
       width: 70px;
       height: 70px;
@@ -585,20 +582,66 @@
       }
       updateWalkCycle();
 
-      // Enemy AI.
+      // Enhanced Enemy AI.
       function updateEnemyAI() {
         if (!enemyChar || !enemyChar.alive) return;
+        
+        // Pursuit: move toward the player.
         const dx = playerChar.torso.position.x - enemyChar.torso.position.x;
         const dy = playerChar.torso.position.y - enemyChar.torso.position.y;
         const mag = Math.hypot(dx, dy);
         if (mag > 0) {
-          Body.applyForce(enemyChar.torso, enemyChar.torso.position, { x: (dx/mag)*0.005, y: (dy/mag)*0.005 });
+          Body.applyForce(
+            enemyChar.torso,
+            enemyChar.torso.position,
+            { x: (dx / mag) * 0.005, y: (dy / mag) * 0.005 }
+          );
         }
-        enemyChar.shootCooldown -= 1000/60;
+        
+        // Dodging & Jumping Logic:
+        bullets.forEach(bullet => {
+          const distance = Math.hypot(
+            bullet.position.x - enemyChar.torso.position.x,
+            bullet.position.y - enemyChar.torso.position.y
+          );
+          if (distance < 100) {  // Reaction threshold.
+            // Dodge horizontally away from the bullet.
+            let dodgeDirection = enemyChar.torso.position.x - bullet.position.x;
+            dodgeDirection = dodgeDirection >= 0 ? 1 : -1;
+            Body.applyForce(
+              enemyChar.torso,
+              enemyChar.torso.position,
+              { x: dodgeDirection * 0.02, y: 0 }
+            );
+            
+            // Jump if the bullet is coming from above and enemy is nearly grounded.
+            if (bullet.position.y < enemyChar.torso.position.y &&
+                Math.abs(enemyChar.torso.velocity.y) < 1) {
+              Body.setVelocity(
+                enemyChar.torso,
+                { x: enemyChar.torso.velocity.x, y: -22 }
+              );
+            }
+          }
+        });
+        
+        // Random horizontal movement for unpredictability.
+        if (Math.random() < 0.01) { // Adjust probability as desired.
+          const randomForce = (Math.random() - 0.5) * 0.02;
+          Body.applyForce(
+            enemyChar.torso,
+            enemyChar.torso.position,
+            { x: randomForce, y: 0 }
+          );
+        }
+        
+        // Shooting behavior.
+        enemyChar.shootCooldown -= 1000 / 60;
         if (enemyChar.shootCooldown <= 0) {
           enemyShoot();
           enemyChar.shootCooldown = 1000;
         }
+        
         clampWithinBounds(enemyChar);
       }
       updateEnemyAI();
