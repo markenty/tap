@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible World with AI, HP Bars & Bubble Busting (Dual-Camera)</title>
+  <title>Destructible World with AI, HP Bars & Bubble Busting (Dual-Character Camera)</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -205,7 +205,6 @@
     World.add(world, safetyFloor);
 
     // --- Character Factory ---
-    // Creates a character (player or enemy) with bubble-style parts and an HP bar.
     function createCharacter(x, y, isEnemy) {
       const char = { hp: 100, alive: true, isEnemy: isEnemy, spawn: { x, y }, shootCooldown: 0 };
       const size = 20;
@@ -229,7 +228,6 @@
         return body;
       }
 
-      // Build parts.
       const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       addPart(head, partClass, size, size);
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
@@ -253,7 +251,6 @@
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
-      // Create constraints between parts.
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a, pointA: offA, bodyB: b, pointB: offB,
@@ -326,7 +323,7 @@
     function takeDamage(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
-      // Apply knockback.
+      // Apply knockback (force opposite bullet direction).
       const knockbackFactor = 0.001;
       if (bullet && bullet.velocity) {
         Body.applyForce(character.torso, character.torso.position, {
@@ -339,14 +336,14 @@
         const percent = Math.max(character.hp, 0) / 100;
         character.hpBar.style.width = (percent * 100) + "%";
       }
-      // If HP depleted, trigger bubble burst.
+      // If HP is zero or less, trigger bubble burst.
       if (character.hp <= 0) {
         character.alive = false;
         [character.head, character.torso, character.rightUpperArm, character.rightHand,
          character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
          character.leftUpperLeg, character.leftFoot].forEach(part => {
           if (part) {
-            // Random scattering force.
+            // Apply a random scattering force.
             Body.applyForce(part, part.position, {
               x: (Math.random() - 0.5) * 0.02,
               y: (Math.random() - 0.5) * 0.02
@@ -356,7 +353,7 @@
             }
           }
         });
-        // Remove parts and HP bar, then respawn.
+        // Remove parts and HP bar after 500ms then respawn.
         setTimeout(() => {
           [character.head, character.torso, character.rightUpperArm, character.rightHand,
            character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
@@ -447,39 +444,38 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Smoothed Dynamic Camera that Keeps Both Characters in Frame ---
+    // --- Dual-Character Camera Update ---
     let currentOffsetX = 0, currentOffsetY = 0, currentZoom = 1;
     function lerp(a, b, t) { return a + (b - a) * t; }
     function updateCamera() {
-      // Compute the bounding box that contains both characters' torso positions.
+      // Safe margin/padding for both characters.
+      const margin = 200;
+      // Get torso positions.
       const p1 = playerChar.torso.position;
       const p2 = enemyChar.torso.position;
-      const minX = Math.min(p1.x, p2.x);
-      const maxX = Math.max(p1.x, p2.x);
-      const minY = Math.min(p1.y, p2.y);
-      const maxY = Math.max(p1.y, p2.y);
-      // Add a margin.
-      const margin = 200;
-      const requiredWidth = (maxX - minX) + margin;
-      const requiredHeight = (maxY - minY) + margin;
-      // Calculate center of bounding box.
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-      // Get screen dimensions.
+      // Compute bounding box with safe margin.
+      const minX = Math.min(p1.x, p2.x) - margin;
+      const maxX = Math.max(p1.x, p2.x) + margin;
+      const minY = Math.min(p1.y, p2.y) - margin;
+      const maxY = Math.max(p1.y, p2.y) + margin;
+      const requiredWidth = maxX - minX;
+      const requiredHeight = maxY - minY;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      // Compute desired zoom factors from width and height.
-      const zoomFromWidth = screenWidth / requiredWidth;
-      const zoomFromHeight = screenHeight / requiredHeight;
-      let desiredZoom = Math.min(zoomFromWidth, zoomFromHeight);
-      // Clamp zoom.
+      // Determine desired zoom so that both dimensions fit.
+      let desiredZoom = Math.min(screenWidth / requiredWidth, screenHeight / requiredHeight);
+      // Clamp zoom to reasonable bounds.
       desiredZoom = Math.min(Math.max(desiredZoom, 0.5), 2);
-      // Smoothly interpolate current zoom.
+      // Center of bounding box.
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      // Compute target offset so that the game world is positioned
+      // so the bounding box center is at the center of the screen.
+      const targetOffsetX = centerX - (screenWidth / (2 * desiredZoom));
+      const targetOffsetY = centerY - (screenHeight / (2 * desiredZoom));
+      // Smoothly interpolate zoom and offset.
       const smoothingFactor = 0.1;
       currentZoom = lerp(currentZoom, desiredZoom, smoothingFactor);
-      // Compute target offset so that the center of the bounding box is centered.
-      const targetOffsetX = centerX - (screenWidth / (2 * currentZoom));
-      const targetOffsetY = centerY - (screenHeight / (2 * currentZoom));
       currentOffsetX = lerp(currentOffsetX, targetOffsetX, smoothingFactor);
       currentOffsetY = lerp(currentOffsetY, targetOffsetY, smoothingFactor);
       game.style.transformOrigin = "top left";
@@ -574,6 +570,7 @@
       updateWalkCycle();
       updateEnemyAI();
 
+      // Fallback: if player falls too far while alive, mark dead and respawn.
       if (playerChar.alive && playerChar.torso.position.y > safetyFloorY + 100) {
         playerChar.alive = false;
         setTimeout(() => {
