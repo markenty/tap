@@ -469,7 +469,7 @@
       }
 
       // --- Improved Upright Correction & Angular Damping ---
-      const correctionFactor = 0.3;
+      const correctionFactor = 0.8;
       const angularCorrection = -player.torso.angle * correctionFactor;
       const damping = 0.9;
       Body.setAngularVelocity(player.torso, (player.torso.angularVelocity + angularCorrection) * damping);
