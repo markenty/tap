@@ -143,7 +143,7 @@
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     // Set world gravity to 5
-    engine.world.gravity.y = 3.7;
+    engine.world.gravity.y = 5;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -180,10 +180,10 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      const torsoOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
+      // Adjusted torso options to reduce "floating"
+      const torsoOptions = { friction: 0.1, frictionAir: 0.005, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
-const damping = 0.98; // Adjust damping coefficient as needed
-Body.setAngularVelocity(player.torso, player.torso.angularVelocity * damping);
+
       // Head
       const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
       createDomElement(head, "player-part", size, size);
@@ -468,10 +468,12 @@ Body.setAngularVelocity(player.torso, player.torso.angularVelocity * damping);
         }
       }
 
-      // --- Improved Upright Correction ---
-      const correctionFactor = 0.5; // Adjust for a stronger correction
-      const correction = -player.torso.angle * correctionFactor;
-      Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
+      // --- Improved Upright Correction & Angular Damping ---
+      const correctionFactor = 0.3; // Lower factor to reduce overcorrection
+      const angularCorrection = -player.torso.angle * correctionFactor;
+      // Apply correction and then damp the angular velocity
+      const damping = 0.9;
+      Body.setAngularVelocity(player.torso, (player.torso.angularVelocity + angularCorrection) * damping);
 
       if (player.wallSide !== 0 && player.torso.velocity.y > 3) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 3 });
