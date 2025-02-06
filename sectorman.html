@@ -147,11 +147,11 @@
     const world = engine.world;
     const game = document.getElementById("game");
 
-    // Level dimensions
+    // Map dimensions: width from before and height equal to screen height
     const levelWidth = 3000;
-    const levelHeight = 3000; // Ensure the map is 3000 pixels tall
+    const gameHeight = document.getElementById("screen").getBoundingClientRect().height;
     game.style.width = levelWidth + "px";
-    game.style.height = levelHeight + "px";
+    game.style.height = gameHeight + "px";
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
@@ -165,10 +165,10 @@
       domEntities.push(body);
     }
 
-    // World boundaries (ground placed at the bottom of the level)
-    const ground = Bodies.rectangle(levelWidth / 2, levelHeight, levelWidth, 40, { isStatic: true });
-    const leftWall = Bodies.rectangle(0, levelHeight / 2, 40, levelHeight, { isStatic: true });
-    const rightWall = Bodies.rectangle(levelWidth, levelHeight / 2, 40, levelHeight, { isStatic: true });
+    // World boundaries (ground at bottom of the screen)
+    const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
+    const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
+    const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
     // --- Player Setup with Extra Limb Segments ---
@@ -178,7 +178,7 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      // Adjusted torso options to reduce "floating"
+      // Torso options adjusted slightly
       const torsoOptions = { friction: 0.1, frictionAir: 0.005, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
@@ -301,7 +301,6 @@
       }
       const index = tvs.indexOf(tv);
       if (index !== -1) { tvs.splice(index, 1); }
-      // Spawn coins at TV location.
       const coinCount = 5;
       for (let i = 0; i < coinCount; i++) {
         const coin = Bodies.circle(tv.position.x, tv.position.y, 10, {
@@ -397,7 +396,7 @@
 
     // --- Camera Update ---
     function updateCamera() {
-      const offset = Math.max(0, Math.min(player.torso.position.x - (screen.width / 2), levelWidth - screen.width));
+      const offset = Math.max(0, Math.min(player.torso.position.x - (window.innerWidth / 2), levelWidth - window.innerWidth));
       game.style.transform = "translateX(-" + offset + "px)";
     }
 
@@ -470,7 +469,7 @@
       }
 
       // --- Improved Upright Correction & Angular Damping ---
-      const correctionFactor = 0.3; // Lower factor to reduce overcorrection
+      const correctionFactor = 0.3;
       const angularCorrection = -player.torso.angle * correctionFactor;
       const damping = 0.9;
       Body.setAngularVelocity(player.torso, (player.torso.angularVelocity + angularCorrection) * damping);
@@ -484,15 +483,6 @@
 
       updateCamera();
       updateWalkCycle();
-
-      // --- Neutral Buoyancy Force on Player Head ---
-      // The desired torso height is set relative to the level height.
-      // Here, levelHeight - 100 represents roughly two torso diameters above the ground.
-      const desiredTorsoY = levelHeight - 100;
-      const springConstant = 0.0001; // Adjust to fine-tune buoyancy
-      const diff = desiredTorsoY - player.torso.position.y;
-      Body.applyForce(player.head, player.head.position, { x: 0, y: springConstant * diff });
-
       requestAnimationFrame(update);
     }
     update();
