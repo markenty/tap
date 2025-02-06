@@ -58,6 +58,7 @@
       width: 150px;
       height: 150px;
     }
+    /* Directional buttons */
     #dpad button {
       position: absolute;
       background: #333;
@@ -72,7 +73,20 @@
     #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
     #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
-    /* A/B/C Buttons – now arranged in a single horizontal row */
+    /* Onscreen Joystick Disc – same size as button, centered in dpad */
+    #dpad #joystick {
+      position: absolute;
+      top: 45px;
+      left: 45px;
+      width: 60px;
+      height: 60px;
+      background: #333;
+      border: 3px solid #777;
+      border-radius: 50%;
+      z-index: 3;
+      touch-action: none;
+    }
+    /* A/B/C Buttons – arranged in a single horizontal row */
     #ab-buttons {
       position: absolute;
       right: 0%;
@@ -172,10 +186,13 @@
     </div>
     <div id="controls">
       <div id="dpad">
+        <!-- Directional buttons -->
         <button class="up"></button>
         <button class="down"></button>
         <button class="left"></button>
         <button class="right"></button>
+        <!-- New snapping joystick disc at the exact center -->
+        <div id="joystick"></div>
       </div>
       <div id="ab-buttons">
         <button class="A"></button><br/>
@@ -188,7 +205,16 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // New helper functions for screen shake and particle burst effects.
+    // Global variable to throttle screen shakes.
+    let lastScreenShakeTime = 0;
+    // Throttled screen shake: only triggers if the cooldown has passed.
+    function throttledScreenShake(intensity = 5, duration = 300, cooldown = 500) {
+      const now = Date.now();
+      if (now - lastScreenShakeTime > cooldown) {
+        lastScreenShakeTime = now;
+        screenShake(intensity, duration);
+      }
+    }
     // Screen shake: shakes the #screen element for a given intensity and duration.
     function screenShake(intensity = 5, duration = 300) {
       const screen = document.getElementById("screen");
@@ -421,15 +447,14 @@
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
       dx /= mag; dy /= mag;
-      // Apply a high velocity impulse (increased to 30).
+      // Apply a high velocity impulse.
       Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
-      // After 100ms, if enemy is within 50 world units, apply melee damage.
+      // After 100ms, if enemy is within 50 world units, trigger a melee hit.
       setTimeout(() => {
         const currentDist = Math.hypot(enemyChar.torso.position.x - hand.position.x,
                                         enemyChar.torso.position.y - hand.position.y);
         if (currentDist < 50) {
-          // Trigger a single screen shake for a melee hit.
-          screenShake();
+          throttledScreenShake();
           takeDamage(enemyChar, 30, null);
         }
       }, 100);
@@ -500,9 +525,8 @@
           bulletCollisionDetected = true;
         }
       });
-      // Trigger a single screen shake if any bullet collision occurred.
       if (bulletCollisionDetected) {
-        screenShake();
+        throttledScreenShake();
       }
       event.pairs.forEach(pair => {
         if (pair.bodyA.label === "bullet" && pair.bodyB.character) {
@@ -526,7 +550,6 @@
     });
 
     // --- Destructible World Collisions ---
-    // Removed screen shake from world collisions to limit shakes to bullet and melee events.
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
       return body === playerChar.head || body === playerChar.torso ||
@@ -573,7 +596,6 @@
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
     // --- Static Camera Setup ---
-    // This function computes a constant scale factor and offset so that the entire map is visible.
     function setupStaticCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
@@ -672,8 +694,7 @@
             bullet.position.x - enemyChar.torso.position.x,
             bullet.position.y - enemyChar.torso.position.y
           );
-          if (distance < 100) {  // Reaction threshold.
-            // Dodge horizontally away from the bullet.
+          if (distance < 100) {
             let dodgeDirection = enemyChar.torso.position.x - bullet.position.x;
             dodgeDirection = dodgeDirection >= 0 ? 1 : -1;
             Body.applyForce(
@@ -681,8 +702,6 @@
               enemyChar.torso.position,
               { x: dodgeDirection * 0.02, y: 0 }
             );
-            
-            // Jump if the bullet is coming from above and enemy is nearly grounded.
             if (bullet.position.y < enemyChar.torso.position.y &&
                 Math.abs(enemyChar.torso.velocity.y) < 1) {
               Body.setVelocity(
@@ -693,7 +712,6 @@
           }
         });
         
-        // Random horizontal movement for unpredictability.
         if (Math.random() < 0.01) {
           const randomForce = (Math.random() - 0.5) * 0.02;
           Body.applyForce(
@@ -703,7 +721,6 @@
           );
         }
         
-        // Shooting behavior.
         enemyChar.shootCooldown -= 1000 / 60;
         if (enemyChar.shootCooldown <= 0) {
           enemyShoot();
@@ -733,6 +750,56 @@
       requestAnimationFrame(update);
     }
     update();
+
+    // --- Joystick Functionality ---
+    (function() {
+      const joystick = document.getElementById("joystick");
+      let startX, startY;
+      const maxDistance = 30; // maximum displacement in pixels
+      let dragging = false;
+
+      joystick.addEventListener("touchstart", function(e) {
+        dragging = true;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        e.preventDefault();
+      });
+
+      joystick.addEventListener("touchmove", function(e) {
+        if (!dragging) return;
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        const distance = Math.hypot(dx, dy);
+        let moveX = dx, moveY = dy;
+        if (distance > maxDistance) {
+          moveX = (dx / distance) * maxDistance;
+          moveY = (dy / distance) * maxDistance;
+        }
+        joystick.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        e.preventDefault();
+      });
+
+      function snapBack() {
+        joystick.style.transition = "transform 0.2s ease-out";
+        joystick.style.transform = "translate(0px, 0px)";
+        setTimeout(() => {
+          joystick.style.transition = "";
+        }, 200);
+      }
+
+      joystick.addEventListener("touchend", function(e) {
+        dragging = false;
+        snapBack();
+        e.preventDefault();
+      });
+      joystick.addEventListener("touchcancel", function(e) {
+        dragging = false;
+        snapBack();
+        e.preventDefault();
+      });
+    })();
 
     // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
