@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fully Destructible World with Player Bounding</title>
+  <title>Fully Destructible World with Smooth Camera</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -142,7 +142,6 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    // Increase frictionAir for the player's torso to add extra damping
     engine.world.gravity.y = 3.2;
     const world = engine.world;
     const game = document.getElementById("game");
@@ -171,6 +170,15 @@
     const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
+    // --- Permanent Safety Floor ---
+    // This static body will not be destructible and prevents the player from falling infinitely.
+    const safetyFloorY = gameHeight + 50;
+    const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, {
+      isStatic: true,
+      label: "safetyFloor"
+    });
+    World.add(world, safetyFloor);
+
     // --- Player Setup with Extra Limb Segments ---
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: true, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0.5;
@@ -178,7 +186,6 @@
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      // Increase torso frictionAir for extra damping
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
@@ -316,7 +323,7 @@
       }
     }
 
-    // Existing collision event for TVs & Bullets
+    // --- Collision for TVs & Bullets ---
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
         if ((pair.bodyA.label === "tv" && pair.bodyB.label === "bullet") ||
@@ -346,7 +353,8 @@
           playerPart = pair.bodyB;
           other = pair.bodyA;
         }
-        if (other) {
+        // Skip removal if colliding with the safety floor.
+        if (other && other.label !== "safetyFloor") {
           const vx = player.torso.velocity.x, vy = player.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
           if (playerSpeed >= destructionSpeedThreshold) {
@@ -428,7 +436,11 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Dynamic Camera Update ---
+    // --- Smoothed Dynamic Camera Update ---
+    let currentOffsetX = 0, currentOffsetY = 0, currentZoom = 1;
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
@@ -442,22 +454,26 @@
       const zoom = zoomIn * (1 - t) + zoomOut * t;
       const visibleWidth = screenWidth / zoom;
       const visibleHeight = screenHeight / zoom;
-      let cameraCenterX = player.torso.position.x;
-      let cameraCenterY = player.torso.position.y;
-      const offsetX = Math.max(0, Math.min(cameraCenterX - visibleWidth / 2, levelWidth - visibleWidth));
-      const offsetY = Math.max(0, cameraCenterY - visibleHeight / 2);
+      const cameraCenterX = player.torso.position.x;
+      const cameraCenterY = player.torso.position.y;
+      const targetOffsetX = Math.max(0, Math.min(cameraCenterX - visibleWidth / 2, levelWidth - visibleWidth));
+      const targetOffsetY = Math.max(0, cameraCenterY - visibleHeight / 2);
+
+      // Smooth transition using linear interpolation.
+      const smoothingFactor = 0.1;
+      currentZoom = lerp(currentZoom, zoom, smoothingFactor);
+      currentOffsetX = lerp(currentOffsetX, targetOffsetX, smoothingFactor);
+      currentOffsetY = lerp(currentOffsetY, targetOffsetY, smoothingFactor);
+
       game.style.transformOrigin = "top left";
-      game.style.transform = `scale(${zoom}) translate(-${offsetX}px, -${offsetY}px)`;
+      game.style.transform = `scale(${currentZoom}) translate(-${currentOffsetX}px, -${currentOffsetY}px)`;
     }
 
     // --- Player Bounding & Damping ---
     function clampPlayer() {
-      // Define margins for player bounding
       const margin = 50;
       const pos = player.torso.position;
       const vel = player.torso.velocity;
-      
-      // Clamp horizontal position and adjust velocity if needed.
       if (pos.x < margin) {
         Body.setPosition(player.torso, { x: margin, y: pos.y });
         if (vel.x < 0) Body.setVelocity(player.torso, { x: vel.x * 0.5, y: vel.y });
@@ -465,8 +481,6 @@
         Body.setPosition(player.torso, { x: levelWidth - margin, y: pos.y });
         if (vel.x > 0) Body.setVelocity(player.torso, { x: vel.x * 0.5, y: vel.y });
       }
-      
-      // Clamp vertical position at the top (player shouldn't fly off upward)
       if (pos.y < margin) {
         Body.setPosition(player.torso, { x: pos.x, y: margin });
         if (vel.y < 0) Body.setVelocity(player.torso, { x: vel.x, y: vel.y * 0.5 });
@@ -553,10 +567,21 @@
       Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
       Body.setVelocity(player.head, player.torso.velocity);
 
-      // Call our dynamic camera update and then clamp the player's position/velocity.
+      // Update the smoothed camera
       updateCamera();
       clampPlayer();
       updateWalkCycle();
+
+      // --- Fallback Reset ---
+      // Reset player if they fall below the safety floor.
+      if (player.torso.position.y > safetyFloorY + 100) {
+        const safeX = 100, safeY = 100;
+        Body.setPosition(player.torso, { x: safeX, y: safeY });
+        Body.setVelocity(player.torso, { x: 0, y: 0 });
+        Body.setPosition(player.head, { x: safeX, y: safeY - 40 });
+        player.jumpCount = 0;
+      }
+
       requestAnimationFrame(update);
     }
     update();
