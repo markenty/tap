@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Normal Gravity & Locked Body Parts - Fixed Floating</title>
+  <title>Platformer with Non‐Overlapping Limbs & Drooping Arms</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -143,8 +143,7 @@
   <script>
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
-    // Set gravity explicitly; increase if needed.
-    engine.world.gravity.y = 5;
+    engine.world.gravity.y = 1;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -175,51 +174,51 @@
     World.add(world, [ground, leftWall, rightWall]);
 
     // --- Player Setup with Extra Limb Segments ---
-    // Here we remove any override that reduces gravity on the torso.
+    // Adjust constraint offsets so that limb segments do not overlap.
+    // Legs will stack vertically, and arms will droop (hand below the upper arm).
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      // Use a slightly lower frictionAir for the torso if desired, but not so low that gravity is negligible.
       const torsoOptions = { friction: 0.5, frictionAir: 0.03, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
 
       // Head (anchored later)
-      const head = Bodies.circle(x, y-40, size/2, defaultOptions);
+      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
       createDomElement(head, "player-part", size, size);
-      // Torso: now uses torsoOptions so that it’s affected by gravity normally.
-      const torso = Bodies.circle(x, y-20, size, torsoOptions);
+      // Torso
+      const torso = Bodies.circle(x, y - 20, size, torsoOptions);
       createDomElement(torso, "player-part", size*2, size*2);
 
-      // Right Arm: Upper arm and hand (hand with lower frictionAir for smooth outstretch)
-      const rightUpperArm = Bodies.circle(x+30, y-20, size/2, defaultOptions);
+      // Right Arm: Upper arm and hand (at rest, hand droops below the upper arm)
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
       createDomElement(rightUpperArm, "player-part", size, size);
-      const rightHand = Bodies.circle(x+45, y-20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
+      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
       createDomElement(rightHand, "player-part", size, size);
 
-      // Left Arm: Upper arm and hand
-      const leftUpperArm = Bodies.circle(x-30, y-20, size/2, defaultOptions);
+      // Left Arm: Upper arm and hand (hand droops below)
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
       createDomElement(leftUpperArm, "player-part", size, size);
-      const leftHand = Bodies.circle(x-45, y-20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
+      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, { friction: 0.5, frictionAir: 0.02, restitution: 0 });
       createDomElement(leftHand, "player-part", size, size);
 
-      // Right Leg: Upper leg and foot
-      const rightUpperLeg = Bodies.circle(x+10, y+10, size/2, defaultOptions);
+      // Right Leg: Upper leg and foot (stack vertically)
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
-      const rightFoot = Bodies.circle(x+15, y+20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
       createDomElement(rightFoot, "player-part", size, size);
 
-      // Left Leg: Upper leg and foot
-      const leftUpperLeg = Bodies.circle(x-10, y+10, size/2, defaultOptions);
+      // Left Leg: Upper leg and foot (stack vertically)
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
-      const leftFoot = Bodies.circle(x-15, y+20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, { friction: 0.5, frictionAir: 0.03, restitution: 0 });
       createDomElement(leftFoot, "player-part", size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
-      // Use stiff, near-zero length constraints to lock parts together.
+      // Use stiff constraints with offsets so that limbs are not overlapping.
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a,
@@ -231,15 +230,24 @@
         });
         World.add(world, con);
       }
-      link(head, torso, {x:0, y:size/2}, {x:0, y:-size});
-      link(torso, rightUpperArm, {x: size, y:0}, {x:0, y:0});
-      link(rightUpperArm, rightHand, {x:0, y:0}, {x:0, y:0});
-      link(torso, leftUpperArm, {x:-size, y:0}, {x:0, y:0});
-      link(leftUpperArm, leftHand, {x:0, y:0}, {x:0, y:0});
-      link(torso, rightUpperLeg, {x: size/2, y: size}, {x:0, y:-size/2});
-      link(rightUpperLeg, rightFoot, {x:0, y:0}, {x:0, y:0});
-      link(torso, leftUpperLeg, {x: -size/2, y: size}, {x:0, y:-size/2});
-      link(leftUpperLeg, leftFoot, {x:0, y:0}, {x:0, y:0});
+      // Head to Torso
+      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      // Torso to Right Upper Arm (attached at right edge)
+      link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
+      // Right Upper Arm to Right Hand: hand droops 20px below upper arm center.
+      link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      // Torso to Left Upper Arm
+      link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
+      // Left Upper Arm to Left Hand: droop 20px.
+      link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      // Torso to Right Upper Leg (attached near bottom center, slightly right)
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
+      // Right Upper Leg to Right Foot: stack vertically (20px below)
+      link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
+      // Torso to Left Upper Leg (slightly left)
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
+      // Left Upper Leg to Left Foot
+      link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
       player.head = head;
       player.torso = torso;
@@ -253,7 +261,7 @@
       player.leftFoot = leftFoot;
     })(100, 100);
 
-    // --- Platforms & TVs (same as before) ---
+    // --- Platforms & TVs (unchanged) ---
     function createPlatform(x, y, w, h) {
       const plat = Bodies.rectangle(x, y, w, h, { isStatic: true });
       World.add(world, plat);
@@ -291,7 +299,7 @@
     }
 
     // --- Shooting Mechanic ---
-    // When A is pressed, extend the appropriate hand and spawn a projectile.
+    // When A is pressed, extend the appropriate hand horizontally for shooting.
     function shoot() {
       let dx = 0, dy = 0;
       if (keys["ArrowUp"])    dy = -1;
@@ -303,9 +311,11 @@
       dx /= mag; dy /= mag;
       let origin;
       if (player.facingDirection > 0) {
+        // When facing right, outstretch right hand (override droop)
         Body.setPosition(player.rightHand, { x: player.rightUpperArm.position.x + 20, y: player.rightUpperArm.position.y });
         origin = { x: player.rightHand.position.x, y: player.rightHand.position.y };
       } else {
+        // When facing left, outstretch left hand.
         Body.setPosition(player.leftHand, { x: player.leftUpperArm.position.x - 20, y: player.leftUpperArm.position.y });
         origin = { x: player.leftHand.position.x, y: player.leftHand.position.y };
       }
@@ -313,7 +323,7 @@
     }
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label:"bullet" });
-      const angle = Math.atan2(ty-y, tx-x);
+      const angle = Math.atan2(ty - y, tx - x);
       const speed = 15;
       Body.setVelocity(bullet, { x: Math.cos(angle)*speed, y: Math.sin(angle)*speed });
       World.add(world, bullet);
@@ -411,7 +421,7 @@
         }
       }
 
-      // Correct torso angle to remain upright.
+      // Correct torso angle for upright stance.
       const correction = -player.torso.angle * 0.2;
       Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
 
