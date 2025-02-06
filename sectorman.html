@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fully Destructible World with Smooth Camera</title>
+  <title>Fully Destructible World with Smooth Camera & Ground</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,6 +38,12 @@
       position: absolute;
       top: 0;
       left: 0;
+    }
+    /* --- Ground Styling (within the game world) --- */
+    #ground {
+      position: absolute;
+      left: 0;
+      background: #855;
     }
     /* --- Controls Area --- */
     #controls {
@@ -148,9 +154,23 @@
 
     // Map dimensions
     const levelWidth = 3000;
-    const gameHeight = document.getElementById("screen").getBoundingClientRect().height;
+    // Original play area height (ground level)
+    const playAreaHeight = document.getElementById("screen").getBoundingClientRect().height;
+    // Extend game container height to include extra ground area (e.g., 200px)
+    const groundExtraHeight = 200;
+    const gameHeight = playAreaHeight + groundExtraHeight;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
+
+    // --- Add a Ground Element ---
+    // This element visually colors the area from the play area's bottom (ground level)
+    // down to the bottom of the game container.
+    const groundEl = document.createElement("div");
+    groundEl.id = "ground";
+    groundEl.style.top = playAreaHeight + "px";
+    groundEl.style.width = levelWidth + "px";
+    groundEl.style.height = groundExtraHeight + "px";
+    game.appendChild(groundEl);
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
@@ -165,14 +185,14 @@
     }
 
     // World boundaries (ground & walls are destructible, but we'll add extra bounding for the player)
-    const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
-    const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
-    const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
-    World.add(world, [ground, leftWall, rightWall]);
+    const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
+    const leftWall = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
+    const rightWall = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
+    World.add(world, [groundBody, leftWall, rightWall]);
 
     // --- Permanent Safety Floor ---
     // This static body will not be destructible and prevents the player from falling infinitely.
-    const safetyFloorY = gameHeight + 50;
+    const safetyFloorY = playAreaHeight + 50;
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, {
       isStatic: true,
       label: "safetyFloor"
