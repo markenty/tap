@@ -2,9 +2,9 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <!-- Prevent zooming on tap and set an appropriate viewport -->
+  <!-- Prevent zooming on tap -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Camera-Clamped Game Boy Platformer</title>
+  <title>Gait & Directional Shooting Game Boy Platformer</title>
   <style>
     /* ——— Reset & Full-Screen Setup ——— */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,20 +27,18 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 100vw;            /* Full viewport width */
-      height: calc(100vw * 0.75);/* 4:3 aspect ratio */
+      width: 100vw;             /* Full viewport width */
+      height: calc(100vw * 0.75); /* 4:3 aspect ratio */
       background: #000;
       border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* The #game container now represents the entire level.
-       It is wider than the screen and will be translated (camera) */
+    /* The #game container represents the full level (wider than the screen) */
     #game {
       position: absolute;
       top: 0;
       left: 0;
-      /* The level width is defined in JavaScript (levelWidth) */
-      /* Height matches the screen height */
+      /* Its width is defined in JavaScript */
     }
     /* ——— Controls Area ——— */
     #controls {
@@ -64,7 +62,7 @@
       border-radius: 10px;
       cursor: pointer;
       touch-action: manipulation;
-      font-size: 0;
+      font-size: 0; /* no text labels */
     }
     #dpad button:active { background: #777; }
     /* Oversized D-Pad buttons */
@@ -96,7 +94,7 @@
       border-radius: 50%;
       cursor: pointer;
       touch-action: manipulation;
-      font-size: 0;
+      font-size: 0; /* no text labels */
     }
     #ab-buttons button:active { background: #777; }
     /* Oversized A/B buttons */
@@ -105,7 +103,7 @@
       width: 70px;
       height: 70px;
     }
-    /* Evenly position A/B buttons within container */
+    /* Position: A is shoot (upper right) and B is jump (bottom left) */
     #ab-buttons .A { top: 0; right: 0; }
     #ab-buttons .B { bottom: 0; left: 0; }
     
@@ -113,7 +111,6 @@
     .entity {
       position: absolute;
       border-radius: 50%;
-      /* Center each entity at its (x,y) */
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
@@ -163,7 +160,7 @@
   <!-- Matter.js physics engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // ——— Basic Setup ———
+    // ——— Matter.js Setup ———
     const Engine     = Matter.Engine,
           World      = Matter.World,
           Bodies     = Matter.Bodies,
@@ -175,24 +172,22 @@
     const world  = engine.world;
     const game   = document.getElementById('game');
 
-    // Define level dimensions (levelWidth >> screen width)
+    // Level dimensions: level is much wider than the screen.
     const levelWidth = 3000;
     const screenRect = document.getElementById('screen').getBoundingClientRect();
-    const screenWidth = screenRect.width; // viewport width
+    const screenWidth = screenRect.width;
     const gameHeight = screenRect.height;
-
-    // Set #game container size to cover the entire level
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Arrays to track Matter bodies with DOM elements
+    // Arrays for tracking bodies with associated DOM elements.
     let domEntities = [];
     let platforms   = [];
     let tvs         = [];
     let coins       = [];
     let bullets     = [];
 
-    // Utility: create DOM element for a body
+    // Utility: Create a DOM element and link it to a Matter body.
     function createDomElement(body, className, width, height) {
       const el = document.createElement('div');
       el.className = 'entity ' + className;
@@ -203,34 +198,34 @@
       domEntities.push(body);
     }
 
-    // ——— World Boundaries ———
-    // Create a ground spanning the level
+    // ——— World Boundaries (Ground & Walls) ———
     const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
-    // Add left and right walls to prevent leaving the level
     const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
-    // ——— Build the Ragdoll Player ———
-    const player = { jumpCount: 0 };
+    // ——— Player Setup: Ragdoll with human gait properties ———
+    const player = { jumpCount: 0, facingDirection: 1 };
     (function createPlayer(x, y) {
       const size = 20;
-      const head = Bodies.circle(x, y - 40, size / 2, { friction: 0.5 });
+      // Each body now has a bit of air resistance for a more grounded feel.
+      const options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
+      const head = Bodies.circle(x, y - 40, size / 2, options);
       createDomElement(head, 'player-part', size, size);
 
-      const torso = Bodies.circle(x, y - 20, size, { friction: 0.5 });
+      const torso = Bodies.circle(x, y - 20, size, options);
       createDomElement(torso, 'player-part', size * 2, size * 2);
 
-      const leftArm = Bodies.circle(x - 30, y - 20, size / 2, { friction: 0.5 });
+      const leftArm = Bodies.circle(x - 30, y - 20, size / 2, options);
       createDomElement(leftArm, 'player-part', size, size);
 
-      const rightArm = Bodies.circle(x + 30, y - 20, size / 2, { friction: 0.5 });
+      const rightArm = Bodies.circle(x + 30, y - 20, size / 2, options);
       createDomElement(rightArm, 'player-part', size, size);
 
-      const leftLeg = Bodies.circle(x - 10, y + 10, size / 2, { friction: 0.5 });
+      const leftLeg = Bodies.circle(x - 10, y + 10, size / 2, options);
       createDomElement(leftLeg, 'player-part', size, size);
 
-      const rightLeg = Bodies.circle(x + 10, y + 10, size / 2, { friction: 0.5 });
+      const rightLeg = Bodies.circle(x + 10, y + 10, size / 2, options);
       createDomElement(rightLeg, 'player-part', size, size);
 
       World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
@@ -258,7 +253,7 @@
       player.rightLeg = rightLeg;
     })(100, 100);
 
-    // ——— Procedurally Generate Platforms ———
+    // ——— Procedural Platforms ———
     function createPlatform(x, y, width, height) {
       const plat = Bodies.rectangle(x, y, width, height, { isStatic: true });
       World.add(world, plat);
@@ -272,7 +267,6 @@
       plat.domElement = el;
       platforms.push(plat);
     }
-    // Random platforms spread along the level width (avoid edges)
     for (let i = 0; i < 15; i++) {
       const w = 100 + Math.random() * 100;
       const h = 20;
@@ -281,7 +275,7 @@
       createPlatform(x, y, w, h);
     }
 
-    // ——— Create Shootable TVs ———
+    // ——— Shootable TVs ———
     function createTV(x, y) {
       const tvW = 60, tvH = 40;
       const tv = Bodies.rectangle(x, y, tvW, tvH, { isStatic: true, label: 'tv' });
@@ -303,12 +297,25 @@
     }
 
     // ——— Shooting Mechanic ———
-    window.addEventListener('mousedown', function(e) {
-      const rect = game.getBoundingClientRect();
-      const targetX = e.clientX - rect.left;
-      const targetY = e.clientY - rect.top;
-      shootBullet(player.torso.position.x, player.torso.position.y, targetX, targetY);
-    });
+    // The shoot function computes a direction vector based on active d-pad keys.
+    let facingDirection = 1; // default: right
+    function shoot() {
+      let dx = 0, dy = 0;
+      if (keys['ArrowUp'])    dy = -1;
+      if (keys['ArrowDown'])  dy =  1;
+      if (keys['ArrowLeft'])  dx = -1;
+      if (keys['ArrowRight']) dx =  1;
+      // If no directional input, shoot in facing direction (horizontal)
+      if (dx === 0 && dy === 0) {
+        dx = facingDirection;
+      }
+      // Normalize direction vector.
+      const mag = Math.sqrt(dx*dx + dy*dy);
+      dx /= mag; dy /= mag;
+      shootBullet(player.torso.position.x, player.torso.position.y,
+                  player.torso.position.x + dx*100,
+                  player.torso.position.y + dy*100);
+    }
     function shootBullet(x, y, targetX, targetY) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: 'bullet' });
       const angle = Math.atan2(targetY - y, targetX - x);
@@ -346,11 +353,13 @@
       }
     }
 
-    // ——— Player Movement Controls ———
+    // ——— Player Movement Controls & Human Gait ———
+    // keys: ArrowLeft/Right control horizontal movement.
     const keys = {};
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-    // Reset jump count when legs hit any static body (ground/walls/platforms)
+    // Also map "KeyB" to jump (for keyboard), in addition to Space.
+    // Reset jump count when any leg contacts a static body.
     Events.on(engine, 'collisionStart', function(event) {
       event.pairs.forEach(pair => {
         [player.leftLeg, player.rightLeg].forEach(leg => {
@@ -363,24 +372,17 @@
       });
     });
 
-    // Utility: clamp a value
-    function clamp(val, min, max) {
-      return Math.max(min, Math.min(val, max));
-    }
-
-    // ——— Camera Update: Clamp camera to player within level bounds ———
+    // ——— Camera Update: Clamp to player within level bounds ———
     function updateCamera() {
-      // Compute camera offset: we want to center the screen on the player,
-      // clamped so the #game container never reveals empty space.
-      const camOffset = clamp(player.torso.position.x - screenWidth/2, 0, levelWidth - screenWidth);
+      const camOffset = Math.max(0, Math.min(player.torso.position.x - screenWidth/2, levelWidth - screenWidth));
       game.style.transform = "translateX(-" + camOffset + "px)";
     }
 
-    // ——— Game Loop: Update Physics, Entities, and Camera ———
+    // ——— Game Loop ———
     function update() {
       Engine.update(engine, 1000 / 60);
-      
-      // Update each entity’s position (their parent #game container is translated by the camera)
+
+      // Update positions for DOM-linked entities.
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
@@ -388,32 +390,43 @@
           body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
         }
       });
-      
-      // Apply horizontal movement
-      if (keys['ArrowLeft'] || keys['KeyA']) {
+
+      // Update facing direction based on horizontal input.
+      if (keys['ArrowLeft']) {
+        facingDirection = -1;
         Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
       }
-      if (keys['ArrowRight'] || keys['KeyD']) {
+      if (keys['ArrowRight']) {
+        facingDirection = 1;
         Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
       }
-      // Jump/double jump with Space
-      if (keys['Space'] && player.jumpCount < 2) {
+      // If no horizontal input, gradually damp horizontal velocity.
+      if (!keys['ArrowLeft'] && !keys['ArrowRight']) {
+        Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
+      }
+      // Jump: either Space or (mapped to) B key.
+      if ((keys['Space'] || keys['KeyB']) && player.jumpCount < 2) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
         player.jumpCount++;
         keys['Space'] = false;
+        keys['KeyB'] = false;
       }
-      
+      // Correct torso angle to simulate an upright human stance.
+      const angleCorrection = -player.torso.angle * 0.2;
+      Body.setAngularVelocity(player.torso, player.torso.angularVelocity + angleCorrection);
+
       updateCamera();
       requestAnimationFrame(update);
     }
     update();
 
-    // ——— Map Touch on Physical Buttons to Controls ———
+    // ——— Touch & Button Mappings ———
+    // D-Pad: Update directional keys on touch.
     const dpad = document.getElementById('dpad');
     dpad.querySelector('.up').addEventListener('touchstart', (e) => {
       e.preventDefault();
-      keys['Space'] = true;
-      setTimeout(() => keys['Space'] = false, 150);
+      keys['ArrowUp'] = true;
+      setTimeout(() => keys['ArrowUp'] = false, 150);
     });
     dpad.querySelector('.left').addEventListener('touchstart', (e) => {
       e.preventDefault();
@@ -425,16 +438,22 @@
       keys['ArrowRight'] = true;
       setTimeout(() => keys['ArrowRight'] = false, 150);
     });
+    dpad.querySelector('.down').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      keys['ArrowDown'] = true;
+      setTimeout(() => keys['ArrowDown'] = false, 150);
+    });
+    // A button: Shoot in the computed direction.
     const abButtons = document.getElementById('ab-buttons');
     abButtons.querySelector('.A').addEventListener('touchstart', (e) => {
       e.preventDefault();
-      shootBullet(player.torso.position.x, player.torso.position.y,
-                  player.torso.position.x + 100, player.torso.position.y);
+      shoot();
     });
+    // B button: Jump.
     abButtons.querySelector('.B').addEventListener('touchstart', (e) => {
       e.preventDefault();
-      shootBullet(player.torso.position.x, player.torso.position.y,
-                  player.torso.position.x - 100, player.torso.position.y);
+      keys['Space'] = true;
+      setTimeout(() => keys['Space'] = false, 150);
     });
   </script>
 </body>
