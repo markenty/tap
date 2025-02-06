@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible World with AI, HP Bars & Bubble Busting (Player-Centered Camera)</title>
+  <title>Destructible World with AI, HP Bars & Bubble Busting (Player-Centered & Bounded)</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -163,6 +163,7 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
+    // Destructure Matter modules.
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     engine.world.gravity.y = 3.2;
@@ -187,7 +188,7 @@
 
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
-    // Create a DOM element for a Matter body.
+    // Helper: create a DOM element for a Matter body.
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
       el.className = "entity " + cls;
@@ -344,6 +345,7 @@
         const percent = Math.max(character.hp, 0) / 100;
         character.hpBar.style.width = (percent * 100) + "%";
       }
+      // If HP is depleted, trigger bubble burst.
       if (character.hp <= 0) {
         character.alive = false;
         [character.head, character.torso, character.rightUpperArm, character.rightHand,
@@ -449,25 +451,26 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Camera Update: Center on Player; Zoom Out if Enemy is Too Far ---
+    // --- Camera Update: Center on Player; Zoom Out if Enemy Is Too Far ---
     let currentOffsetX = 0, currentOffsetY = 0, currentZoom = 1;
     function lerp(a, b, t) { return a + (b - a) * t; }
     function updateCamera() {
-      // We always center on the player.
+      // Camera always centered on player's torso.
       const playerPos = playerChar.torso.position;
-      // Compute the enemy's offset relative to the player.
+      // Compute enemy offset relative to player.
       const enemyPos = enemyChar.torso.position;
       const dx = Math.abs(enemyPos.x - playerPos.x);
       const dy = Math.abs(enemyPos.y - playerPos.y);
-      // Define a safe margin (world units) within which the enemy must remain.
+      // Define a safe margin (in world units) for the enemy relative to player.
       const safeMargin = 100;
-      // Calculate current viewport dimensions in world units.
+      // Get screen dimensions.
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
+      // Determine the current viewport dimensions (in world units) at current zoom.
       const currentViewportWidth = screenWidth / currentZoom;
       const currentViewportHeight = screenHeight / currentZoom;
-      // If the enemy is too far from the player, adjust desired zoom.
-      let desiredZoom = 1.2; // default zoom if enemy is close
+      // Default desired zoom if enemy is already close.
+      let desiredZoom = 1.2;
       if (dx > (currentViewportWidth / 2 - safeMargin) ||
           dy > (currentViewportHeight / 2 - safeMargin)) {
         const zoomX = (screenWidth / 2 - safeMargin) / dx;
@@ -476,11 +479,9 @@
       }
       // Clamp desired zoom.
       desiredZoom = Math.max(Math.min(desiredZoom, 2), 0.5);
-      // Since the camera is centered on the player, compute target offset so that:
-      // playerPos becomes at the center of the viewport.
+      // Compute target offset so that player is centered.
       const targetOffsetX = playerPos.x - (screenWidth / (2 * desiredZoom));
       const targetOffsetY = playerPos.y - (screenHeight / (2 * desiredZoom));
-      // Smooth interpolation.
       const smoothingFactor = 0.1;
       currentZoom = lerp(currentZoom, desiredZoom, smoothingFactor);
       currentOffsetX = lerp(currentOffsetX, targetOffsetX, smoothingFactor);
@@ -489,45 +490,33 @@
       game.style.transform = `scale(${currentZoom}) translate(-${currentOffsetX}px, -${currentOffsetY}px)`;
     }
 
-    // --- Clamp Enemy to Camera ---
-    // Ensures the enemy's torso remains inside the visible viewport.
-    function clampEnemyToCamera() {
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
-      const visibleWidth = screenWidth / currentZoom;
-      const visibleHeight = screenHeight / currentZoom;
-      const viewportLeft = currentOffsetX;
-      const viewportRight = currentOffsetX + visibleWidth;
-      const viewportTop = currentOffsetY;
-      const viewportBottom = currentOffsetY + visibleHeight;
-      const margin = 20; // additional padding
-      let pos = enemyChar.torso.position;
-      let newX = pos.x, newY = pos.y;
-      if (pos.x < viewportLeft + margin) newX = viewportLeft + margin;
-      if (pos.x > viewportRight - margin) newX = viewportRight - margin;
-      if (pos.y < viewportTop + margin) newY = viewportTop + margin;
-      if (pos.y > viewportBottom - margin) newY = viewportBottom - margin;
-      if (newX !== pos.x || newY !== pos.y) {
-        Body.setPosition(enemyChar.torso, { x: newX, y: newY });
-        Body.setVelocity(enemyChar.torso, { x: 0, y: 0 });
-      }
-    }
-
-    // --- Player Bounding & Damping ---
+    // --- Clamp Player Within World Boundaries ---
+    // In addition to damping, ensure that the player cannot move outside the level.
     function clampPlayer() {
       const margin = 50;
       const pos = playerChar.torso.position;
-      const vel = playerChar.torso.velocity;
-      if (pos.x < margin) {
-        Body.setPosition(playerChar.torso, { x: margin, y: pos.y });
-        if (vel.x < 0) Body.setVelocity(playerChar.torso, { x: vel.x * 0.5, y: vel.y });
-      } else if (pos.x > levelWidth - margin) {
-        Body.setPosition(playerChar.torso, { x: levelWidth - margin, y: pos.y });
-        if (vel.x > 0) Body.setVelocity(playerChar.torso, { x: vel.x * 0.5, y: vel.y });
+      let clampedX = pos.x, clampedY = pos.y;
+      if (pos.x < margin) clampedX = margin;
+      if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
+      if (pos.y < margin) clampedY = margin;
+      // For the player, we can instantly clamp if outside.
+      if (clampedX !== pos.x || clampedY !== pos.y) {
+        Body.setPosition(playerChar.torso, { x: clampedX, y: clampedY });
+        Body.setVelocity(playerChar.torso, { x: 0, y: 0 });
       }
-      if (pos.y < margin) {
-        Body.setPosition(playerChar.torso, { x: pos.x, y: margin });
-        if (vel.y < 0) Body.setVelocity(playerChar.torso, { x: vel.x, y: vel.y * 0.5 });
+    }
+
+    // --- Clamp Enemy Within World Boundaries (Optional) ---
+    function clampEnemy() {
+      const margin = 50;
+      const pos = enemyChar.torso.position;
+      let clampedX = pos.x, clampedY = pos.y;
+      if (pos.x < margin) clampedX = margin;
+      if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
+      if (pos.y < margin) clampedY = margin;
+      if (clampedX !== pos.x || clampedY !== pos.y) {
+        Body.setPosition(enemyChar.torso, { x: clampedX, y: clampedY });
+        Body.setVelocity(enemyChar.torso, { x: 0, y: 0 });
       }
     }
 
@@ -565,6 +554,7 @@
         enemyShoot();
         enemyChar.shootCooldown = 1000;
       }
+      clampEnemy(); // Ensure enemy stays within level boundaries.
     }
 
     // --- Main Game Loop ---
@@ -600,7 +590,6 @@
       clampPlayer();
       updateWalkCycle();
       updateEnemyAI();
-      clampEnemyToCamera(); // Ensure enemy remains within visible bounds.
 
       if (playerChar.alive && playerChar.torso.position.y > safetyFloorY + 100) {
         playerChar.alive = false;
