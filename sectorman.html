@@ -175,14 +175,14 @@
 
     // --- Player Setup with Extra Limb Segments ---
     // Adjusted physics for tighter platformer feel.
-    const player = { jumpCount: 0, facingDirection: 1, isGrounded:true, wallSide: 0 };
+    const player = { jumpCount: 0, facingDirection: 1, isGrounded:false, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
       // Updated options for tighter control:
-      const torsoOptions = { friction: 0.5, frictionAir: 0.02, restitution: 0 };
+      const torsoOptions = { friction: 1.5, frictionAir: 0.02, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head (anchored later)
