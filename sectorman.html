@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Dynamic Camera</title>
+  <title>Fully Destructible World Platformer</title>
   <style>
     /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -164,7 +164,7 @@
       domEntities.push(body);
     }
 
-    // World boundaries
+    // World boundaries (ground & walls are now destructible too)
     const ground = Bodies.rectangle(levelWidth / 2, gameHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, gameHeight / 2, 40, gameHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, gameHeight / 2, 40, gameHeight, { isStatic: true });
@@ -314,12 +314,52 @@
       }
     }
 
+    // Existing collision event for TVs & Bullets
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
         if ((pair.bodyA.label === "tv" && pair.bodyB.label === "bullet") ||
             (pair.bodyB.label === "tv" && pair.bodyA.label === "bullet")) {
           const tvBody = pair.bodyA.label === "tv" ? pair.bodyA : pair.bodyB;
           breakTV(tvBody);
+        }
+      });
+    });
+
+    // --- Destructible World: Player Breaking Through Objects ---
+    // When any player part hits a static body while moving fast, remove that object.
+    const destructionSpeedThreshold = 20; // Define max speed threshold
+    function isPlayerPart(body) {
+      return body === player.head || body === player.torso ||
+             body === player.rightUpperArm || body === player.rightHand ||
+             body === player.leftUpperArm || body === player.leftHand ||
+             body === player.rightUpperLeg || body === player.rightFoot ||
+             body === player.leftUpperLeg || body === player.leftFoot;
+    }
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        let playerPart = null, other = null;
+        if (isPlayerPart(pair.bodyA) && pair.bodyB.isStatic) {
+          playerPart = pair.bodyA;
+          other = pair.bodyB;
+        } else if (isPlayerPart(pair.bodyB) && pair.bodyA.isStatic) {
+          playerPart = pair.bodyB;
+          other = pair.bodyA;
+        }
+        if (other) {
+          // Check if player's torso velocity meets or exceeds the threshold.
+          const vx = player.torso.velocity.x, vy = player.torso.velocity.y;
+          const playerSpeed = Math.hypot(vx, vy);
+          if (playerSpeed >= destructionSpeedThreshold) {
+            World.remove(world, other);
+            if (other.domElement && other.domElement.parentNode) {
+              other.domElement.parentNode.removeChild(other.domElement);
+            }
+            // Remove from platforms or TVs arrays if needed.
+            const platIndex = platforms.indexOf(other);
+            if (platIndex !== -1) platforms.splice(platIndex, 1);
+            const tvIndex = tvs.indexOf(other);
+            if (tvIndex !== -1) tvs.splice(tvIndex, 1);
+          }
         }
       });
     });
@@ -394,19 +434,19 @@
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
 
-      // Calculate the player's speed using torso velocity
+      // Calculate player's speed from torso velocity.
       const vx = player.torso.velocity.x;
       const vy = player.torso.velocity.y;
       const speed = Math.hypot(vx, vy);
 
-      // Define minimum (zoom in) and maximum (zoom out) zoom levels
-      const zoomIn = 1.2;
-      const zoomOut = 0.8;
-      const maxSpeed = 20; // Adjust based on game feel
+      // Define zoom levels.
+      const zoomIn = 1.2;  // When nearly stationary.
+      const zoomOut = 0.8; // When at maximum speed.
+      const maxSpeed = 20; // Maximum speed for full zoom-out.
       const t = Math.min(speed / maxSpeed, 1);
       const zoom = zoomIn * (1 - t) + zoomOut * t;
 
-      // Center camera on the player while clamping to level boundaries
+      // Clamp camera view within level boundaries.
       const visibleWidth = screenWidth / zoom;
       const visibleHeight = screenHeight / zoom;
       let cameraCenterX = player.torso.position.x;
