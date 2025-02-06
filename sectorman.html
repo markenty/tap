@@ -352,7 +352,7 @@
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       const angle = Math.atan2(ty - y, tx - x);
-      const speed = 35;
+      const speed = 55;
       Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
       World.add(world, bullet);
       createDomElement(bullet, "bullet", 10, 10);
@@ -488,7 +488,7 @@
       // The desired torso height is set relative to the game height.
       // Here, gameHeight - 100 represents roughly two torso diameters above ground.
       const desiredTorsoY = gameHeight - 100;
-      const springConstant = 0.0001; // Adjust this constant to fine-tune the buoyancy effect
+      const springConstant = 0.0005; // Adjust this constant to fine-tune the buoyancy effect
       const diff = desiredTorsoY - player.torso.position.y-20;
       Body.applyForce(player.head, player.head.position, { x: 0, y: springConstant * diff });
 
