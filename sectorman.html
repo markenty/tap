@@ -188,6 +188,57 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
+    // New helper functions for screen shake and particle burst effects.
+    // Screen shake: shakes the #screen element for a given intensity and duration.
+    function screenShake(intensity = 5, duration = 300) {
+      const screen = document.getElementById("screen");
+      const startTime = Date.now();
+      (function shake() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+          const dx = (Math.random() - 0.5) * intensity;
+          const dy = (Math.random() - 0.5) * intensity;
+          screen.style.transform = `translate(${dx}px, ${dy}px)`;
+          requestAnimationFrame(shake);
+        } else {
+          screen.style.transform = "";
+        }
+      })();
+    }
+    // Particle burst: creates a burst of small particles at (x,y) with a given color.
+    function particleBurst(x, y, color) {
+      const numParticles = 20;
+      for (let i = 0; i < numParticles; i++) {
+        const particle = document.createElement("div");
+        particle.style.position = "absolute";
+        particle.style.left = x + "px";
+        particle.style.top = y + "px";
+        particle.style.width = "4px";
+        particle.style.height = "4px";
+        particle.style.backgroundColor = color;
+        particle.style.borderRadius = "50%";
+        particle.style.pointerEvents = "none";
+        particle.style.opacity = "1";
+        particle.style.transform = "translate(-50%, -50%)";
+        game.appendChild(particle);
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * 50 + 20;
+        const deltaX = Math.cos(angle) * distance;
+        const deltaY = Math.sin(angle) * distance;
+        particle.animate([
+          { transform: `translate(0px, 0px)`, opacity: 1 },
+          { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 0 }
+        ], {
+          duration: 800 + Math.random() * 400,
+          easing: "ease-out",
+          fill: "forwards"
+        });
+        setTimeout(() => {
+          if (particle.parentNode) particle.parentNode.removeChild(particle);
+        }, 1200);
+      }
+    }
+
     // Destructure Matter modules.
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
@@ -400,6 +451,8 @@
       }
       if (character.hp <= 0) {
         character.alive = false;
+        // Determine burst color based on character type.
+        const burstColor = character.isEnemy ? "red" : "lime";
         [character.head, character.torso, character.rightUpperArm, character.rightHand,
          character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
          character.leftUpperLeg, character.leftFoot].forEach(part => {
@@ -409,6 +462,8 @@
               y: (Math.random() - 0.5) * 0.02
             });
             if (part.domElement) {
+              // Trigger particle burst at the part's location.
+              particleBurst(part.position.x, part.position.y, burstColor);
               part.domElement.classList.add("bubble-burst");
             }
           }
@@ -436,6 +491,8 @@
 
     // --- Collision Handling for Bullets ---
     Events.on(engine, "collisionStart", function(event) {
+      // Trigger screen shake on collision.
+      screenShake();
       event.pairs.forEach(pair => {
         if (pair.bodyA.label === "bullet" && pair.bodyB.character) {
           if (pair.bodyB.character !== pair.bodyA.owner) {
@@ -457,7 +514,7 @@
       });
     });
 
-    // --- Destructible World Collisions (Unchanged) ---
+    // --- Destructible World Collisions (Unchanged, but now with screen shake) ---
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
       return body === playerChar.head || body === playerChar.torso ||
@@ -472,6 +529,8 @@
              body === enemyChar.leftUpperLeg || body === enemyChar.leftFoot;
     }
     Events.on(engine, "collisionStart", function(event) {
+      // Also shake the screen for world collisions.
+      screenShake();
       event.pairs.forEach(pair => {
         let playerPart = null, other = null;
         if (isPlayerPart(pair.bodyA) && pair.bodyB.isStatic) {
