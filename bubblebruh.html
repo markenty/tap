@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible Environment with Breakable Walls and Collectible Coins</title>
+  <title>Destructible Environment with Whip‐Style Melee Attack</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -260,7 +260,7 @@
 
     // Level dimensions:
     // Level width fixed at 3000px; full game height equals window.innerHeight,
-    // with 100px reserved at the bottom for ground.
+    // with 100px reserved at the bottom for the ground.
     const levelWidth = 3000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -495,7 +495,7 @@
       }
     }
 
-    // Spawn coins as dynamic bodies with gravity (collectible).
+    // Spawn coins as dynamic bodies (with gravity and restitution) so they fall and are collectible.
     function spawnCoins(x, y) {
       for (let i = 0; i < 3; i++) {
         let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
@@ -522,21 +522,40 @@
     }
 
     // ------------------------------
-    // Melee Attack (Arms Move and Damage Environment)
+    // Melee Attack with Whip Physics (Arms move like a whip)
     // ------------------------------
     function meleeAttack() {
-      // Use the player's right hand as the attack origin.
+      // Use the player's right hand as the starting point.
       let hand = playerChar.rightHand;
       let torsoPos = playerChar.torso.position;
-      let handPos = hand.position;
-      let dx = torsoPos.x - handPos.x;
-      let dy = torsoPos.y - handPos.y;
-      let mag = Math.hypot(dx, dy);
+      // Compute vector from torso to hand.
+      let vx = hand.position.x - torsoPos.x;
+      let vy = hand.position.y - torsoPos.y;
+      let mag = Math.hypot(vx, vy);
       if (mag === 0) return;
-      dx /= mag; dy /= mag;
-      // Impulse the hand outward to simulate a strike.
-      Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
-      // After 100ms, check for nearby environment objects.
+      // Normalize vector.
+      let nx = vx / mag, ny = vy / mag;
+      // Compute a tangent vector (rotate 90° clockwise).
+      let tx = ny, ty = -nx;
+      // Use a sine wave over a 300ms interval to simulate a whip swing.
+      let swingTime = 300; // total time in ms
+      let steps = 30;
+      let stepTime = swingTime / steps;
+      let step = 0;
+      let interval = setInterval(() => {
+        // Use sine wave: force peaks in the middle.
+        let amplitude = Math.sin(Math.PI * step / steps);
+        // Combine outward force and tangential force.
+        let forceOut = 0.05; // outward component
+        let forceTangential = 0.05; // tangential component
+        Body.applyForce(hand, hand.position, { 
+          x: (nx * forceOut + tx * forceTangential) * amplitude, 
+          y: (ny * forceOut + ty * forceTangential) * amplitude 
+        });
+        step++;
+        if (step >= steps) clearInterval(interval);
+      }, stepTime);
+      // After 100ms, check for nearby destructible objects.
       setTimeout(() => {
         let attackPos = hand.position;
         const meleeRange = 60;
@@ -735,7 +754,7 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level bounds.
+      // Clamp player within level boundaries.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
