@@ -143,7 +143,7 @@
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     // Increase frictionAir for the player's torso to add extra damping
-    engine.world.gravity.y = 2.2;
+    engine.world.gravity.y = 3.2;
     const world = engine.world;
     const game = document.getElementById("game");
 
@@ -179,7 +179,7 @@
     (function createPlayer(x, y) {
       const size = 20;
       // Increase torso frictionAir for extra damping
-      const torsoOptions = { friction: 0.0, frictionAir: 0.01, restitution: 0 };
+      const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
       // Head
