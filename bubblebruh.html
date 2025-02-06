@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Full-Screen Level (3000px Wide) with Joystick Jump</title>
+  <title>Destructible Objects, Coins from TVs, and Melee Attack on Objects</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,7 +27,7 @@
       background: #000;
       overflow: hidden;
     }
-    /* Game World Container – its transform will be updated by the camera */
+    /* Game World Container – camera transform applied */
     #game {
       position: absolute;
       top: 0; left: 0;
@@ -94,7 +94,7 @@
       justify-content: space-around;
       align-items: flex-end;
     }
-    /* Stagger button positions */
+    /* Staggered positions for buttons */
     #ab-buttons button:nth-child(1) { transform: translateY(-30px); }
     #ab-buttons button:nth-child(2) { transform: translateY(-10px); }
     #ab-buttons button:nth-child(3) { transform: translateY(-20px); }
@@ -144,17 +144,24 @@
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
     }
-    /* Platform styling */
-    .platform {
-      position: absolute;
-      background: #555;
-    }
+    /* Platform & Wall styling (same look) */
+    .platform { position: absolute; background: #555; }
     /* TV styling */
     .tv {
       position: absolute;
       background: #444;
       border: 2px solid #999;
       border-radius: 4px;
+    }
+    /* Coin styling */
+    .coin {
+      position: absolute;
+      background: gold;
+      color: black;
+      border-radius: 50%;
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
     }
   </style>
 </head>
@@ -253,11 +260,11 @@
 
     // Level dimensions:
     // Level width is fixed at 3000px.
-    // For full-screen height, set gameHeight to window.innerHeight.
-    // We'll reserve 100px at the bottom for the ground.
+    // The full game height equals window.innerHeight;
+    // We reserve 100px at the bottom for the ground.
     const levelWidth = 3000;
     const gameHeight = window.innerHeight;
-    const playAreaHeight = window.innerHeight - 100; // visible play area
+    const playAreaHeight = window.innerHeight - 100;
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
@@ -270,7 +277,7 @@
     groundEl.style.height = groundExtraHeight + "px";
     game.appendChild(groundEl);
 
-    let domEntities = [], platforms = [], tvs = [], bullets = [];
+    let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
 
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
@@ -283,12 +290,13 @@
     }
 
     // ------------------------------
-    // Platform & TV Creation
+    // Platform, TV, and Wall Creation
     // ------------------------------
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
       platform.height = height;
+      platform.hp = 50;
       World.add(world, platform);
       const platformEl = document.createElement("div");
       platformEl.className = "platform";
@@ -304,6 +312,7 @@
       const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "tv" });
       tv.width = width;
       tv.height = height;
+      tv.hp = 30;
       World.add(world, tv);
       const tvEl = document.createElement("div");
       tvEl.className = "tv";
@@ -315,6 +324,22 @@
       tv.domElement = tvEl;
       tvs.push(tv);
     }
+    function createWall(x, y, width, height) {
+      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
+      wall.width = width;
+      wall.height = height;
+      wall.hp = 100;
+      World.add(world, wall);
+      const wallEl = document.createElement("div");
+      wallEl.className = "platform"; // same styling as platforms
+      wallEl.style.width = width + "px";
+      wallEl.style.height = height + "px";
+      wallEl.style.left = (x + width/2) + "px";
+      wallEl.style.top = (y + height/2) + "px";
+      game.appendChild(wallEl);
+      wall.domElement = wallEl;
+      walls.push(wall);
+    }
     // Sample platforms.
     createPlatform(300, 400, 200, 20);
     createPlatform(800, 300, 150, 20);
@@ -325,14 +350,18 @@
     createTV(1200, 250, 40, 60);
     createTV(1800, 150, 40, 60);
     createTV(2500, 300, 40, 60);
+    // Sample Walls.
+    createWall(500, 100, 20, 200);
+    createWall(1500, 100, 20, 200);
+    createWall(2500, 100, 20, 200);
 
     // ------------------------------
     // Static Boundaries & Safety Floor
     // ------------------------------
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
-    const leftWall = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
-    const rightWall = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
-    World.add(world, [groundBody, leftWall, rightWall]);
+    const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
+    const rightBoundary = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
+    World.add(world, [groundBody, leftBoundary, rightBoundary]);
     const safetyFloorY = playAreaHeight + 50;
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, { isStatic: true, label: "safetyFloor" });
     World.add(world, safetyFloor);
@@ -345,7 +374,6 @@
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
-
       // HP bar.
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
@@ -355,7 +383,6 @@
       game.appendChild(hpContainer);
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
-
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
@@ -381,7 +408,6 @@
       addPart(leftUpperLeg, "player-part", size, size);
       const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, defaultOptions);
       addPart(leftFoot, "player-part", size, size);
-
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
       function link(a, b, offA, offB) {
         const con = Constraint.create({
@@ -399,7 +425,6 @@
       link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
       link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-
       char.head = head; char.torso = torso;
       char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
       char.leftUpperArm = leftUpperArm; char.leftHand = leftHand;
@@ -407,11 +432,90 @@
       char.leftUpperLeg = leftUpperLeg; char.leftFoot = leftFoot;
       return char;
     }
-    // Create the player.
     let playerChar = createCharacter(100, 100);
 
     // ------------------------------
-    // Bullet & Melee Functions
+    // Destructible Object Damage Handling
+    // ------------------------------
+    function damageDestructible(obj, damage) {
+      if (typeof obj.hp !== "number") return; // not destructible
+      obj.hp -= damage;
+      // Trigger particle burst for damage feedback
+      particleBurst(obj.position.x, obj.position.y, "orange");
+      if (obj.hp <= 0) {
+        // Object is broken—trigger a final burst
+        particleBurst(obj.position.x, obj.position.y, "red");
+        World.remove(world, obj);
+        if (obj.domElement && obj.domElement.parentNode) {
+          obj.domElement.parentNode.removeChild(obj.domElement);
+        }
+        // Remove from corresponding array.
+        if (obj.label === "platform") {
+          let idx = platforms.indexOf(obj);
+          if (idx !== -1) platforms.splice(idx, 1);
+        } else if (obj.label === "tv") {
+          let idx = tvs.indexOf(obj);
+          if (idx !== -1) tvs.splice(idx, 1);
+          // When a TV breaks, spawn coins.
+          spawnCoins(obj.position.x, obj.position.y);
+        } else if (obj.label === "wall") {
+          let idx = walls.indexOf(obj);
+          if (idx !== -1) walls.splice(idx, 1);
+        }
+      }
+    }
+
+    function spawnCoins(x, y) {
+      // Spawn, for example, three coins.
+      for (let i = 0; i < 3; i++) {
+        let coin = Bodies.circle(x, y, 10, { isStatic: true, label: "coin" });
+        coin.value = 1;
+        World.add(world, coin);
+        let coinEl = document.createElement("div");
+        coinEl.className = "coin";
+        coinEl.textContent = "$";
+        coinEl.style.width = "20px";
+        coinEl.style.height = "20px";
+        coinEl.style.lineHeight = "20px";
+        coinEl.style.fontSize = "14px";
+        coinEl.style.textAlign = "center";
+        coinEl.style.borderRadius = "50%";
+        coinEl.style.background = "gold";
+        coinEl.style.color = "black";
+        game.appendChild(coinEl);
+        coin.domElement = coinEl;
+        coins.push(coin);
+        // Scatter coin with a random velocity.
+        let angle = Math.random() * 2 * Math.PI;
+        let speed = Math.random() * 5 + 2;
+        Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
+      }
+    }
+
+    // ------------------------------
+    // Melee Attack (Damages Objects, Not Player)
+    // ------------------------------
+    function meleeAttack() {
+      // Use the player's right hand as the attack origin.
+      let attackPos = playerChar.rightHand.position;
+      const meleeRange = 60;  // Range threshold in pixels.
+      const damageAmount = 30;
+      // Check destructible arrays.
+      [platforms, tvs, walls].forEach(arr => {
+        arr.forEach(obj => {
+          let dx = attackPos.x - obj.position.x;
+          let dy = attackPos.y - obj.position.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist <= meleeRange) {
+            damageDestructible(obj, damageAmount);
+          }
+        });
+      });
+      // (Optionally, you could add a visual effect for the melee swing here.)
+    }
+
+    // ------------------------------
+    // Bullet Functions
     // ------------------------------
     function shootBullet(x, y, tx, ty, owner) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
@@ -438,80 +542,13 @@
         const mag = Math.hypot(dx, dy);
         dx /= mag; dy /= mag;
       }
-      // Use right hand as shooting origin.
+      // Use the player's right hand as the shooting origin.
       Body.setPosition(playerChar.rightHand, { 
         x: playerChar.rightUpperArm.position.x + 20, 
         y: playerChar.rightUpperArm.position.y 
       });
       const origin = { x: playerChar.rightHand.position.x, y: playerChar.rightHand.position.y };
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
-    }
-    function meleeAttack() {
-      // Use right hand for melee attack.
-      const hand = playerChar.rightHand;
-      const handPos = hand.position;
-      let dx = playerChar.torso.position.x - handPos.x;
-      let dy = playerChar.torso.position.y - handPos.y;
-      let mag = Math.hypot(dx, dy);
-      if (mag === 0) return;
-      dx /= mag; dy /= mag;
-      Body.setVelocity(hand, { x: dx * 30, y: dy * 30 });
-      setTimeout(() => {
-        const currentDist = Math.hypot(playerChar.torso.position.x - hand.position.x,
-                                        playerChar.torso.position.y - hand.position.y);
-        if (currentDist < 50) {
-          throttledScreenShake();
-          takeDamage(playerChar, 30, null);
-        }
-      }, 100);
-    }
-    function takeDamage(character, damage, bullet) {
-      if (!character.alive) return;
-      character.hp -= damage;
-      const knockbackFactor = 0.195;
-      if (bullet && bullet.velocity) {
-        Body.applyForce(character.torso, character.torso.position, {
-          x: -bullet.velocity.x * knockbackFactor,
-          y: -bullet.velocity.y * knockbackFactor
-        });
-      }
-      if (character.hpBar) {
-        const percent = Math.max(character.hp, 0) / 100;
-        character.hpBar.style.width = (percent * 100) + "%";
-      }
-      if (character.hp <= 0) {
-        character.alive = false;
-        const burstColor = "lime";
-        [character.head, character.torso, character.rightUpperArm, character.rightHand,
-         character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
-         character.leftUpperLeg, character.leftFoot].forEach(part => {
-          if (part) {
-            Body.applyForce(part, part.position, {
-              x: (Math.random() - 0.5) * 0.02,
-              y: (Math.random() - 0.5) * 0.02
-            });
-            if (part.domElement) {
-              particleBurst(part.position.x, part.position.y, burstColor);
-              part.domElement.classList.add("bubble-burst");
-            }
-          }
-        });
-        setTimeout(() => {
-          [character.head, character.torso, character.rightUpperArm, character.rightHand,
-           character.leftUpperArm, character.leftHand, character.rightUpperLeg, character.rightFoot,
-           character.leftUpperLeg, character.leftFoot].forEach(part => {
-            World.remove(world, part);
-            if (part.domElement && part.domElement.parentNode) {
-              part.domElement.parentNode.removeChild(part.domElement);
-            }
-          });
-          if (character.hpContainer && character.hpContainer.parentNode) {
-            character.hpContainer.parentNode.removeChild(character.hpContainer);
-          }
-          // Respawn player.
-          playerChar = createCharacter(character.spawn.x, character.spawn.y);
-        }, 500);
-      }
     }
 
     // ------------------------------
@@ -524,21 +561,20 @@
             World.remove(world, pair.bodyA);
             if (pair.bodyA.domElement && pair.bodyA.domElement.parentNode)
               pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
-            takeDamage(pair.bodyB.character, 20, pair.bodyA);
+            // Damage the character (if desired)—in single-player, this may be omitted.
           }
         } else if (pair.bodyB.label === "bullet" && pair.bodyA.character) {
           if (pair.bodyA.character !== pair.bodyB.owner) {
             World.remove(world, pair.bodyB);
             if (pair.bodyB.domElement && pair.bodyB.domElement.parentNode)
               pair.bodyB.domElement.parentNode.removeChild(pair.bodyB.domElement);
-            takeDamage(pair.bodyA.character, 20, pair.bodyB);
           }
         }
       });
     });
 
     // ------------------------------
-    // Destructible World Collisions
+    // Destructible World Collisions (Optional)
     // ------------------------------
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
@@ -565,10 +601,17 @@
             World.remove(world, other);
             if (other.domElement && other.domElement.parentNode)
               other.domElement.parentNode.removeChild(other.domElement);
-            const platIndex = platforms.indexOf(other);
-            if (platIndex !== -1) platforms.splice(platIndex, 1);
-            const tvIndex = tvs.indexOf(other);
-            if (tvIndex !== -1) tvs.splice(tvIndex, 1);
+            if (other.label === "platform") {
+              let idx = platforms.indexOf(other);
+              if (idx !== -1) platforms.splice(idx, 1);
+            } else if (other.label === "tv") {
+              let idx = tvs.indexOf(other);
+              if (idx !== -1) tvs.splice(idx, 1);
+              spawnCoins(other.position.x, other.position.y);
+            } else if (other.label === "wall") {
+              let idx = walls.indexOf(other);
+              if (idx !== -1) walls.splice(idx, 1);
+            }
           }
         }
       });
@@ -587,14 +630,13 @@
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      // Use a fixed scale so the view is full-screen.
+      // Using scale = 1 so that the game fills the full screen.
       const scale = 1;
-      const viewWidth = screenWidth; 
+      const viewWidth = screenWidth;
       const viewHeight = screenHeight;
-      // Center the camera on the player's torso.
       let cameraX = playerChar.torso.position.x - viewWidth / 2;
       let cameraY = playerChar.torso.position.y - viewHeight / 2;
-      // Clamp the camera within level bounds.
+      // Clamp so the view does not go outside the level bounds.
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - viewWidth));
       cameraY = Math.max(0, Math.min(cameraY, gameHeight - viewHeight));
       game.style.transformOrigin = "top left";
@@ -606,11 +648,19 @@
     // ------------------------------
     function update() {
       Engine.update(engine, 1000/60);
+      // Update DOM positions for bodies in domEntities.
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
           body.domElement.style.top = body.position.y + "px";
           body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
+        }
+      });
+      // Update coins separately.
+      coins.forEach(coin => {
+        if (coin.domElement) {
+          coin.domElement.style.left = coin.position.x + "px";
+          coin.domElement.style.top = coin.position.y + "px";
         }
       });
       
@@ -624,8 +674,7 @@
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x * 0.98, y: playerChar.torso.velocity.y });
       }
-      // Jump: if the joystick is moved (magnitude > threshold), use its direction;
-      // otherwise, default to vertical.
+      // Jump: if jump key is pressed, use the joystick direction if moved, otherwise default to vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
@@ -635,11 +684,12 @@
           Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
         }
       }
+      // Keep head synced with torso.
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
       // Clamp player within level boundaries.
-      function clampWithinBounds(character) {
+      (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
         let clampedX = pos.x, clampedY = pos.y;
@@ -650,12 +700,11 @@
           Body.setPosition(character.torso, { x: clampedX, y: clampedY });
           Body.setVelocity(character.torso, { x: 0, y: 0 });
         }
-      }
-      clampWithinBounds(playerChar);
+      })(playerChar);
 
       // Leg Animation.
       let walkCycle = 0, lastTime = Date.now();
-      function updateWalkCycle() {
+      (function updateWalkCycle() {
         const now = Date.now();
         const dt = (now - lastTime) / 1000;
         lastTime = now;
@@ -669,18 +718,16 @@
           Body.setAngle(playerChar.leftFoot, playerChar.torso.angle + leftLegOffset);
           Body.setAngle(playerChar.rightFoot, playerChar.torso.angle + rightLegOffset);
         }
-      }
-      updateWalkCycle();
+      })();
 
-      // Update HP bar.
-      function updateHpBar(character) {
+      // Update HP bar position.
+      (function updateHpBar(character) {
         if (!character.hpContainer) return;
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
-      }
-      updateHpBar(playerChar);
+      })(playerChar);
 
-      // Update camera.
+      // Update camera to follow player.
       updateCamera();
 
       requestAnimationFrame(update);
