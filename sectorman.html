@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Integrated Realistic Platformer</title>
+  <title>Enhanced Platformer with Sustained Acceleration & Anchored Head</title>
   <style>
-    /* Reset & full-screen setup */
+    /* --- Reset & Full-Screen Setup --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; touch-action: manipulation; }
     body {
@@ -14,7 +14,7 @@
       font-family: sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
-    /* Game Boy shell */
+    /* --- Game Boy Shell --- */
     #gameboy {
       position: relative;
       width: 100vw;
@@ -22,7 +22,7 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* Screen (4:3) */
+    /* --- Screen (4:3) --- */
     #screen {
       position: absolute;
       top: 0;
@@ -33,20 +33,21 @@
       border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* Level container – level is wider than screen */
+    /* --- Level Container --- */
     #game {
       position: absolute;
       top: 0;
       left: 0;
+      /* Size set via JavaScript */
     }
-    /* Controls area */
+    /* --- Controls Area --- */
     #controls {
       position: absolute;
       bottom: 5%;
       width: 100vw;
       height: 40vh;
     }
-    /* D-Pad */
+    /* --- D-Pad --- */
     #dpad {
       position: absolute;
       left: 5%;
@@ -68,7 +69,7 @@
     #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
     #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
-    /* A/B Buttons */
+    /* --- A/B Buttons --- */
     #ab-buttons {
       position: absolute;
       right: 5%;
@@ -88,7 +89,7 @@
     #ab-buttons button:active { background: #777; }
     #ab-buttons .A { width: 70px; height: 70px; top: 0; right: 0; }
     #ab-buttons .B { width: 70px; height: 70px; bottom: 0; left: 0; }
-    /* In-game entity styles */
+    /* --- In-Game Entities --- */
     .entity {
       position: absolute;
       border-radius: 50%;
@@ -139,7 +140,6 @@
   <!-- Matter.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // Setup
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     const world = engine.world;
@@ -153,7 +153,6 @@
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Track DOM-linked bodies
     let domEntities = [], platforms = [], tvs = [], coins = [], bullets = [];
 
     function createDomElement(body, cls, w, h) {
@@ -172,15 +171,19 @@
     const rightWall = Bodies.rectangle(levelWidth, gameHeight/2, 40, gameHeight, { isStatic: true });
     World.add(world, [ground, leftWall, rightWall]);
 
-    // Player – 6-circle ragdoll with gait properties
+    // Player setup: 6-circle ragdoll with gait properties
+    // The head will be re-anchored manually.
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0;
-    const coyoteTime = 100, jumpBufferTime = 150, maxJumpHold = 200; // in ms
-    let jumpHoldTimer = 0, jumpKeyActive = false;
+    const coyoteTime = 100, jumpBufferTime = 150;
+    let jumpKeyActive = false;
     (function createPlayer(x, y) {
-      const size = 20, options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
+      const size = 20;
+      const options = { friction: 0.5, frictionAir: 0.05, restitution: 0 };
+      // Create head normally—but later we will override its position.
       const head = Bodies.circle(x, y-40, size/2, options);
       createDomElement(head, "player-part", size, size);
+      // Torso and limbs
       const torso = Bodies.circle(x, y-20, size, options);
       createDomElement(torso, "player-part", size*2, size*2);
       const leftArm = Bodies.circle(x-30, y-20, size/2, options);
@@ -204,7 +207,7 @@
       player.head = head; player.torso = torso; player.leftLeg = leftLeg; player.rightLeg = rightLeg;
     })(100, 100);
 
-    // Platforms, TVs, etc.
+    // Create platforms and TVs (same as before)
     function createPlatform(x, y, w, h) {
       const plat = Bodies.rectangle(x, y, w, h, { isStatic: true });
       World.add(world, plat);
@@ -241,7 +244,7 @@
       createTV(x, y);
     }
 
-    // Shooting: A button fires in direction from d-pad or last facing.
+    // Shooting: A button fires in the direction based on d-pad keys or last facing.
     function shoot() {
       let dx = 0, dy = 0;
       if (keys["ArrowUp"])    dy = -1;
@@ -265,10 +268,9 @@
       bullets.push(bullet);
     }
 
-    // Collision handling for resetting jump/coyote time and wall contacts.
+    // Collision handling: reset jump, coyote time, and detect wall contacts.
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
-        // If any of the player's legs contact a static body, consider grounded.
         [player.leftLeg, player.rightLeg].forEach(leg => {
           if (pair.bodyA === leg || pair.bodyB === leg) {
             if (pair.bodyA.isStatic || pair.bodyB.isStatic) {
@@ -278,23 +280,16 @@
             }
           }
         });
-        // Detect wall collisions.
-        if (pair.bodyA === leftWall || pair.bodyB === leftWall) {
-          player.wallSide = -1;
-        }
-        if (pair.bodyA === rightWall || pair.bodyB === rightWall) {
-          player.wallSide = 1;
-        }
+        if (pair.bodyA === leftWall || pair.bodyB === leftWall) { player.wallSide = -1; }
+        if (pair.bodyA === rightWall || pair.bodyB === rightWall) { player.wallSide = 1; }
       });
     });
     Events.on(engine, "collisionEnd", function(event) {
       event.pairs.forEach(pair => {
-        // If no contact with ground, mark as airborne.
         if (pair.bodyA === player.leftLeg || pair.bodyB === player.leftLeg ||
             pair.bodyA === player.rightLeg || pair.bodyB === player.rightLeg) {
           player.isGrounded = false;
         }
-        // Clear wallSide when leaving wall.
         if (pair.bodyA === leftWall || pair.bodyB === leftWall ||
             pair.bodyA === rightWall || pair.bodyB === rightWall) {
           player.wallSide = 0;
@@ -307,7 +302,7 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // Camera update: center on player but clamp within level bounds.
+    // Camera: center on player, clamp within level.
     function updateCamera() {
       const offset = Math.max(0, Math.min(player.torso.position.x - screenWidth/2, levelWidth - screenWidth));
       game.style.transform = "translateX(-" + offset + "px)";
@@ -316,64 +311,66 @@
     // Main game loop
     function update() {
       Engine.update(engine, 1000/60);
-      // Update DOM positions for each body.
+      // Update DOM positions
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
-          body.domElement.style.top = body.position.y + "px";
+          body.domElement.style.top  = body.position.y + "px";
           body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
         }
       });
 
-      // Horizontal movement & air control
+      // Horizontal movement with sustained acceleration
       if (keys["ArrowLeft"]) {
         player.facingDirection = -1;
-        Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
+        Body.applyForce(player.torso, player.torso.position, { x: -0.007, y: 0 });
       }
       if (keys["ArrowRight"]) {
         player.facingDirection = 1;
-        Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
+        Body.applyForce(player.torso, player.torso.position, { x: 0.007, y: 0 });
       }
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x * 0.98, y: player.torso.velocity.y });
       }
 
-      // Jump buffering and coyote time
-      if (keys["KeyB"] || keys["Space"]) {
+      // Jumping: Increase jump impulse for higher jumps.
+      if ((keys["KeyB"] || keys["Space"])) {
         if (!jumpKeyActive) {
           jumpBufferTimer = Date.now();
           jumpKeyActive = true;
         }
       } else {
         jumpKeyActive = false;
-        // Variable jump height: if jump key released while ascending, cut velocity.
         if (player.torso.velocity.y < -3) {
           Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -3 });
         }
       }
-      // Check if jump should occur (buffered or within coyote time)
       if ((Date.now() - jumpBufferTimer) < jumpBufferTime ||
           (Date.now() - lastGroundedTime) < coyoteTime) {
         if ((keys["KeyB"] || keys["Space"]) && player.jumpCount < 2) {
-          // If wall sliding, add horizontal impulse away from wall.
           if (player.wallSide !== 0) {
-            Body.setVelocity(player.torso, { x: player.torso.velocity.x + 5 * -player.wallSide, y: -10 });
+            Body.setVelocity(player.torso, { x: player.torso.velocity.x + 5 * -player.wallSide, y: -12 });
           } else {
-            Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
+            Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -12 });
           }
           player.jumpCount++;
           jumpBufferTimer = 0;
         }
       }
 
-      // Correct torso angle for upright stance
+      // Correct torso angle to keep upright
       const correction = -player.torso.angle * 0.2;
       Body.setAngularVelocity(player.torso, player.torso.angularVelocity + correction);
 
-      // Wall sliding: if touching a wall and falling, limit falling speed.
+      // Wall sliding: cap falling speed if against a wall.
       if (player.wallSide !== 0 && player.torso.velocity.y > 4) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 4 });
       }
+
+      // --- Override head position so it remains anchored above the torso ---
+      // This ensures the head is not affected by gravity independently.
+      Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
+      Body.setVelocity(player.head, player.torso.velocity);
 
       updateCamera();
       requestAnimationFrame(update);
