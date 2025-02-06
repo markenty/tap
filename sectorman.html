@@ -2,36 +2,34 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Game Boy Styled Platformer</title>
+  <title>Full Screen Game Boy Platformer</title>
   <style>
-    /* ——— Reset & Body Centering ——— */
+    /* ——— Reset & Full-Screen Setup ——— */
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
     body {
-      background: #ccc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      background: #666;
       font-family: sans-serif;
     }
-    /* ——— Game Boy Container ——— */
+    /* ——— Full-Screen Game Boy Shell ——— */
     #gameboy {
       position: relative;
-      width: 400px;
+      width: 100vw;
+      height: 100vh;
       background: #a3c1a3;  /* Game Boy body color */
-      padding: 20px;
-      border: 5px solid #333;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
     /* ——— Screen (Game Canvas) ——— */
     #screen {
-      width: 100%;
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60vw;
+      max-width: 800px;
       aspect-ratio: 4 / 3;
       background: #000;
       border: 4px solid #666;
       border-radius: 4px;
-      position: relative;
       overflow: hidden;
     }
     /* The Matter.js-rendered game area sits inside the screen */
@@ -42,24 +40,28 @@
       width: 100%;
       height: 100%;
     }
-    /* ——— Controls Section ——— */
+    /* ——— Controls Area (Physical Buttons) ——— */
     #controls {
-      position: relative;
-      margin-top: 20px;
-      height: 150px; /* Reserve space for the controls */
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60vw;
+      max-width: 800px;
+      height: 150px;
     }
-    /* D-Pad (placed at bottom left) */
+    /* D-Pad on bottom left */
     #dpad {
       position: absolute;
-      left: 20px;
-      bottom: 20px;
-      width: 80px;
-      height: 80px;
+      left: 10%;
+      bottom: 0;
+      width: 100px;
+      height: 100px;
     }
     #dpad button {
       position: absolute;
-      width: 30px;
-      height: 30px;
+      width: 35px;
+      height: 35px;
       background: #333;
       color: #fff;
       border: 2px solid #777;
@@ -68,23 +70,23 @@
       cursor: pointer;
     }
     #dpad button:active { background: #777; }
-    /* Position D-Pad buttons as they appear on a Game Boy */
-    #dpad .up    { top: 0; left: 25px; }
-    #dpad .down  { bottom: 0; left: 25px; }
-    #dpad .left  { top: 25px; left: 0; }
-    #dpad .right { top: 25px; right: 0; }
-    /* A/B Buttons (placed at bottom right) */
+    /* Position D-Pad buttons */
+    #dpad .up    { top: 0; left: 32.5px; }
+    #dpad .down  { bottom: 0; left: 32.5px; }
+    #dpad .left  { top: 32.5px; left: 0; }
+    #dpad .right { top: 32.5px; right: 0; }
+    /* A/B Buttons on bottom right */
     #ab-buttons {
       position: absolute;
-      right: 20px;
-      bottom: 20px;
-      width: 80px;
-      height: 80px;
+      right: 10%;
+      bottom: 0;
+      width: 100px;
+      height: 100px;
     }
     #ab-buttons button {
       position: absolute;
-      width: 30px;
-      height: 30px;
+      width: 35px;
+      height: 35px;
       background: #333;
       color: #fff;
       border: 2px solid #777;
@@ -93,7 +95,7 @@
       cursor: pointer;
     }
     #ab-buttons button:active { background: #777; }
-    /* Arrange A/B so one is top-right and the other bottom-left */
+    /* Arrange A/B buttons: one top-right and one bottom-left */
     #ab-buttons .A { top: 0; right: 0; }
     #ab-buttons .B { bottom: 0; left: 0; }
 
@@ -128,11 +130,11 @@
 </head>
 <body>
   <div id="gameboy">
-    <!-- The Game Boy screen -->
+    <!-- Game Boy Screen -->
     <div id="screen">
       <div id="game"></div>
     </div>
-    <!-- The physical control buttons -->
+    <!-- Physical Button Layout -->
     <div id="controls">
       <div id="dpad">
         <button class="up">↑</button>
@@ -162,7 +164,6 @@
     const world  = engine.world;
     const game   = document.getElementById('game');
 
-    // Arrays to keep track of physics bodies and their DOM elements.
     let domEntities = [];
     let platforms   = [];
     let tvs         = [];
@@ -180,8 +181,8 @@
       domEntities.push(body);
     }
 
-    // ——— Set Up the Ground ———
-    // The ground is positioned at the bottom of the screen.
+    // ——— Setup the Ground ———
+    // Use the screen dimensions to set the ground.
     const screenRect = document.getElementById('screen').getBoundingClientRect();
     const gameWidth  = screenRect.width;
     const gameHeight = screenRect.height;
@@ -213,7 +214,6 @@
 
       World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
 
-      // Connect parts with constraints.
       function link(bodyA, bodyB, offsetA, offsetB) {
         const con = Constraint.create({
           bodyA,
@@ -231,7 +231,6 @@
       link(torso, leftLeg, { x: -size/2, y: size }, { x: 0, y: -size/2 });
       link(torso, rightLeg, { x: size/2, y: size }, { x: 0, y: -size/2 });
 
-      // Save key parts for movement.
       player.head     = head;
       player.torso    = torso;
       player.leftLeg  = leftLeg;
@@ -351,14 +350,12 @@
           body.domElement.style.transform = 'translate(-50%, -50%) rotate(' + body.angle + 'rad)';
         }
       });
-      // Left/right movement via keyboard.
       if (keys['ArrowLeft'] || keys['KeyA']) {
         Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
       }
       if (keys['ArrowRight'] || keys['KeyD']) {
         Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
       }
-      // Jump/double jump with Space.
       if (keys['Space'] && player.jumpCount < 2) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
         player.jumpCount++;
