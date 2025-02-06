@@ -2,26 +2,39 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Vectorman-Inspired Platformer</title>
+  <title>Responsive Vectorman-Inspired Platformer</title>
   <style>
-    /* Basic reset */
-    body { margin: 0; overflow: hidden; background: #222; }
-    #game { position: relative; width: 800px; height: 600px; margin: auto; background: #333; }
+    /* ——— Basic Reset ——— */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #222; overflow: hidden; font-family: sans-serif; }
+    
+    /* ——— Responsive Container with 4:3 Aspect Ratio ——— */
+    #game-container {
+      width: 100%;
+      max-width: 1000px;
+      margin: auto;
+      position: relative;
+    }
+    /* Use CSS aspect-ratio or fallback with padding hack */
+    #game {
+      background: #333;
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+    }
+    
+    /* ——— DOM Entities ——— */
     .entity {
       position: absolute;
       border-radius: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
-    /* Player parts (green circles) */
-    .player-part {
-      background: #0f0;
-    }
-    /* Bullet (small white circle) */
-    .bullet {
-      background: #fff;
-    }
-    /* Coin (golden asterisk) */
+    /* Player parts */
+    .player-part { background: #0f0; }
+    /* Bullet */
+    .bullet { background: #fff; }
+    /* Coin styled as an asterisk */
     .coin {
       background: gold;
       color: black;
@@ -30,7 +43,7 @@
       text-align: center;
       border-radius: 0;
     }
-    /* TV elements (styled as rectangles) */
+    /* TV elements */
     .tv {
       position: absolute;
       background: #444;
@@ -42,36 +55,129 @@
       position: absolute;
       background: #555;
     }
+    
+    /* ——— Game Boy Color–Style Overlay ——— */
+    #overlay {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 400px;
+      background: #9bbc0f;
+      border: 4px solid #306230;
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      z-index: 10;
+    }
+    #overlay .dpad, #overlay .buttons {
+      display: inline-block;
+      vertical-align: top;
+    }
+    /* D-Pad style */
+    .dpad {
+      width: 120px;
+      height: 120px;
+      position: relative;
+      margin-right: 20px;
+    }
+    .dpad button {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: #306230;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .dpad button:active { background: #9bbc0f; }
+    /* Positioning D-Pad buttons */
+    .dpad .up    { top: 0; left: 40px; }
+    .dpad .down  { bottom: 0; left: 40px; }
+    .dpad .left  { top: 40px; left: 0; }
+    .dpad .right { top: 40px; right: 0; }
+    
+    /* Buttons A and B */
+    .buttons {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+    .buttons button {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: #306230;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .buttons button:active { background: #9bbc0f; }
+    .buttons .A { top: 10px; right: 0; }
+    .buttons .B { bottom: 10px; left: 0; }
+    
+    /* Toggle Overlay Button */
+    #toggleOverlay {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 20;
+      background: #306230;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    #toggleOverlay:active { background: #9bbc0f; }
   </style>
 </head>
 <body>
-  <div id="game"></div>
+  <div id="game-container">
+    <button id="toggleOverlay">Toggle Controls</button>
+    <div id="game"></div>
+    <div id="overlay">
+      <div class="dpad">
+        <button class="up">↑</button>
+        <button class="down">↓</button>
+        <button class="left">←</button>
+        <button class="right">→</button>
+      </div>
+      <div class="buttons">
+        <button class="A">A</button>
+        <button class="B">B</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Matter.js physics engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // —————————————————————————————
-    // Setup Matter.js and Global Variables
-    // —————————————————————————————
-    const Engine      = Matter.Engine,
-          World       = Matter.World,
-          Bodies      = Matter.Bodies,
-          Body        = Matter.Body,
-          Constraint  = Matter.Constraint,
-          Events      = Matter.Events;
-
+    // ——— Matter.js Setup ———
+    const Engine     = Matter.Engine,
+          World      = Matter.World,
+          Bodies     = Matter.Bodies,
+          Body       = Matter.Body,
+          Constraint = Matter.Constraint,
+          Events     = Matter.Events;
+    
     const engine = Engine.create();
     const world  = engine.world;
     const game   = document.getElementById('game');
 
-    // Arrays to track our bodies with associated DOM elements
     let domEntities = [];
     let platforms   = [];
     let tvs         = [];
     let coins       = [];
     let bullets     = [];
 
-    // Utility: link a Matter body with a DOM element
+    // Utility to create a DOM element linked with a Matter body.
     function createDomElement(body, className, width, height) {
       const el = document.createElement('div');
       el.className = 'entity ' + className;
@@ -82,22 +188,15 @@
       domEntities.push(body);
     }
 
-    // —————————————————————————————
-    // Create the Static World (Ground)
-    // —————————————————————————————
+    // ——— Create Ground ———
     const ground = Bodies.rectangle(400, 600, 800, 40, { isStatic: true });
     World.add(world, ground);
-    // (Ground is not rendered as a DOM element since it’s part of the physics background.)
 
-    // —————————————————————————————
-    // Build the Player as a Ragdoll (CSS Circle Parts)
-    // —————————————————————————————
-    // The player will be constructed from six parts: head, torso, left/right arms, left/right legs.
+    // ——— Build the Ragdoll Player ———
     const player = { jumpCount: 0 };
     (function createPlayer(x, y) {
-      const size = 20; // basic size unit
+      const size = 20;
 
-      // Create parts as Matter bodies and add a corresponding DOM element.
       const head = Bodies.circle(x, y - 40, size / 2, { friction: 0.5 });
       createDomElement(head, 'player-part', size, size);
 
@@ -116,10 +215,8 @@
       const rightLeg = Bodies.circle(x + 10, y + 10, size / 2, { friction: 0.5 });
       createDomElement(rightLeg, 'player-part', size, size);
 
-      // Add all parts to the physics world.
       World.add(world, [head, torso, leftArm, rightArm, leftLeg, rightLeg]);
 
-      // Helper: link two bodies with a constraint.
       function link(bodyA, bodyB, offsetA, offsetB) {
         const con = Constraint.create({
           bodyA,
@@ -131,29 +228,22 @@
         });
         World.add(world, con);
       }
-
-      // Link head to torso.
       link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
-      // Link arms and legs to torso.
       link(torso, leftArm, { x: -size, y: 0 }, { x: 0, y: 0 });
       link(torso, rightArm, { x: size, y: 0 }, { x: 0, y: 0 });
       link(torso, leftLeg, { x: -size/2, y: size }, { x: 0, y: -size/2 });
       link(torso, rightLeg, { x: size/2, y: size }, { x: 0, y: -size/2 });
 
-      // Store references for movement control and collision detection.
       player.head     = head;
       player.torso    = torso;
       player.leftLeg  = leftLeg;
       player.rightLeg = rightLeg;
     })(100, 500);
 
-    // —————————————————————————————
-    // Procedural Platforms
-    // —————————————————————————————
+    // ——— Procedural Platforms ———
     function createPlatform(x, y, width, height) {
       const plat = Bodies.rectangle(x, y, width, height, { isStatic: true });
       World.add(world, plat);
-      // Create a simple DOM rectangle for the platform.
       const el = document.createElement('div');
       el.className = 'platform';
       el.style.width  = width + 'px';
@@ -164,7 +254,6 @@
       plat.domElement = el;
       platforms.push(plat);
     }
-    // Generate 10 platforms at various positions.
     for (let i = 0; i < 10; i++) {
       const w = 100 + Math.random() * 100;
       const h = 20;
@@ -173,9 +262,7 @@
       createPlatform(x, y, w, h);
     }
 
-    // —————————————————————————————
-    // Shootable TVs That Explode into Coins
-    // —————————————————————————————
+    // ——— Shootable TVs ———
     function createTV(x, y) {
       const tvW = 60, tvH = 40;
       const tv = Bodies.rectangle(x, y, tvW, tvH, { isStatic: true, label: 'tv' });
@@ -190,16 +277,13 @@
       tv.domElement = el;
       tvs.push(tv);
     }
-    // Create a few TVs in the world.
     for (let i = 0; i < 5; i++) {
       const x = 150 + Math.random() * 500;
       const y = 50 + Math.random() * 400;
       createTV(x, y);
     }
 
-    // —————————————————————————————
-    // Shooting Mechanic (Bullets)
-    // —————————————————————————————
+    // ——— Shooting Mechanic ———
     window.addEventListener('mousedown', function(e) {
       const rect = game.getBoundingClientRect();
       const targetX = e.clientX - rect.left;
@@ -208,7 +292,6 @@
     });
     function shootBullet(x, y, targetX, targetY) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: 'bullet' });
-      // Compute angle and velocity
       const angle = Math.atan2(targetY - y, targetX - x);
       const speed = 15;
       Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
@@ -217,9 +300,7 @@
       bullets.push(bullet);
     }
 
-    // —————————————————————————————
-    // Bullet and TV Collision: Explode TV into Coins
-    // —————————————————————————————
+    // ——— Bullet & TV Collision: Explode TV ———
     Events.on(engine, 'collisionStart', function(event) {
       event.pairs.forEach(pair => {
         const labels = [pair.bodyA.label, pair.bodyB.label];
@@ -233,11 +314,9 @@
       });
     });
     function explodeTV(tvBody) {
-      // Remove the TV.
       World.remove(world, tvBody);
       if (tvBody.domElement) tvBody.domElement.remove();
       tvs = tvs.filter(tv => tv !== tvBody);
-      // Create a random number of coin bodies (each rendered as an asterisk).
       const coinCount = 3 + Math.floor(Math.random() * 5);
       for (let i = 0; i < coinCount; i++) {
         const coin = Bodies.circle(tvBody.position.x, tvBody.position.y, 8, { restitution: 0.8, label: 'coin' });
@@ -248,14 +327,10 @@
       }
     }
 
-    // —————————————————————————————
-    // Player Movement Controls (Run, Jump, Double Jump)
-    // —————————————————————————————
+    // ——— Player Movement Controls ———
     const keys = {};
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-
-    // Basic collision event to reset jump count when legs contact a static body.
     Events.on(engine, 'collisionStart', function(event) {
       event.pairs.forEach(pair => {
         [player.leftLeg, player.rightLeg].forEach(leg => {
@@ -267,14 +342,8 @@
         });
       });
     });
-
-    // —————————————————————————————
-    // Game Loop: Update Physics and DOM Element Positions
-    // —————————————————————————————
     function update() {
       Engine.update(engine, 1000 / 60);
-
-      // Update each DOM-linked body's position and rotation.
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + 'px';
@@ -282,24 +351,61 @@
           body.domElement.style.transform = 'translate(-50%, -50%) rotate(' + body.angle + 'rad)';
         }
       });
-
-      // Player horizontal control: apply force to the torso.
       if (keys['ArrowLeft'] || keys['KeyA']) {
         Body.applyForce(player.torso, player.torso.position, { x: -0.005, y: 0 });
       }
       if (keys['ArrowRight'] || keys['KeyD']) {
         Body.applyForce(player.torso, player.torso.position, { x: 0.005, y: 0 });
       }
-      // Jump (and double jump) with Space. Only allow if jumpCount is less than 2.
       if (keys['Space'] && player.jumpCount < 2) {
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: -10 });
         player.jumpCount++;
-        keys['Space'] = false;  // Prevent holding space for repeated jumps.
+        keys['Space'] = false;
       }
-
       requestAnimationFrame(update);
     }
     update();
+
+    // ——— Toggle Overlay Logic ———
+    const overlay = document.getElementById('overlay');
+    const toggleOverlay = document.getElementById('toggleOverlay');
+    toggleOverlay.addEventListener('click', () => {
+      overlay.style.display = (overlay.style.display === 'none' || overlay.style.display === '')
+        ? 'block'
+        : 'none';
+    });
+
+    // (Optional) You can map the overlay buttons to the same controls.
+    // For example, clicking on the D-Pad could trigger movement.
+    // The following is a simple mapping for demonstration.
+    const dpadButtons = overlay.querySelectorAll('.dpad button');
+    dpadButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        switch(btn.className) {
+          case 'up':    keys['Space'] = true; break;  // Jump
+          case 'left':  keys['ArrowLeft'] = true; break;
+          case 'right': keys['ArrowRight'] = true; break;
+          // 'down' can be mapped as needed.
+        }
+        // Briefly activate and then release the key.
+        setTimeout(() => {
+          if(btn.className === 'up') keys['Space'] = false;
+          if(btn.className === 'left') keys['ArrowLeft'] = false;
+          if(btn.className === 'right') keys['ArrowRight'] = false;
+        }, 150);
+      });
+    });
+    // Similarly, the A and B buttons could be mapped to actions like shooting.
+    const aButton = overlay.querySelector('.buttons .A');
+    aButton.addEventListener('click', () => {
+      // Shoot in a fixed direction for demonstration.
+      shootBullet(player.torso.position.x, player.torso.position.y, player.torso.position.x + 100, player.torso.position.y);
+    });
+    const bButton = overlay.querySelector('.buttons .B');
+    bButton.addEventListener('click', () => {
+      // Alternate shooting direction.
+      shootBullet(player.torso.position.x, player.torso.position.y, player.torso.position.x - 100, player.torso.position.y);
+    });
   </script>
 </body>
 </html>
