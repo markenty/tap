@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer: Revamped Gravity, Platforms & Feet</title>
+  <title>Revamped Platformer</title>
   <style>
-    /* --- Reset & Full-Screen Setup --- */
+    /* Reset & full-screen */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; touch-action: manipulation; }
     body {
@@ -14,7 +14,7 @@
       font-family: sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
-    /* --- Game Boy Shell --- */
+    /* Game shell */
     #gameboy {
       position: relative;
       width: 100vw;
@@ -22,7 +22,7 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* --- Screen --- */
+    /* Screen */
     #screen {
       position: absolute;
       top: 0;
@@ -33,20 +33,20 @@
       border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* --- Level Container --- */
+    /* Level container */
     #game {
       position: absolute;
       top: 0;
       left: 0;
     }
-    /* --- Controls Area --- */
+    /* Controls area */
     #controls {
       position: absolute;
       bottom: 5%;
       width: 100vw;
       height: 40vh;
     }
-    /* --- D-Pad --- */
+    /* D-Pad */
     #dpad {
       position: absolute;
       left: 5%;
@@ -68,7 +68,7 @@
     #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
     #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
     #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
-    /* --- A/B Buttons --- */
+    /* A/B Buttons */
     #ab-buttons {
       position: absolute;
       right: 5%;
@@ -86,16 +86,26 @@
       font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
-    /* A is for shooting, B for jumping */
+    /* A for shooting, B for jumping */
     #ab-buttons .A { width: 70px; height: 70px; top: 0; right: 0; }
     #ab-buttons .B { width: 70px; height: 70px; bottom: 0; left: 0; }
-    /* --- In-Game Entities --- */
+    /* In-Game Entities – default styling */
     .entity {
       position: absolute;
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
-    .player-part { background: #0f0; }
+    /* Most player parts (head, torso, arms, legs) rendered as circles */
+    .player-part {
+      background: #0f0;
+      border-radius: 50%;
+    }
+    /* The foot will have a custom clip-path so it shows as a half‑circle (flat side down) */
+    .foot {
+      background: #0f0;
+      /* Clip an ellipse that is half the height of a circle */
+      clip-path: ellipse(50% 50% at 50% 100%);
+    }
     .bullet { background: #fff; }
     .coin {
       background: gold;
@@ -138,9 +148,9 @@
   <!-- Matter.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    const { Engine, World, Bodies, Body, Constraint, Composite, Events, Vertices } = Matter;
+    const { Engine, World, Bodies, Body, Constraint, Events, Vertices } = Matter;
     const engine = Engine.create();
-    // Revamped gravity (a bit lower for platformer feel)
+    // Revamped gravity for a heavier feel
     engine.world.gravity.y = 1.5;
     const world = engine.world;
     const game = document.getElementById("game");
@@ -163,23 +173,20 @@
       domEntities.push(body);
     }
 
-    // --- Main World Boundaries (ground walls) ---
-    // (These are destructible as before.)
+    // --- Main World Boundaries (ground & walls) ---
+    // These are destructible as before.
     const groundBoundary = Bodies.rectangle(levelWidth/2, gameHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, gameHeight/2, 40, gameHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, gameHeight/2, 40, gameHeight, { isStatic: true });
     World.add(world, [groundBoundary, leftWall, rightWall]);
 
     // --- Build Main Platform with Pitfalls ---
-    // The main platform is built along the bottom (y = gameHeight - 40) using segments.
     const mainPlatformY = gameHeight - 40;
     let xPos = 0;
     while (xPos < levelWidth) {
-      // Random segment width between 200 and 500 pixels
+      // Segment width between 200 and 500 pixels; gap between 50 and 150 pixels.
       const segmentWidth = 200 + Math.random()*300;
-      // Random gap width between 50 and 150 pixels
       const gapWidth = 50 + Math.random()*100;
-      // Create platform segment if it fits (clamp to levelWidth)
       if (xPos + segmentWidth > levelWidth) break;
       const plat = Bodies.rectangle(xPos + segmentWidth/2, mainPlatformY, segmentWidth, 20, { isStatic: true });
       World.add(world, plat);
@@ -187,15 +194,14 @@
       el.className = "platform";
       el.style.width = segmentWidth + "px";
       el.style.height = "20px";
-      el.style.left = (xPos) + "px";
+      el.style.left = xPos + "px";
       el.style.top = (mainPlatformY - 10) + "px";
       game.appendChild(el);
       plat.domElement = el;
       platforms.push(plat);
-      // Advance xPos: segment then gap
       xPos += segmentWidth + gapWidth;
     }
-    // Optional: add a few extra random platforms higher up
+    // Optional extra platforms above
     for (let i = 0; i < 8; i++) {
       const w = 100 + Math.random()*100,
             h = 20,
@@ -215,46 +221,41 @@
     }
 
     // --- Utility: Create Half-Circle Foot ---
-    // This function returns a Matter body created from vertices approximating a half circle.
-    // The shape is defined so that its flat edge is at the bottom.
+    // Generate vertices approximating a half circle (flat bottom).
     function createHalfCircleFoot(x, y, radius) {
       const numPoints = 12;
       let verts = [];
-      // Start with the left flat corner
+      // Start at left corner of flat edge.
       verts.push({ x: -radius, y: 0 });
-      // Generate arc points from angle PI to 0.
+      // Arc from π to 0
       for (let i = 0; i <= numPoints; i++) {
         const angle = Math.PI - (Math.PI * i / numPoints);
         verts.push({ x: radius * Math.cos(angle), y: radius * Math.sin(angle) });
       }
-      // Create a body from the vertices.
-      // Note: Matter.Bodies.fromVertices centers the body at the computed centroid.
+      // Do not add the right corner explicitly because the loop adds (radius, 0)
+      // Create body from vertices without simplifying (pass false as last param)
       const foot = Bodies.fromVertices(x, y, [verts], {
         friction: 0.8,
         frictionAir: 0.01,
-        restitution: 0,
-        render: { fillStyle: "#0f0" }
-      }, true);
+        restitution: 0
+      }, false);
       return foot;
     }
 
     // --- Player Setup with Composite Parts ---
-    // The player is built with a head, torso, arms and legs.
-    // Feet are created using the half-circle shape.
+    // We build head, torso, arms, legs as circles (CSS class "player-part") and feet as half‑circles (CSS class "foot").
     const player = { jumpCount: 0, facingDirection: 1, isGrounded: false, wallSide: 0 };
     let lastGroundedTime = 0, jumpBufferTimer = 0.5;
     const coyoteTime = 100, jumpBufferTime = 150;
     let jumpKeyActive = false;
     (function createPlayer(x, y) {
       const size = 20;
-      // Increase torso air friction for damping.
       const torsoOptions = { friction: 1.0, frictionAir: 0.1, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
-      // Head
+      // Head & torso (circles)
       const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
       createDomElement(head, "player-part", size, size);
-      // Torso
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
       createDomElement(torso, "player-part", size*2, size*2);
 
@@ -270,22 +271,21 @@
       const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, defaultOptions);
       createDomElement(leftHand, "player-part", size, size);
 
-      // Right Leg (upper leg remains circular)
+      // Right Leg (upper leg as circle)
       const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
       createDomElement(rightUpperLeg, "player-part", size, size);
-      // Replace right foot with a half-circle foot.
+      // Right foot as half-circle, using CSS class "foot"
       const rightFoot = createHalfCircleFoot(x + 10, y + 10 + 20, size/2);
-      createDomElement(rightFoot, "player-part", size, size);
-      
+      createDomElement(rightFoot, "foot", size, size);
+
       // Left Leg
       const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
       createDomElement(leftUpperLeg, "player-part", size, size);
       const leftFoot = createHalfCircleFoot(x - 10, y + 10 + 20, size/2);
-      createDomElement(leftFoot, "player-part", size, size);
+      createDomElement(leftFoot, "foot", size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
-      // Link body parts using constraints.
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a,
@@ -319,7 +319,7 @@
       player.leftFoot = leftFoot;
     })(100, 100);
 
-    // --- Additional Platforms (e.g. TVs, coins) remain unchanged ---
+    // --- Extra Platforms (TVs, coins, etc.) ---
     function createTV(x, y) {
       const tvW = 60, tvH = 40;
       const tv = Bodies.rectangle(x, y, tvW, tvH, { isStatic: true, label: "tv" });
@@ -339,7 +339,6 @@
       const y = 50 + Math.random()*400;
       createTV(x, y);
     }
-
     function breakTV(tv) {
       World.remove(world, tv);
       if (tv.domElement && tv.domElement.parentNode) {
@@ -365,7 +364,7 @@
       }
     }
 
-    // --- Existing Collision for TVs & Bullets ---
+    // --- TV & Bullet Collision ---
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
         if ((pair.bodyA.label === "tv" && pair.bodyB.label === "bullet") ||
@@ -376,7 +375,7 @@
       });
     });
 
-    // --- Destructible World (unchanged from earlier) ---
+    // --- Destructible World ---
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
       return body === player.head || body === player.torso ||
@@ -434,7 +433,7 @@
     }
     function shootBullet(x, y, tx, ty) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
-      const angle = Math.atan2(ty - y, tx - x);
+      const angle = Math.atan2(ty-y, tx-x);
       const speed = 35;
       Body.setVelocity(bullet, { x: Math.cos(angle)*speed, y: Math.sin(angle)*speed });
       World.add(world, bullet);
@@ -485,35 +484,30 @@
       const vx = player.torso.velocity.x;
       const vy = player.torso.velocity.y;
       const speed = Math.hypot(vx, vy);
-      const zoomIn = 1.2;
-      const zoomOut = 0.8;
-      const maxSpeed = 20;
-      const t = Math.min(speed / maxSpeed, 1);
+      const zoomIn = 1.2, zoomOut = 0.8, maxSpeed = 20;
+      const t = Math.min(speed/maxSpeed, 1);
       const zoom = zoomIn*(1-t) + zoomOut*t;
       const visibleWidth = screenWidth/zoom;
       const visibleHeight = screenHeight/zoom;
       let cameraCenterX = player.torso.position.x;
       let cameraCenterY = player.torso.position.y;
-      const offsetX = Math.max(0, Math.min(cameraCenterX - visibleWidth/2, levelWidth - visibleWidth));
-      const offsetY = Math.max(0, cameraCenterY - visibleHeight/2);
+      const offsetX = Math.max(0, Math.min(cameraCenterX-visibleWidth/2, levelWidth-visibleWidth));
+      const offsetY = Math.max(0, cameraCenterY-visibleHeight/2);
       game.style.transformOrigin = "top left";
       game.style.transform = `scale(${zoom}) translate(-${offsetX}px, -${offsetY}px)`;
     }
 
     // --- Snap Feet When Grounded ---
-    // When the player is grounded (and not in mid-air jump), force the feet to be at fixed offsets relative to the torso.
+    // When grounded (not mid-air), force the feet to be at fixed offsets under the torso.
     function snapFeet() {
       if (player.isGrounded) {
         const torsoPos = player.torso.position;
-        // Offsets for left and right feet relative to the torso.
         const leftOffset = { x: -10, y: 20 };
         const rightOffset = { x: 10, y: 20 };
         Body.setPosition(player.leftFoot, { x: torsoPos.x + leftOffset.x, y: torsoPos.y + leftOffset.y });
         Body.setPosition(player.rightFoot, { x: torsoPos.x + rightOffset.x, y: torsoPos.y + rightOffset.y });
-        // Also align velocities so they move in unison.
         Body.setVelocity(player.leftFoot, player.torso.velocity);
         Body.setVelocity(player.rightFoot, player.torso.velocity);
-        // Optionally reset angles for stability.
         Body.setAngle(player.leftFoot, 0);
         Body.setAngle(player.rightFoot, 0);
       }
@@ -575,11 +569,10 @@
         Body.setVelocity(player.torso, { x: player.torso.velocity.x, y: 3 });
       }
 
-      // Keep head aligned with torso.
-      Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y - 40 });
+      // Keep head aligned.
+      Body.setPosition(player.head, { x: player.torso.position.x, y: player.torso.position.y-40 });
       Body.setVelocity(player.head, player.torso.velocity);
 
-      // Update camera, then snap feet if grounded.
       updateCamera();
       snapFeet();
       requestAnimationFrame(update);
