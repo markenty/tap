@@ -4,20 +4,19 @@
   <meta charset="utf-8">
   <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible World with AI, HP Bars & Bubble Busting (Player-Centered Camera with Boundaries)</title>
+  <title>Static Camera Entire Map</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; touch-action: manipulation; }
+    html, body { width: 100%; height: 100%; }
     body {
       background: #666;
       font-family: sans-serif;
-      -webkit-tap-highlight-color: transparent;
     }
     /* Game Shell */
     #gameboy {
       position: relative;
-      width: auto;
+      width: 100vw;
       height: 100vh;
       background: #a3c1a3;
       overflow: hidden;
@@ -25,63 +24,35 @@
     /* Screen */
     #screen {
       position: absolute;
-      top: 0; left: 0;
+      top: 0;
+      left: 0;
       width: 100vw;
-      height: calc(100vw * 1);
+      height: 100vh;
       background: #000;
-      border-bottom: 8px solid #444;
       overflow: hidden;
     }
-    /* Game World Container */
+    /* Game World Container (will be scaled and centered) */
     #game {
       position: absolute;
-      top: 0; left: 0;
-      width: 100vw;
-      height: calc(100vw * 1);
+      top: 0;
+      left: 0;
+      /* No dynamic transform here; it will be set via JavaScript */
     }
-    /* Ground area below play area */
+    /* Ground Styling (example) */
     #ground {
       position: absolute;
       left: 0;
       background: #855;
     }
-    /* Controls (D-pad & A/B Buttons) */
-    #controls { position: absolute; bottom: 5%; width: 100vw; height: 40vh; }
-    #dpad {
-      position: absolute; left: 5%; bottom: 5%;
-      width: 150px; height: 150px;
-    }
-    #dpad button {
+    /* Controls (optional) */
+    #controls {
       position: absolute;
-      background: #333;
-      border: 3px solid #777;
-      border-radius: 10px;
-      cursor: pointer;
-      touch-action: manipulation;
-      font-size: 0;
+      bottom: 5%;
+      width: 100vw;
+      height: 40vh;
+      pointer-events: none;  /* Disable for static camera demo */
     }
-    #dpad button:active { background: #777; }
-    #dpad .up    { top: 0; left: 45px; width: 60px; height: 60px; }
-    #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
-    #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
-    #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
-    #ab-buttons {
-      position: absolute; right: 5%; bottom: 5%;
-      width: 150px; height: 150px;
-    }
-    #ab-buttons button {
-      position: absolute;
-      background: #333;
-      border: 3px solid #777;
-      border-radius: 50%;
-      cursor: pointer;
-      touch-action: manipulation;
-      font-size: 0;
-    }
-    #ab-buttons button:active { background: #777; }
-    #ab-buttons .A { width: 70px; height: 70px; top: 0; right: 0; }
-    #ab-buttons .B { width: 70px; height: 70px; bottom: 0; left: 0; }
-    /* In-Game Entity Styling */
+    /* In-Game Entities (styles from previous examples) */
     .entity {
       position: absolute;
       border-radius: 50%;
@@ -89,7 +60,17 @@
       pointer-events: none;
       transition: transform 0.5s ease, opacity 0.5s ease;
     }
-    /* HP Bar Styling */
+    .player-part {
+      background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 0 8px rgba(0,255,0,0.7);
+    }
+    .enemy-part {
+      background: radial-gradient(circle, rgba(255,0,0,0.7) 0%, rgba(255,0,0,0.3) 60%, rgba(255,0,0,0) 100%);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 0 8px rgba(255,0,0,0.7);
+    }
+    .bullet { background: #fff; }
     .hp-bar-container {
       position: absolute;
       width: 50px;
@@ -105,42 +86,6 @@
       background: lime;
       border-radius: 3px;
     }
-    /* Bubble style for player (green) */
-    .player-part {
-      background: radial-gradient(circle, rgba(0,255,0,0.7) 0%, rgba(0,255,0,0.3) 60%, rgba(0,255,0,0) 100%);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 0 8px rgba(0,255,0,0.7);
-    }
-    /* Bubble style for enemy (red) */
-    .enemy-part {
-      background: radial-gradient(circle, rgba(255,0,0,0.7) 0%, rgba(255,0,0,0.3) 60%, rgba(255,0,0,0) 100%);
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow: 0 0 8px rgba(255,0,0,0.7);
-    }
-    /* Bubble burst effect */
-    .bubble-burst {
-      transform: translate(-50%, -50%) scale(2);
-      opacity: 0;
-    }
-    .bullet { background: #fff; }
-    .coin {
-      background: gold;
-      color: black;
-      font-size: 14px;
-      line-height: 16px;
-      text-align: center;
-      border-radius: 0;
-    }
-    .tv {
-      position: absolute;
-      background: #444;
-      border: 2px solid #999;
-      border-radius: 4px;
-    }
-    .platform {
-      position: absolute;
-      background: #555;
-    }
   </style>
 </head>
 <body>
@@ -149,16 +94,7 @@
       <div id="game"></div>
     </div>
     <div id="controls">
-      <div id="dpad">
-        <button class="up"></button>
-        <button class="down"></button>
-        <button class="left"></button>
-        <button class="right"></button>
-      </div>
-      <div id="ab-buttons">
-        <button class="A"></button>
-        <button class="B"></button>
-      </div>
+      <!-- Controls could be added here if desired -->
     </div>
   </div>
 
@@ -172,15 +108,15 @@
     const world = engine.world;
     const game = document.getElementById("game");
 
-    // Game dimensions.
-    const levelWidth = 100vw;
-    const playAreaHeight = document.getElementById("screen").getBoundingClientRect().height;
+    // Define level dimensions.
+    const levelWidth = 3000;
+    const playAreaHeight = 600;  // Example: a 600px tall play area.
     const groundExtraHeight = 200;
     const gameHeight = playAreaHeight + groundExtraHeight;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Ground visual element.
+    // Create ground element (visual).
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
     groundEl.style.top = playAreaHeight + "px";
@@ -201,7 +137,7 @@
       domEntities.push(body);
     }
 
-    // Static boundaries.
+    // Add static boundaries (ground & walls).
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftWall = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightWall = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
@@ -287,7 +223,7 @@
       return char;
     }
 
-    // Global single instances.
+    // Global characters.
     let playerChar = createCharacter(100, 100, false);
     let enemyChar = createCharacter(400, 100, true);
 
@@ -334,7 +270,7 @@
     function takeDamage(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
-      // Knockback effect.
+      // Knockback.
       const knockbackFactor = 0.001;
       if (bullet && bullet.velocity) {
         Body.applyForce(character.torso, character.torso.position, {
@@ -347,7 +283,6 @@
         const percent = Math.max(character.hp, 0) / 100;
         character.hpBar.style.width = (percent * 100) + "%";
       }
-      // If HP is depleted, trigger bubble burst.
       if (character.hp <= 0) {
         character.alive = false;
         [character.head, character.torso, character.rightUpperArm, character.rightHand,
@@ -453,105 +388,26 @@
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Camera Update: Always Center on Player; Zoom Out if Enemy Is Too Far ---
-    let currentOffsetX = 0, currentOffsetY = 0, currentZoom = 1;
-    function lerp(a, b, t) { return a + (b - a) * t; }
-    function updateCamera() {
-      // Always center on player's torso.
-      const playerPos = playerChar.torso.position;
-      // Get screen dimensions.
+    // --- Static Camera: Show Entire Map ---
+    // We compute a constant scale factor and offset that ensures the entire game map is visible.
+    function setupStaticCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      // Calculate default zoom (if enemy is near).
-      let desiredZoom = 1.2;
-      // Compute enemy offset relative to player.
-      const enemyPos = enemyChar.torso.position;
-      const diffX = Math.abs(enemyPos.x - playerPos.x);
-      const diffY = Math.abs(enemyPos.y - playerPos.y);
-      const safeMargin = 100; // safe padding in world units
-      // We want: half viewport (in world units) >= diff + safeMargin.
-      // That is, screenWidth/(2*desiredZoom) >= diffX + safeMargin, so desiredZoom <= screenWidth/(2*(diffX+safeMargin))
-      const zoomX = screenWidth / (2 * (diffX + safeMargin));
-      const zoomY = screenHeight / (2 * (diffY + safeMargin));
-      desiredZoom = Math.min(desiredZoom, zoomX, zoomY);
-      // Clamp desired zoom.
-      desiredZoom = Math.max(Math.min(desiredZoom, 2), 0.5);
-      // Because the camera is centered on the player, target offset is computed so that:
-      // player is at (screenWidth/(2*zoom), screenHeight/(2*zoom)) in world coordinates.
-      const targetOffsetX = playerPos.x - (screenWidth / (2 * desiredZoom));
-      const targetOffsetY = playerPos.y - (screenHeight / (2 * desiredZoom));
-      const smoothingFactor = 0.1;
-      currentZoom = lerp(currentZoom, desiredZoom, smoothingFactor);
-      currentOffsetX = lerp(currentOffsetX, targetOffsetX, smoothingFactor);
-      currentOffsetY = lerp(currentOffsetY, targetOffsetY, smoothingFactor);
+      // Compute scale so that the entire level (levelWidth x gameHeight) fits in the viewport.
+      const scale = Math.min(screenWidth / levelWidth, screenHeight / gameHeight);
+      // Compute offset to center the game.
+      const offsetX = (levelWidth * scale - screenWidth) / 2 / scale;
+      const offsetY = (gameHeight * scale - screenHeight) / 2 / scale;
+      // Apply static transform.
       game.style.transformOrigin = "top left";
-      game.style.transform = `scale(${currentZoom}) translate(-${currentOffsetX}px, -${currentOffsetY}px)`;
+      game.style.transform = `scale(${scale}) translate(-${offsetX}px, -${offsetY}px)`;
     }
-
-    // --- Clamp Player Within World Boundaries ---
-    function clampPlayer() {
-      const margin = 50;
-      const pos = playerChar.torso.position;
-      let clampedX = pos.x, clampedY = pos.y;
-      if (pos.x < margin) clampedX = margin;
-      if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
-      if (pos.y < margin) clampedY = margin;
-      if (clampedX !== pos.x || clampedY !== pos.y) {
-        Body.setPosition(playerChar.torso, { x: clampedX, y: clampedY });
-        Body.setVelocity(playerChar.torso, { x: 0, y: 0 });
-      }
-    }
-
-    // --- Clamp Enemy Within World Boundaries ---
-    function clampEnemy() {
-      const margin = 50;
-      const pos = enemyChar.torso.position;
-      let clampedX = pos.x, clampedY = pos.y;
-      if (pos.x < margin) clampedX = margin;
-      if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
-      if (pos.y < margin) clampedY = margin;
-      if (clampedX !== pos.x || clampedY !== pos.y) {
-        Body.setPosition(enemyChar.torso, { x: clampedX, y: clampedY });
-        Body.setVelocity(enemyChar.torso, { x: 0, y: 0 });
-      }
-    }
-
-    // --- Leg Animation ---
-    let walkCycle = 0, lastTime = Date.now();
-    function updateWalkCycle() {
-      const now = Date.now();
-      const dt = (now - lastTime) / 1000;
-      lastTime = now;
-      if (playerChar.isGrounded && (keys["ArrowLeft"] || keys["ArrowRight"])) {
-        walkCycle += dt * 6;
-        const maxAngle = Math.PI / 12;
-        const leftLegOffset = Math.sin(walkCycle) * maxAngle;
-        const rightLegOffset = Math.sin(walkCycle + Math.PI) * maxAngle;
-        Body.setAngle(playerChar.leftUpperLeg, playerChar.torso.angle + leftLegOffset);
-        Body.setAngle(playerChar.rightUpperLeg, playerChar.torso.angle + rightLegOffset);
-        Body.setAngle(playerChar.leftFoot, playerChar.torso.angle + leftLegOffset);
-        Body.setAngle(playerChar.rightFoot, playerChar.torso.angle + rightLegOffset);
-      } else {
-        walkCycle = 0;
-      }
-    }
-
-    // --- Enemy AI ---
-    function updateEnemyAI() {
-      if (!enemyChar || !enemyChar.alive) return;
-      const dx = playerChar.torso.position.x - enemyChar.torso.position.x;
-      const dy = playerChar.torso.position.y - enemyChar.torso.position.y;
-      const mag = Math.hypot(dx, dy);
-      if (mag > 0) {
-        Body.applyForce(enemyChar.torso, enemyChar.torso.position, { x: (dx/mag)*0.005, y: (dy/mag)*0.005 });
-      }
-      enemyChar.shootCooldown -= 1000/60;
-      if (enemyChar.shootCooldown <= 0) {
-        enemyShoot();
-        enemyChar.shootCooldown = 1000;
-      }
-      clampEnemy();
-    }
+    
+    // Call static camera setup once.
+    setupStaticCamera();
+    
+    // Optionally, update static camera on resize.
+    window.addEventListener("resize", setupStaticCamera);
 
     // --- Main Game Loop ---
     function update() {
@@ -582,8 +438,23 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
 
-      updateCamera();
+      // Although the camera is static, we still want to clamp characters.
       clampPlayer();
+      // Optionally, also clamp enemy.
+      function clampEnemy() {
+        const margin = 50;
+        const pos = enemyChar.torso.position;
+        let clampedX = pos.x, clampedY = pos.y;
+        if (pos.x < margin) clampedX = margin;
+        if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
+        if (pos.y < margin) clampedY = margin;
+        if (clampedX !== pos.x || clampedY !== pos.y) {
+          Body.setPosition(enemyChar.torso, { x: clampedX, y: clampedY });
+          Body.setVelocity(enemyChar.torso, { x: 0, y: 0 });
+        }
+      }
+      clampEnemy();
+
       updateWalkCycle();
       updateEnemyAI();
 
