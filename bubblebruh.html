@@ -263,8 +263,7 @@
     // Global joystick aim vector.
     let joystickAim = { x: 0, y: 0 };
 
-    // Level dimensions:
-    // Previously, levelWidth was increased to 300000.
+    // Level dimensions (previously set to 300000).
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -335,7 +334,7 @@
       wall.hp = 100;
       World.add(world, wall);
       const wallEl = document.createElement("div");
-      wallEl.className = "platform"; // same styling as platforms
+      wallEl.className = "platform";
       wallEl.style.width = width + "px";
       wallEl.style.height = height + "px";
       wallEl.style.left = (x + width/2) + "px";
@@ -347,9 +346,8 @@
 
     // Generate 800 platforms at random positions.
     for (let i = 0; i < 800; i++) {
-      const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
+      const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
-      // y between 300 and (playAreaHeight - 50)
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
@@ -357,14 +355,14 @@
     // Generate 800 TVs at random positions.
     for (let i = 0; i < 800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
-      const tvY = 100 + Math.random() * 200;  // y between 100 and 300
+      const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
 
     // Generate 600 walls at random positions.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
-      const wallY = 100; // y fixed at 100
+      const wallY = 100;
       createWall(wallX, wallY, 20, 200);
     }
 
@@ -450,8 +448,13 @@
     // Enemy Factory
     // ------------------------------
     function createEnemy(x, y) {
-      // A simple enemy represented as a circle of radius 15
-      const enemy = Bodies.circle(x, y, 15, { friction: 0.5, restitution: 0.3, label: "enemy" });
+      // Create an enemy with a radius of 15, lower frictionAir for easier movement.
+      const enemy = Bodies.circle(x, y, 15, { 
+        friction: 0.5, 
+        frictionAir: 0.02, 
+        restitution: 0.3, 
+        label: "enemy" 
+      });
       enemy.hp = 50;
       World.add(world, enemy);
       const enemyEl = document.createElement("div");
@@ -465,8 +468,8 @@
       domEntities.push(enemy);
       return enemy;
     }
-    // Spawn a few enemies (for example, 10) at random positions.
-    for (let i = 0; i < 10; i++) {
+    // Spawn 20 enemies at random positions throughout the level.
+    for (let i = 0; i < 20; i++) {
       const enemyX = Math.random() * (levelWidth - 400) + 200;
       const enemyY = Math.random() * (playAreaHeight - 200) + 50;
       createEnemy(enemyX, enemyY);
@@ -774,6 +777,24 @@
     // ------------------------------
     function update() {
       Engine.update(engine, 1000/60);
+      
+      // Enemy AI: move each enemy toward the player's torso.
+      enemies.forEach(enemy => {
+        if (enemy.hp > 0) {
+          const dx = playerChar.torso.position.x - enemy.position.x;
+          const dy = playerChar.torso.position.y - enemy.position.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 1) {
+            const forceMagnitude = 0.001;  // Increased force for visible movement.
+            Body.applyForce(enemy, enemy.position, { 
+              x: (dx / dist) * forceMagnitude, 
+              y: (dy / dist) * forceMagnitude 
+            });
+          }
+        }
+      });
+      
+      // Update positions of DOM elements.
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
@@ -785,22 +806,6 @@
         if (coin.domElement) {
           coin.domElement.style.left = coin.position.x + "px";
           coin.domElement.style.top = coin.position.y + "px";
-        }
-      });
-      
-      // Simple enemy AI: each enemy moves toward the player's torso.
-      enemies.forEach(enemy => {
-        if (enemy.hp > 0) {
-          const dx = playerChar.torso.position.x - enemy.position.x;
-          const dy = playerChar.torso.position.y - enemy.position.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist > 1) {
-            const forceMagnitude = 0.00005;
-            Body.applyForce(enemy, enemy.position, { 
-              x: (dx / dist) * forceMagnitude, 
-              y: (dy / dist) * forceMagnitude 
-            });
-          }
         }
       });
       
@@ -829,7 +834,7 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level boundaries and above the ground.
+      // Clamp player within level boundaries.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
