@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Destructible Environment with Physics Tentacles and Enemies</title>
+  <style>
+    /* Reset & Full-Screen Setup */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+    body { background: #666; font-family: sans-serif; }
+    
+    /* Game Shell */
+    #gameboy {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #a3c1a3;
+      overflow: hidden;
+    }
+    /* Screen – contains the game world and parallax background */
+    #screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      overflow: hidden;
+    }
+    /* Parallax Background Layer */
+    #parallax {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('IMG_7196.png') repeat-x;
+      background-size: auto 100%;
+      z-index: 0;
+    }
+    /* Game World Container – camera transform applied */
+    #game {
+      position: absolute;
+      top: 0; left: 0;
+      z-index: 1;
+    }
+    /* Ground styling */
+    #ground {
+      position: absolute;
+      left: 0;
+      background: #0d0c29;
+    }
+    /* Controls (always on top) */
+    #controls {
+      position: absolute;
+      bottom: 5%;
+      width: 100vw;
+      height: 40vh;
+      z-index: 10;
+    }
+    /* D-Pad */
+    #dpad {
+      position: absolute;
+      left: 5%;
+      bottom: 5%;
+      width: 150px;
+      height: 150px;
+    }
+    /* Directional buttons */
+    #dpad button {
+      position: absolute;
+      background: #333;
+      border: 3px solid #777;
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+      font-size: 0;
+    }
+    #dpad button:active { background: #777; }
+    #dpad .up    { top: 0; left: 45px; width: 60px; height: 60px; }
+    #dpad .down  { bottom: 0; left: 45px; width: 60px; height: 60px; }
+    #dpad .left  { top: 45px; left: 0; width: 60px; height: 60px; }
+    #dpad .right { top: 45px; right: 0; width: 60px; height: 60px; }
+    /* Joystick disc */
+    #dpad #joystick {
+      position: absolute;
+      top: 45px;
+      left: 45px;
+      width: 60px;
+      height: 60px;
+      background: #333;
+      border: 3px solid #777;
+      border-radius: 50%;
+      z-index: 3;
+      touch-action: none;
+    }
+    /* A/B/C Buttons */
+    #ab-buttons {
+      position: absolute;
+      right: 0%;
+      bottom: 5%;
+      width: 250px;
+      height: 80px;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: flex-end;
+    }
+    /* Staggered positions for buttons */
+    #ab-buttons button:nth-child(1) { transform: translateY(-30px); }
+    #ab-buttons button:nth-child(2) { transform: translateY(-10px); }
+    #ab-buttons button:nth-child(3) { transform: translateY(-20px); }
+    #ab-buttons button {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #333;
+      border: 3px solid #777;
+      cursor: pointer;
+      touch-action: manipulation;
+      font-size: 0;
+    }
+    #ab-buttons button:active { background: #777; }
+    /* In-Game Entity Styling */
+    .entity {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: transform 0.5s ease, opacity 0.5s ease;
+    }
+    /* HP Bar Styling */
+    .hp-bar-container {
+      position: absolute;
+      width: 50px;
+      height: 6px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #000;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .hp-bar {
+      width: 100%;
+      height: 100%;
+      background: lime;
+      border-radius: 3px;
+    }
+    /* Player parts as circles (“bubbles”) */
+    .player-part {
+      background: #fff;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
+      position: absolute;
+    }
+    /* Enemy parts (from enemy ai) */
+    .enemy-part {
+      background: radial-gradient(circle, rgba(255,0,0,0.7) 0%, rgba(255,0,0,0.3) 60%, rgba(255,0,0,0) 100%);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow: 0 0 8px rgba(255,0,0,0.7);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      position: absolute;
+    }
+    .bullet {
+      background: #fff;
+      border-radius: 50%;
+    }
+    .bubble-burst {
+      transform: translate(-50%, -50%) scale(2);
+      opacity: 0;
+    }
+    /* Platform & Wall styling */
+    .platform { position: absolute; background: #555; }
+    /* TV styling */
+    .tv {
+      position: absolute;
+      background: #444;
+      border: 2px solid #999;
+      border-radius: 4px;
+    }
+    /* Coin styling */
+    .coin {
+      position: absolute;
+      background: gold;
+      color: black;
+      border-radius: 50%;
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+    }
+    /* Head eyes (for player only) */
+    .head .eye {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: red;
+      box-shadow: 0 0 5px red;
+    }
+    .head .eye.left { left: 30%; top: 30%; }
+    .head .eye.right { right: 30%; top: 30%; }
+  </style>
+</head>
+<body>
+  <div id="gameboy">
+    <div id="screen">
+      <div id="parallax"></div>
+      <div id="game"></div>
+    </div>
+    <div id="controls">
+      <div id="dpad">
+        <button class="up"></button>
+        <button class="down"></button>
+        <button class="left"></button>
+        <button class="right"></button>
+        <div id="joystick"></div>
+      </div>
+      <div id="ab-buttons">
+        <button class="A"></button>
+        <button class="B"></button>
+        <button class="C"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matter.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script>
+    // ------------------------------
+    // Global Helpers & Screen Shake
+    // ------------------------------
+    let lastScreenShakeTime = 0;
+    function throttledScreenShake(intensity = 5, duration = 300, cooldown = 500) {
+      const now = Date.now();
+      if (now - lastScreenShakeTime > cooldown) {
+        lastScreenShakeTime = now;
+        screenShake(intensity, duration);
+      }
+    }
+    function screenShake(intensity = 5, duration = 300) {
+      const screen = document.getElementById("screen");
+      const startTime = Date.now();
+      (function shake() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+          const dx = (Math.random() - 0.5) * intensity;
+          const dy = (Math.random() - 0.5) * intensity;
+          screen.style.transform = `translate(${dx}px, ${dy}px)`;
+          requestAnimationFrame(shake);
+        } else {
+          screen.style.transform = "";
+        }
+      })();
+    }
+    function particleBurst(x, y, color) {
+      const numParticles = 20;
+      for (let i = 0; i < numParticles; i++) {
+        const particle = document.createElement("div");
+        particle.style.position = "absolute";
+        particle.style.left = x + "px";
+        particle.style.top = y + "px";
+        particle.style.width = "4px";
+        particle.style.height = "4px";
+        particle.style.backgroundColor = color;
+        particle.style.borderRadius = "50%";
+        particle.style.pointerEvents = "none";
+        particle.style.opacity = "1";
+        particle.style.transform = "translate(-50%, -50%)";
+        game.appendChild(particle);
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * 50 + 20;
+        const deltaX = Math.cos(angle) * distance;
+        const deltaY = Math.sin(angle) * distance;
+        particle.animate([
+          { transform: `translate(0px, 0px)`, opacity: 1 },
+          { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 0 }
+        ], {
+          duration: 800 + Math.random() * 400,
+          easing: "ease-out",
+          fill: "forwards"
+        });
+        setTimeout(() => { if (particle.parentNode) particle.parentNode.removeChild(particle); }, 1200);
+      }
+    }
+
+    // ------------------------------
+    // Matter.js Setup & World
+    // ------------------------------
+    const engine = Matter.Engine.create();
+    engine.world.gravity.y = 3.2;
+    const world = engine.world;
+    const { Engine, World, Bodies, Body, Constraint, Events, Composites, Composite } = Matter;
+    const game = document.getElementById("game");
+
+    // Global joystick aim vector.
+    let joystickAim = { x: 0, y: 0 };
+
+    // Level dimensions:
+    const levelWidth = 300000;
+    const gameHeight = window.innerHeight;
+    const playAreaHeight = window.innerHeight - 100;
+    const groundExtraHeight = 100;
+    game.style.width = levelWidth + "px";
+    game.style.height = gameHeight + "px";
+
+    // Create ground element.
+    const groundEl = document.createElement("div");
+    groundEl.id = "ground";
+    groundEl.style.top = playAreaHeight + "px";
+    groundEl.style.width = levelWidth + "px";
+    groundEl.style.height = groundExtraHeight + "px";
+    game.appendChild(groundEl);
+
+    // Arrays for DOM entities and game objects.
+    let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
+    // Array to hold enemy characters.
+    let enemyChars = [];
+
+    function createDomElement(body, cls, w, h) {
+      const el = document.createElement("div");
+      el.className = "entity " + cls;
+      el.style.width = w + "px";
+      el.style.height = h + "px";
+      game.appendChild(el);
+      body.domElement = el;
+      domEntities.push(body);
+    }
+
+    // ------------------------------
+    // Platform, TV, and Wall Creation
+    // ------------------------------
+    function createPlatform(x, y, width, height) {
+      const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
+      platform.width = width;
+      platform.height = height;
+      platform.hp = 50;
+      World.add(world, platform);
+      const platformEl = document.createElement("div");
+      platformEl.className = "platform";
+      platformEl.style.width = width + "px";
+      platformEl.style.height = height + "px";
+      platformEl.style.left = (x + width/2) + "px";
+      platformEl.style.top = (y + height/2) + "px";
+      game.appendChild(platformEl);
+      platform.domElement = platformEl;
+      platforms.push(platform);
+    }
+    function createTV(x, y, width, height) {
+      const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "tv" });
+      tv.width = width;
+      tv.height = height;
+      tv.hp = 30;
+      World.add(world, tv);
+      const tvEl = document.createElement("div");
+      tvEl.className = "tv";
+      tvEl.style.width = width + "px";
+      tvEl.style.height = height + "px";
+      tvEl.style.left = (x + width/2) + "px";
+      tvEl.style.top = (y + height/2) + "px";
+      game.appendChild(tvEl);
+      tv.domElement = tvEl;
+      tvs.push(tv);
+    }
+    function createWall(x, y, width, height) {
+      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
+      wall.width = width;
+      wall.height = height;
+      wall.hp = 100;
+      World.add(world, wall);
+      const wallEl = document.createElement("div");
+      wallEl.className = "platform";
+      wallEl.style.width = width + "px";
+      wallEl.style.height = height + "px";
+      wallEl.style.left = (x + width/2) + "px";
+      wallEl.style.top = (y + height/2) + "px";
+      game.appendChild(wallEl);
+      wall.domElement = wallEl;
+      walls.push(wall);
+    }
+
+    // Generate platforms.
+    for (let i = 0; i < 3800; i++) {
+      const platWidth = Math.floor(Math.random() * 101) + 150;
+      const platX = Math.random() * (levelWidth - platWidth);
+      const platY = 300 + Math.random() * (playAreaHeight - 350);
+      createPlatform(platX, platY, platWidth, 20);
+    }
+    // Generate TVs.
+    for (let i = 0; i < 3800; i++) {
+      const tvX = Math.random() * (levelWidth - 40);
+      const tvY = 100 + Math.random() * 200;
+      createTV(tvX, tvY, 40, 60);
+    }
+    // Generate walls.
+    for (let i = 0; i < 600; i++) {
+      const wallX = Math.random() * (levelWidth - 20);
+      const wallY = 100;
+      createWall(wallX, wallY, 20, 200);
+    }
+
+    // ------------------------------
+    // Static Boundaries & Safety Floor
+    // ------------------------------
+    const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
+    const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
+    const rightBoundary = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
+    World.add(world, [groundBody, leftBoundary, rightBoundary]);
+    const safetyFloorY = playAreaHeight + 50;
+    const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, { isStatic: true, label: "safetyFloor" });
+    World.add(world, safetyFloor);
+
+    // ------------------------------
+    // Tentacle Helper Functions (for the player only)
+    // ------------------------------
+    function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
+      const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
+        return Bodies.circle(x, y, segmentRadius, {
+          collisionFilter: { group: -1 },
+          frictionAir: 0.1
+        });
+      });
+      Composites.chain(tentacle, 0.5, 0, -0.5, 0, {
+        stiffness: 0.8,
+        length: segmentLength,
+        render: { type: 'line' }
+      });
+      tentacle.bodies.forEach(function(seg) {
+        createDomElement(seg, "tentacleSegment", segmentRadius * 2, segmentRadius * 2);
+      });
+      return tentacle;
+    }
+    function attachTentacleToBody(body, anchorOffset, segments, segmentLength, segmentRadius) {
+      const startX = body.position.x + anchorOffset.x;
+      const startY = body.position.y + anchorOffset.y;
+      const tentacle = createTentacleComposite(startX, startY, segments, segmentLength, segmentRadius);
+      const constraint = Constraint.create({
+        bodyA: body,
+        pointA: anchorOffset,
+        bodyB: tentacle.bodies[0],
+        pointB: { x: 0, y: 0 },
+        stiffness: 0.8,
+        length: 0
+      });
+      Composite.add(world, [tentacle, constraint]);
+      return tentacle;
+    }
+
+    // ------------------------------
+    // Player Character Factory (with physics tentacle on the head)
+    // ------------------------------
+    function createCharacter(x, y) {
+      const char = { hp: 100, alive: true, spawn: { x, y } };
+      const size = 20;
+      const torsoOptions = { friction: 6.0, frictionAir: 0.11, restitution: 0 };
+      const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
+
+      const hpContainer = document.createElement("div");
+      hpContainer.className = "hp-bar-container";
+      const hpBar = document.createElement("div");
+      hpBar.className = "hp-bar";
+      hpContainer.appendChild(hpBar);
+      game.appendChild(hpContainer);
+      char.hpContainer = hpContainer;
+      char.hpBar = hpBar;
+
+      function addPart(body, cls, w, h) {
+        createDomElement(body, cls, w, h);
+        body.character = char;
+        // For the head only, attach a physics-based tentacle and add eyes.
+        if (cls.indexOf("head") !== -1) {
+          attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
+          let eyeLeft = document.createElement("div");
+          eyeLeft.className = "eye left";
+          let eyeRight = document.createElement("div");
+          eyeRight.className = "eye right";
+          body.domElement.appendChild(eyeLeft);
+          body.domElement.appendChild(eyeRight);
+        }
+        return body;
+      }
+
+      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
+      addPart(head, "player-part head", size, size);
+      const torso = Bodies.circle(x, y - 20, size, torsoOptions);
+      addPart(torso, "player-part torso", size*2, size*2);
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
+      addPart(rightUpperArm, "player-part arm", size, size);
+      const rightHand = Bodies.circle(x + 30, y, size/2, defaultOptions);
+      addPart(rightHand, "player-part hand", size, size);
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
+      addPart(leftUpperArm, "player-part arm", size, size);
+      const leftHand = Bodies.circle(x - 30, y, size/2, defaultOptions);
+      addPart(leftHand, "player-part hand", size, size);
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
+      addPart(rightUpperLeg, "player-part leg", size, size);
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, defaultOptions);
+      addPart(rightFoot, "player-part foot", size, size);
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
+      addPart(leftUpperLeg, "player-part leg", size, size);
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, defaultOptions);
+      addPart(leftFoot, "player-part foot", size, size);
+
+      World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
+
+      function link(a, b, offA, offB) {
+        const con = Constraint.create({
+          bodyA: a, pointA: offA, bodyB: b, pointB: offB,
+          stiffness: 1, length: 0.1
+        });
+        World.add(world, con);
+      }
+      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
+      link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
+      link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
+      link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
+      link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
+
+      char.head = head; char.torso = torso;
+      char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
+      char.leftUpperArm = leftUpperArm; char.leftHand = leftHand;
+      char.rightUpperLeg = rightUpperLeg; char.rightFoot = rightFoot;
+      char.leftUpperLeg = leftUpperLeg; char.leftFoot = leftFoot;
+      return char;
+    }
+    let playerChar = createCharacter(100, 100);
+
+    // ------------------------------
+    // Enemy Character Factory (using logic from your first snippet)
+    // ------------------------------
+    function createEnemyCharacter(x, y) {
+      const char = { hp: 100, alive: true, isEnemy: true, spawn: { x, y }, shootCooldown: 1000 };
+      const size = 20;
+      const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
+      const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
+      const partClass = "enemy-part";
+
+      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
+      createDomElement(head, partClass, size, size);
+      const torso = Bodies.circle(x, y - 20, size, torsoOptions);
+      createDomElement(torso, partClass, size*2, size*2);
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
+      createDomElement(rightUpperArm, partClass, size, size);
+      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, defaultOptions);
+      createDomElement(rightHand, partClass, size, size);
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
+      createDomElement(leftUpperArm, partClass, size, size);
+      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, defaultOptions);
+      createDomElement(leftHand, partClass, size, size);
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
+      createDomElement(rightUpperLeg, partClass, size, size);
+      const rightFoot = Bodies.circle(x + 10, y +
