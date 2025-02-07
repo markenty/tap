@@ -163,6 +163,11 @@
       line-height: 20px;
       text-align: center;
     }
+    /* Enemy styling */
+    .enemy {
+      background: red;
+      border: 2px solid darkred;
+    }
   </style>
 </head>
 <body>
@@ -259,8 +264,7 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Previously, levelWidth was 3000, then increased to 30000.
-    // Now, we increase it another 10× to 300000.
+    // Previously, levelWidth was increased to 300000.
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -277,6 +281,7 @@
     game.appendChild(groundEl);
 
     let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
+    let enemies = [];
 
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
@@ -291,7 +296,6 @@
     // ------------------------------
     // Platform, TV, and Wall Creation
     // ------------------------------
-
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
@@ -441,6 +445,32 @@
       return char;
     }
     let playerChar = createCharacter(100, 100);
+
+    // ------------------------------
+    // Enemy Factory
+    // ------------------------------
+    function createEnemy(x, y) {
+      // A simple enemy represented as a circle of radius 15
+      const enemy = Bodies.circle(x, y, 15, { friction: 0.5, restitution: 0.3, label: "enemy" });
+      enemy.hp = 50;
+      World.add(world, enemy);
+      const enemyEl = document.createElement("div");
+      enemyEl.className = "enemy";
+      enemyEl.style.width = "30px";
+      enemyEl.style.height = "30px";
+      enemyEl.style.borderRadius = "50%";
+      game.appendChild(enemyEl);
+      enemy.domElement = enemyEl;
+      enemies.push(enemy);
+      domEntities.push(enemy);
+      return enemy;
+    }
+    // Spawn a few enemies (for example, 10) at random positions.
+    for (let i = 0; i < 10; i++) {
+      const enemyX = Math.random() * (levelWidth - 400) + 200;
+      const enemyY = Math.random() * (playAreaHeight - 200) + 50;
+      createEnemy(enemyX, enemyY);
+    }
 
     // ------------------------------
     // Destructible Object Damage Handling
@@ -755,6 +785,22 @@
         if (coin.domElement) {
           coin.domElement.style.left = coin.position.x + "px";
           coin.domElement.style.top = coin.position.y + "px";
+        }
+      });
+      
+      // Simple enemy AI: each enemy moves toward the player's torso.
+      enemies.forEach(enemy => {
+        if (enemy.hp > 0) {
+          const dx = playerChar.torso.position.x - enemy.position.x;
+          const dy = playerChar.torso.position.y - enemy.position.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 1) {
+            const forceMagnitude = 0.00005;
+            Body.applyForce(enemy, enemy.position, { 
+              x: (dx / dist) * forceMagnitude, 
+              y: (dy / dist) * forceMagnitude 
+            });
+          }
         }
       });
       
