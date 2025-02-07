@@ -299,13 +299,13 @@
     }
 
     // Generate platforms, TVs, and walls…
-    for (let i = 0; i < 3800; i++) {
+    for (let i = 0; i < 38; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-    for (let i = 0; i < 3800; i++) {
+    for (let i = 0; i < 38; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
