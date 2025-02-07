@@ -150,10 +150,10 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 14px rgba(255,255,255,0.2);
       position: absolute;
     }
-    /* Enemy parts (from enemy ai) */
+    /* Enemy parts */
     .enemy-part {
       background: radial-gradient(circle, rgba(255,0,0,0.7) 0%, rgba(255,0,0,0.3) 60%, rgba(255,0,0,0) 100%);
       border: 2px solid rgba(255,255,255,0.7);
@@ -227,84 +227,24 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    // ------------------------------
-    // Global Helpers & Screen Shake
-    // ------------------------------
-    let lastScreenShakeTime = 0;
-    function throttledScreenShake(intensity = 5, duration = 300, cooldown = 500) {
-      const now = Date.now();
-      if (now - lastScreenShakeTime > cooldown) {
-        lastScreenShakeTime = now;
-        screenShake(intensity, duration);
-      }
-    }
-    function screenShake(intensity = 5, duration = 300) {
-      const screen = document.getElementById("screen");
-      const startTime = Date.now();
-      (function shake() {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < duration) {
-          const dx = (Math.random() - 0.5) * intensity;
-          const dy = (Math.random() - 0.5) * intensity;
-          screen.style.transform = `translate(${dx}px, ${dy}px)`;
-          requestAnimationFrame(shake);
-        } else {
-          screen.style.transform = "";
-        }
-      })();
-    }
-    function particleBurst(x, y, color) {
-      const numParticles = 20;
-      for (let i = 0; i < numParticles; i++) {
-        const particle = document.createElement("div");
-        particle.style.position = "absolute";
-        particle.style.left = x + "px";
-        particle.style.top = y + "px";
-        particle.style.width = "4px";
-        particle.style.height = "4px";
-        particle.style.backgroundColor = color;
-        particle.style.borderRadius = "50%";
-        particle.style.pointerEvents = "none";
-        particle.style.opacity = "1";
-        particle.style.transform = "translate(-50%, -50%)";
-        game.appendChild(particle);
-        const angle = Math.random() * 2 * Math.PI;
-        const distance = Math.random() * 50 + 20;
-        const deltaX = Math.cos(angle) * distance;
-        const deltaY = Math.sin(angle) * distance;
-        particle.animate([
-          { transform: `translate(0px, 0px)`, opacity: 1 },
-          { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 0 }
-        ], {
-          duration: 800 + Math.random() * 400,
-          easing: "ease-out",
-          fill: "forwards"
-        });
-        setTimeout(() => { if (particle.parentNode) particle.parentNode.removeChild(particle); }, 1200);
-      }
-    }
-
-    // ------------------------------
-    // Matter.js Setup & World
-    // ------------------------------
-    const engine = Matter.Engine.create();
+    // --- Matter Modules ---
+    const { Engine, World, Bodies, Body, Constraint, Events, Composites, Composite } = Matter;
+    const engine = Engine.create();
     engine.world.gravity.y = 3.2;
     const world = engine.world;
-    const { Engine, World, Bodies, Body, Constraint, Events, Composites, Composite } = Matter;
     const game = document.getElementById("game");
 
-    // Global joystick aim vector.
+    // --- Global Variables ---
     let joystickAim = { x: 0, y: 0 };
-
-    // Level dimensions:
-    const levelWidth = 3000;
+    // Use the larger level dimensions
+    const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Create ground element.
+    // --- Create Ground ---
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
     groundEl.style.top = playAreaHeight + "px";
@@ -312,9 +252,8 @@
     groundEl.style.height = groundExtraHeight + "px";
     game.appendChild(groundEl);
 
-    // Arrays for DOM entities and game objects.
+    // --- Arrays for Game Objects ---
     let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
-    // Array to hold enemy characters.
     let enemyChars = [];
 
     function createDomElement(body, cls, w, h) {
@@ -327,81 +266,75 @@
       domEntities.push(body);
     }
 
-    // ------------------------------
-    // Platform, TV, and Wall Creation (reduced counts)
-    // ------------------------------
+    // --- Create Static Environment Objects ---
     function createPlatform(x, y, width, height) {
-      const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
+      const platform = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
       platform.height = height;
       platform.hp = 50;
       World.add(world, platform);
-      const platformEl = document.createElement("div");
-      platformEl.className = "platform";
-      platformEl.style.width = width + "px";
-      platformEl.style.height = height + "px";
-      platformEl.style.left = (x + width/2) + "px";
-      platformEl.style.top = (y + height/2) + "px";
-      game.appendChild(platformEl);
-      platform.domElement = platformEl;
+      const el = document.createElement("div");
+      el.className = "platform";
+      el.style.width = width + "px";
+      el.style.height = height + "px";
+      el.style.left = (x + width / 2) + "px";
+      el.style.top = (y + height / 2) + "px";
+      game.appendChild(el);
+      platform.domElement = el;
       platforms.push(platform);
     }
     function createTV(x, y, width, height) {
-      const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "tv" });
+      const tv = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "tv" });
       tv.width = width;
       tv.height = height;
       tv.hp = 30;
       World.add(world, tv);
-      const tvEl = document.createElement("div");
-      tvEl.className = "tv";
-      tvEl.style.width = width + "px";
-      tvEl.style.height = height + "px";
-      tvEl.style.left = (x + width/2) + "px";
-      tvEl.style.top = (y + height/2) + "px";
-      game.appendChild(tvEl);
-      tv.domElement = tvEl;
+      const el = document.createElement("div");
+      el.className = "tv";
+      el.style.width = width + "px";
+      el.style.height = height + "px";
+      el.style.left = (x + width / 2) + "px";
+      el.style.top = (y + height / 2) + "px";
+      game.appendChild(el);
+      tv.domElement = el;
       tvs.push(tv);
     }
     function createWall(x, y, width, height) {
-      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
+      const wall = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
       wall.hp = 100;
       World.add(world, wall);
-      const wallEl = document.createElement("div");
-      wallEl.className = "platform";
-      wallEl.style.width = width + "px";
-      wallEl.style.height = height + "px";
-      wallEl.style.left = (x + width/2) + "px";
-      wallEl.style.top = (y + height/2) + "px";
-      game.appendChild(wallEl);
-      wall.domElement = wallEl;
+      const el = document.createElement("div");
+      el.className = "platform";
+      el.style.width = width + "px";
+      el.style.height = height + "px";
+      el.style.left = (x + width / 2) + "px";
+      el.style.top = (y + height / 2) + "px";
+      game.appendChild(el);
+      wall.domElement = el;
       walls.push(wall);
     }
 
-    // Generate platforms (38 items).
-    for (let i = 0; i < 38; i++) {
+    // Reduce the number of static objects from thousands to a manageable count:
+    for (let i = 0; i < 380; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-    // Generate TVs (38 items).
-    for (let i = 0; i < 38; i++) {
+    for (let i = 0; i < 380; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
-    // Generate walls (6 items).
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 60; i++) {
       const wallX = Math.random() * (levelWidth - 20);
       const wallY = 100;
       createWall(wallX, wallY, 20, 200);
     }
 
-    // ------------------------------
-    // Static Boundaries & Safety Floor
-    // ------------------------------
+    // --- Static Boundaries & Safety Floor ---
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightBoundary = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
@@ -410,9 +343,7 @@
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, { isStatic: true, label: "safetyFloor" });
     World.add(world, safetyFloor);
 
-    // ------------------------------
-    // Tentacle Helper Functions (for the player only)
-    // ------------------------------
+    // --- Tentacle Helper Functions ---
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
       const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
         return Bodies.circle(x, y, segmentRadius, {
@@ -446,9 +377,7 @@
       return tentacle;
     }
 
-    // ------------------------------
-    // Player Character Factory (with physics tentacle on the head)
-    // ------------------------------
+    // --- Player Character Factory ---
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
       const size = 20;
@@ -468,7 +397,7 @@
         createDomElement(body, cls, w, h);
         body.character = char;
         if (cls.indexOf("head") !== -1) {
-          attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
+          attachTentacleToBody(body, { x: 0, y: size / 2 }, 5, 10, 2);
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           let eyeRight = document.createElement("div");
@@ -479,25 +408,25 @@
         return body;
       }
 
-      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
+      const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       addPart(head, "player-part head", size, size);
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
-      addPart(torso, "player-part torso", size*2, size*2);
-      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
+      addPart(torso, "player-part torso", size * 2, size * 2);
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
       addPart(rightUpperArm, "player-part arm", size, size);
-      const rightHand = Bodies.circle(x + 30, y, size/2, defaultOptions);
+      const rightHand = Bodies.circle(x + 30, y, size / 2, defaultOptions);
       addPart(rightHand, "player-part hand", size, size);
-      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
       addPart(leftUpperArm, "player-part arm", size, size);
-      const leftHand = Bodies.circle(x - 30, y, size/2, defaultOptions);
+      const leftHand = Bodies.circle(x - 30, y, size / 2, defaultOptions);
       addPart(leftHand, "player-part hand", size, size);
-      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
       addPart(rightUpperLeg, "player-part leg", size, size);
-      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, defaultOptions);
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size / 2, defaultOptions);
       addPart(rightFoot, "player-part foot", size, size);
-      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
       addPart(leftUpperLeg, "player-part leg", size, size);
-      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, defaultOptions);
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, defaultOptions);
       addPart(leftFoot, "player-part foot", size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
@@ -509,14 +438,14 @@
         });
         World.add(world, con);
       }
-      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
       link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
       link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
       link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
       link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size / 2 });
       link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
       char.head = head; char.torso = torso;
@@ -528,9 +457,7 @@
     }
     let playerChar = createCharacter(100, 100);
 
-    // ------------------------------
-    // Enemy Character Factory (similar structure as the player)
-    // ------------------------------
+    // --- Enemy Character Factory ---
     function createEnemyCharacter(x, y) {
       const char = { hp: 100, alive: true, isEnemy: true, spawn: { x, y }, shootCooldown: 1000 };
       const size = 20;
@@ -538,25 +465,25 @@
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
       const partClass = "enemy-part";
 
-      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
+      const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       createDomElement(head, partClass, size, size);
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
-      createDomElement(torso, partClass, size*2, size*2);
-      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
+      createDomElement(torso, partClass, size * 2, size * 2);
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
       createDomElement(rightUpperArm, partClass, size, size);
-      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size/2, defaultOptions);
+      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size / 2, defaultOptions);
       createDomElement(rightHand, partClass, size, size);
-      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
       createDomElement(leftUpperArm, partClass, size, size);
-      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size/2, defaultOptions);
+      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size / 2, defaultOptions);
       createDomElement(leftHand, partClass, size, size);
-      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
       createDomElement(rightUpperLeg, partClass, size, size);
-      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, defaultOptions);
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size / 2, defaultOptions);
       createDomElement(rightFoot, partClass, size, size);
-      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
       createDomElement(leftUpperLeg, partClass, size, size);
-      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, defaultOptions);
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, defaultOptions);
       createDomElement(leftFoot, partClass, size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
@@ -568,14 +495,14 @@
         });
         World.add(world, con);
       }
-      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
       link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
       link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
       link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
       link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size / 2 });
       link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
       char.head = head; char.torso = torso;
@@ -586,9 +513,7 @@
       return char;
     }
 
-    // ------------------------------
-    // Damage Handling for Characters
-    // ------------------------------
+    // --- Damage Handling for Characters ---
     function takeDamageCharacter(character, damage, bullet) {
       if (!character.alive) return;
       character.hp -= damage;
@@ -618,9 +543,7 @@
       }
     }
 
-    // ------------------------------
-    // Bullet Functions
-    // ------------------------------
+    // --- Bullet Functions ---
     function shootBullet(x, y, tx, ty, owner) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       bullet.owner = owner;
@@ -648,15 +571,15 @@
       }
       let shootingHand = dx < 0 ? playerChar.leftHand : playerChar.rightHand;
       let shootingArm = dx < 0 ? playerChar.leftUpperArm : playerChar.rightUpperArm;
-      Body.setPosition(shootingHand, { 
-        x: shootingArm.position.x + (dx * 20), 
+      Body.setPosition(shootingHand, {
+        x: shootingArm.position.x + (dx * 20),
         y: shootingArm.position.y
       });
       const origin = { x: shootingHand.position.x, y: shootingHand.position.y };
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
     }
 
-    // Enemy shooting (given an enemy character)
+    // --- Enemy Shooting ---
     function enemyShoot(enemy) {
       const origin = { x: enemy.rightHand.position.x, y: enemy.rightHand.position.y };
       let dx = playerChar.torso.position.x - origin.x;
@@ -666,9 +589,7 @@
       shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, enemy);
     }
 
-    // ------------------------------
-    // Collision Handling for Bullets
-    // ------------------------------
+    // --- Collision Handling for Bullets ---
     const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
@@ -682,12 +603,10 @@
         } else {
           return;
         }
-        if (target.character && target.character === bullet.owner) {
-          return;
-        }
+        if (target.character && target.character === bullet.owner) return;
         const destructibleLabels = ["platform", "tv", "wall", "wallChunk"];
         if (destructibleLabels.includes(target.label)) {
-          // (Optional: add environment damage logic here.)
+          takeDamageCharacter(target.character, bulletDamage, bullet);
         } else if (target.character && target.character !== bullet.owner) {
           takeDamageCharacter(target.character, bulletDamage, bullet);
         } else if (target.label === "coin") {
@@ -703,9 +622,7 @@
       });
     });
 
-    // ------------------------------
-    // Destructible World Collisions (Gradual Damage on High-Speed Contact)
-    // ------------------------------
+    // --- Destructible World Collisions (Gradual Damage) ---
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
       return body === playerChar.head || body === playerChar.torso ||
@@ -725,34 +642,48 @@
           other = pair.bodyA;
         }
         if (other && other.label !== "safetyFloor" &&
-           (other.label === "platform" || other.label === "tv" || other.label === "wall")) {
+            (other.label === "platform" || other.label === "tv" || other.label === "wall")) {
           const vx = playerChar.torso.velocity.x, vy = playerChar.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
           if (playerSpeed >= destructionSpeedThreshold) {
-            // (Optional: add environment damage logic here.)
+            takeDamageCharacter(other, 10);
           }
         }
       });
     });
 
-    // ------------------------------
-    // Utility: Clamp a character within horizontal bounds
-    // ------------------------------
-    // Only the x coordinate is clamped so that vertical motion (jumps/falls) is not interfered with.
-    function clampWithinBounds(character) {
-      const margin = 50;
-      const pos = character.torso.position;
-      let newX = pos.x;
-      if (pos.x < margin) newX = margin;
-      if (pos.x > levelWidth - margin) newX = levelWidth - margin;
-      if (newX !== pos.x) {
-        Body.setPosition(character.torso, { x: newX, y: pos.y });
+    // --- Input Handling ---
+    let keys = {};
+    window.addEventListener("keydown", (e) => { keys[e.code] = true; });
+    window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+    // --- Camera Follow with Deadzone ---
+    let cameraX = 0, cameraY = 0;
+    function updateCamera() {
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      const deadzoneX = screenWidth * 0.25;
+      const deadzoneY = screenHeight * 0.25;
+      let playerScreenX = playerChar.torso.position.x - cameraX;
+      let playerScreenY = playerChar.torso.position.y - cameraY;
+      if (playerScreenX < deadzoneX) {
+        cameraX = playerChar.torso.position.x - deadzoneX;
+      } else if (playerScreenX > screenWidth - deadzoneX) {
+        cameraX = playerChar.torso.position.x - (screenWidth - deadzoneX);
       }
+      if (playerScreenY < deadzoneY) {
+        cameraY = playerChar.torso.position.y - deadzoneY;
+      } else if (playerScreenY > screenHeight - deadzoneY) {
+        cameraY = playerChar.torso.position.y - (screenHeight - deadzoneY);
+      }
+      cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth));
+      cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight));
+      game.style.transformOrigin = "top left";
+      game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
+      document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
 
-    // ------------------------------
-    // Enemy AI Update Function (for each enemy)
-    // ------------------------------
+    // --- Enemy AI Update ---
     function updateEnemyAI(enemy) {
       if (!enemy || !enemy.alive) return;
       const dx = playerChar.torso.position.x - enemy.torso.position.x;
@@ -781,40 +712,15 @@
         enemyShoot(enemy);
         enemy.shootCooldown = 1000;
       }
-      clampWithinBounds(enemy);
+      // Clamp enemy horizontally (like the player)
+      const margin = 50;
+      let pos = enemy.torso.position;
+      if (pos.x < margin || pos.x > levelWidth - margin) {
+        Body.setPosition(enemy.torso, { x: Math.max(margin, Math.min(pos.x, levelWidth - margin)), y: pos.y });
+      }
     }
 
-    // ------------------------------
-    // Camera Follow Functionality with Deadzone
-    // ------------------------------
-    let cameraX = 0, cameraY = 0;
-    function updateCamera() {
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
-      const deadzoneX = screenWidth * 0.25;
-      const deadzoneY = screenHeight * 0.25;
-      let playerScreenX = playerChar.torso.position.x - cameraX;
-      let playerScreenY = playerChar.torso.position.y - cameraY;
-      if (playerScreenX < deadzoneX) {
-        cameraX = playerChar.torso.position.x - deadzoneX;
-      } else if (playerScreenX > screenWidth - deadzoneX) {
-        cameraX = playerChar.torso.position.x - (screenWidth - deadzoneX);
-      }
-      if (playerScreenY < deadzoneY) {
-        cameraY = playerChar.torso.position.y - deadzoneY;
-      } else if (playerScreenY > screenHeight - deadzoneY) {
-        cameraY = playerChar.torso.position.y - (screenHeight - deadzoneY);
-      }
-      cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth));
-      cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight));
-      game.style.transformOrigin = "top left";
-      game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
-      document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
-    }
-
-    // ------------------------------
-    // Random Enemy Spawning
-    // ------------------------------
+    // --- Random Enemy Spawning ---
     function spawnEnemy() {
       const x = Math.random() * (levelWidth - 100) + 50;
       const y = Math.random() * (playAreaHeight - 100) + 50;
@@ -823,9 +729,7 @@
     }
     setInterval(spawnEnemy, 5000);
 
-    // ------------------------------
-    // Main Game Loop
-    // ------------------------------
+    // --- Main Game Loop ---
     let walkCycle = 0, lastTime = Date.now();
     function update() {
       Engine.update(engine, 1000/60);
@@ -863,10 +767,23 @@
           Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
         }
       }
-      // Keep the head positioned relative to the torso.
+      // Keep the head in position relative to the torso
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
-      clampWithinBounds(playerChar);
+      // Clamp the player horizontally and vertically (as originally)
+      (function clampWithinBounds(character) {
+        const margin = 50;
+        const pos = character.torso.position;
+        let clampedX = pos.x, clampedY = pos.y;
+        if (pos.x < margin) clampedX = margin;
+        if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
+        if (pos.y < margin) clampedY = margin;
+        if (pos.y > playAreaHeight - margin) clampedY = playAreaHeight - margin;
+        if (clampedX !== pos.x || clampedY !== pos.y) {
+          Body.setPosition(character.torso, { x: clampedX, y: clampedY });
+          Body.setVelocity(character.torso, { x: 0, y: 0 });
+        }
+      })(playerChar);
       const now = Date.now();
       const dt = (now - lastTime) / 1000;
       lastTime = now;
@@ -892,9 +809,7 @@
     }
     update();
 
-    // ------------------------------
-    // Joystick Functionality
-    // ------------------------------
+    // --- Joystick Functionality ---
     (function() {
       const joystick = document.getElementById("joystick");
       let startX, startY;
@@ -938,13 +853,11 @@
           joystickAim.y = 0;
         }, 200);
       }
-      joystick.addEventListener("touchend", function(e) { dragging = false; snapBack(); e.preventDefault(); });
-      joystick.addEventListener("touchcancel", function(e) { dragging = false; snapBack(); e.preventDefault(); });
+      joystick.addEventListener("touchend", (e) => { dragging = false; snapBack(); e.preventDefault(); });
+      joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
 
-    // ------------------------------
-    // Touch & Button Mappings
-    // ------------------------------
+    // --- Touch & Button Mappings ---
     let keys = {};
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
@@ -963,46 +876,6 @@
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
     abButtons.querySelector(".C").addEventListener("touchstart", (e) => { e.preventDefault(); meleeAttack(); });
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
-
-    // ------------------------------
-    // (Optional) Melee Attack Function for the Player
-    // ------------------------------
-    function meleeAttack() {
-      let inputDir = { x: 0, y: 0 };
-      if (keys["ArrowLeft"]) inputDir.x -= 1;
-      if (keys["ArrowRight"]) inputDir.x += 1;
-      if (keys["ArrowUp"]) inputDir.y -= 1;
-      if (keys["ArrowDown"]) inputDir.y += 1;
-      if (inputDir.x === 0 && inputDir.y === 0) {
-        if (Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
-          inputDir.x = joystickAim.x;
-          inputDir.y = joystickAim.y;
-        }
-      }
-      let attackDir;
-      if (inputDir.x !== 0 || inputDir.y !== 0) {
-        let mag = Math.hypot(inputDir.x, inputDir.y);
-        attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
-      } else {
-        let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
-        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
-      }
-      setTimeout(() => {
-        let attackPos = (attackDir.x < 0) ? playerChar.leftHand.position : playerChar.rightHand.position;
-        const meleeRange = 60;
-        const damageAmount = 30;
-        [platforms, tvs, walls].forEach(arr => {
-          arr.forEach(obj => {
-            let dx = attackPos.x - obj.position.x;
-            let dy = attackPos.y - obj.position.y;
-            let dist = Math.hypot(dx, dy);
-            if (dist <= meleeRange) {
-              // (Optional: add damage logic for environment objects here.)
-            }
-          });
-        });
-      }, 100);
-    }
   </script>
 </body>
 </html>
