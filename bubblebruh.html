@@ -259,8 +259,6 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Level width fixed at 3000px; full game height equals window.innerHeight,
-    // with 100px reserved at the bottom for the ground.
     const levelWidth = 3000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -520,48 +518,38 @@
     }
 
     // ------------------------------
-    // Melee Attack with Whip Physics and Directional Control (via D-Pad or Joystick)
+    // Melee Attack with Whip Physics and Directional Control
     // ------------------------------
     function meleeAttack() {
-      // Build a directional input vector from D-Pad (arrow keys).
       let inputDir = { x: 0, y: 0 };
       if (keys["ArrowLeft"]) inputDir.x -= 1;
       if (keys["ArrowRight"]) inputDir.x += 1;
       if (keys["ArrowUp"]) inputDir.y -= 1;
       if (keys["ArrowDown"]) inputDir.y += 1;
-      // If no D-Pad input, then try joystick.
       if (inputDir.x === 0 && inputDir.y === 0) {
         if (Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
           inputDir.x = joystickAim.x;
           inputDir.y = joystickAim.y;
         }
       }
-      // If still zero, use default based on ground/air state.
       let attackDir;
       if (inputDir.x !== 0 || inputDir.y !== 0) {
         let mag = Math.hypot(inputDir.x, inputDir.y);
         attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
       } else {
-        // Determine if on ground.
         let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
-      // Define a maximum whip distance from the whip origin.
       let maxWhipDistance = 60;
-      // Use the player's right upper arm as the whip origin.
       let whipOrigin = playerChar.rightUpperArm.position;
-      // Compute a perpendicular (tangent) vector (rotate attackDir 90° clockwise).
       let tangent = { x: attackDir.y, y: -attackDir.x };
-      // Use a sine–modulated force over 300ms (30 steps) to simulate a whip swing.
       let swingTime = 300;
       let steps = 30;
       let stepTime = swingTime / steps;
       let step = 0;
       let interval = setInterval(() => {
-        // Check current distance from whip origin.
         let currentDistance = Math.hypot(playerChar.rightHand.position.x - whipOrigin.x,
                                          playerChar.rightHand.position.y - whipOrigin.y);
-        // Only apply force if within max distance.
         if (currentDistance < maxWhipDistance) {
           let amplitude = Math.sin(Math.PI * step / steps);
           let forceOut = 0.05;
@@ -574,7 +562,6 @@
         step++;
         if (step >= steps) clearInterval(interval);
       }, stepTime);
-      // After 100ms, check for nearby destructible objects.
       setTimeout(() => {
         let attackPos = playerChar.rightHand.position;
         const meleeRange = 60;
@@ -710,20 +697,34 @@
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
     // ------------------------------
-    // Camera Follow Functionality
+    // Camera Follow Functionality with Deadzone
     // ------------------------------
+    let cameraX = 0, cameraY = 0;
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      const scale = 1;
-      const viewWidth = screenWidth;
-      const viewHeight = screenHeight;
-      let cameraX = playerChar.torso.position.x - viewWidth / 2;
-      let cameraY = playerChar.torso.position.y - viewHeight / 2;
-      cameraX = Math.max(0, Math.min(cameraX, levelWidth - viewWidth));
-      cameraY = Math.max(0, Math.min(cameraY, gameHeight - viewHeight));
+      const deadzoneX = screenWidth * 0.25;
+      const deadzoneY = screenHeight * 0.25;
+
+      let playerScreenX = playerChar.torso.position.x - cameraX;
+      let playerScreenY = playerChar.torso.position.y - cameraY;
+
+      if (playerScreenX < deadzoneX) {
+        cameraX = playerChar.torso.position.x - deadzoneX;
+      } else if (playerScreenX > screenWidth - deadzoneX) {
+        cameraX = playerChar.torso.position.x - (screenWidth - deadzoneX);
+      }
+      if (playerScreenY < deadzoneY) {
+        cameraY = playerChar.torso.position.y - deadzoneY;
+      } else if (playerScreenY > screenHeight - deadzoneY) {
+        cameraY = playerChar.torso.position.y - (screenHeight - deadzoneY);
+      }
+
+      cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth));
+      cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight));
+
       game.style.transformOrigin = "top left";
-      game.style.transform = `scale(${scale}) translate(-${cameraX}px, -${cameraY}px)`;
+      game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
     }
 
     // ------------------------------
@@ -755,11 +756,9 @@
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x * 0.98, y: playerChar.torso.velocity.y });
       }
-      // Also allow horizontal movement from joystick.
       if (Math.abs(joystickAim.x) > 0.1) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: joystickAim.x * 0.005, y: 0 });
       }
-      // Jump: if jump key pressed, use joystick aim if present; otherwise vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
@@ -769,11 +768,10 @@
           Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
         }
       }
-      // Sync head with torso.
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level boundaries.
+      // Clamp player within level boundaries and above the ground.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
@@ -781,6 +779,7 @@
         if (pos.x < margin) clampedX = margin;
         if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
         if (pos.y < margin) clampedY = margin;
+        if (pos.y > playAreaHeight - margin) clampedY = playAreaHeight - margin;
         if (clampedX !== pos.x || clampedY !== pos.y) {
           Body.setPosition(character.torso, { x: clampedX, y: clampedY });
           Body.setVelocity(character.torso, { x: 0, y: 0 });
