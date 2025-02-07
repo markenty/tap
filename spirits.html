@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible Environment with Whip‐Style Directional Melee Attack</title>
+  <title>Destructible Environment with Physics Tentacles</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -177,24 +177,6 @@
       line-height: 20px;
       text-align: center;
     }
-    /* Tentacles using pure CSS */
-    .tentacle {
-      position: absolute;
-      top: 100%; /* attach at bottom of bubble */
-      left: 50%;
-      transform: translateX(-50%);
-      width: 2px;
-      height: 20px;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.8), transparent);
-      border-radius: 1px;
-      /* Animate a gentle wiggle */
-      animation: tentacleWiggle 1s infinite ease-in-out;
-    }
-    @keyframes tentacleWiggle {
-      0% { transform: translateX(-50%) rotate(0deg); }
-      50% { transform: translateX(-50%) rotate(20deg); }
-      100% { transform: translateX(-50%) rotate(0deg); }
-    }
     /* Head eyes */
     .head .eye {
       position: absolute;
@@ -232,6 +214,9 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
+    // Include additional Matter modules.
+    const { Engine, World, Bodies, Body, Constraint, Events, Composites, Composite } = Matter;
+
     // ------------------------------
     // Global Helpers & Screen Shake
     // ------------------------------
@@ -292,7 +277,6 @@
     // ------------------------------
     // Matter.js Setup & World
     // ------------------------------
-    const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
     const engine = Engine.create();
     engine.world.gravity.y = 3.2;
     const world = engine.world;
@@ -388,14 +372,12 @@
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-
     // Generate TVs.
     for (let i = 0; i < 3800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
-
     // Generate walls.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
@@ -415,8 +397,50 @@
     World.add(world, safetyFloor);
 
     // ------------------------------
+    // Tentacle Helper Functions
+    // ------------------------------
+    // Create a tentacle composite (a chain of small circular bodies)
+    function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
+      // Create a stack of small circular bodies
+      const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
+        return Bodies.circle(x, y, segmentRadius, {
+          collisionFilter: { group: -1 },
+          frictionAir: 0.1
+        });
+      });
+      // Chain them together
+      Composites.chain(tentacle, 0.5, 0, -0.5, 0, {
+        stiffness: 0.8,
+        length: segmentLength,
+        render: { type: 'line' }
+      });
+      // For each segment, create a DOM element for rendering
+      tentacle.bodies.forEach(function(seg) {
+        createDomElement(seg, "tentacleSegment", segmentRadius * 2, segmentRadius * 2);
+      });
+      return tentacle;
+    }
+
+    // Attach a tentacle composite to a given body at a specified offset.
+    function attachTentacleToBody(body, anchorOffset, segments, segmentLength, segmentRadius) {
+      const startX = body.position.x + anchorOffset.x;
+      const startY = body.position.y + anchorOffset.y;
+      const tentacle = createTentacleComposite(startX, startY, segments, segmentLength, segmentRadius);
+      const constraint = Constraint.create({
+        bodyA: body,
+        pointA: anchorOffset, // relative offset on the body
+        bodyB: tentacle.bodies[0],
+        pointB: { x: 0, y: 0 },
+        stiffness: 0.8,
+        length: 0
+      });
+      Composite.add(world, [tentacle, constraint]);
+      return tentacle;
+    }
+
+    // ------------------------------
     // Character Factory (Player Only)
-    // Restored to circles (“bubbles”) with CSS tentacle overlays
+    // Restored to circles (“bubbles”) with physics-based tentacle attached to the head
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
@@ -433,15 +457,15 @@
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
 
-      // Updated addPart: overlays a CSS tentacle using a div with class "tentacle"
+      // Updated addPart: overlays no CSS tentacle; for head parts, attach a physics tentacle.
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
-        let tentacle = document.createElement("div");
-        tentacle.className = "tentacle";
-        body.domElement.appendChild(tentacle);
-        // For head parts, add two eyes
         if (cls.indexOf("head") !== -1) {
+          // Attach a physics-based tentacle to the head.
+          // Anchor the tentacle at the bottom center of the head.
+          attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
+          // Also add eyes
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           let eyeRight = document.createElement("div");
