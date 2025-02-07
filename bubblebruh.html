@@ -18,19 +18,33 @@
       background: #a3c1a3;
       overflow: hidden;
     }
+    /* Parallax Background */
+    #parallax-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: url('IMG_7194.jpeg') no-repeat center center;
+      background-size: cover;
+      z-index: 0;
+    }
     /* Screen – contains the game world */
     #screen {
       position: absolute;
       top: 0; left: 0;
       width: 100vw;
       height: 100vh;
-      background: #000;
+      /* Removed original black background to let the parallax image show through */
+      background: transparent;
       overflow: hidden;
+      z-index: 1;
     }
     /* Game World Container – camera transform applied */
     #game {
       position: absolute;
       top: 0; left: 0;
+      z-index: 2;
     }
     /* Ground styling */
     #ground {
@@ -167,6 +181,8 @@
 </head>
 <body>
   <div id="gameboy">
+    <!-- Parallax background element -->
+    <div id="parallax-bg"></div>
     <div id="screen">
       <div id="game"></div>
     </div>
@@ -737,6 +753,8 @@
 
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
+      // Update parallax background at half the camera speed.
+      document.getElementById("parallax-bg").style.transform = `translate(-${cameraX * 0.5}px, -${cameraY * 0.5}px)`;
     }
 
     // ------------------------------
