@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Destructible Environment with Physics Tentacles</title>
+  <title>Destructible Environment with Canvas Tentacles</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -43,6 +43,14 @@
       position: absolute;
       top: 0; left: 0;
       z-index: 1;
+    }
+    /* Tentacle canvas overlay */
+    #tentacleCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 2;
     }
     /* Ground styling */
     #ground {
@@ -194,6 +202,8 @@
     <div id="screen">
       <div id="parallax"></div>
       <div id="game"></div>
+      <!-- Canvas for drawing tentacles -->
+      <canvas id="tentacleCanvas"></canvas>
     </div>
     <div id="controls">
       <div id="dpad">
@@ -215,7 +225,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
     // Include additional Matter modules.
-    const { Engine, World, Bodies, Body, Constraint, Events, Composites, Composite } = Matter;
+    const { Engine, World, Bodies, Body, Constraint, Events, Composite, Composites } = Matter;
 
     // ------------------------------
     // Global Helpers & Screen Shake
@@ -397,50 +407,58 @@
     World.add(world, safetyFloor);
 
     // ------------------------------
-    // Tentacle Helper Functions
+    // Tentacle Drawing Functions (Canvas-based)
     // ------------------------------
-    // Create a tentacle composite (a chain of small circular bodies)
-    function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
-      // Create a stack of small circular bodies
-      const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
-        return Bodies.circle(x, y, segmentRadius, {
-          collisionFilter: { group: -1 },
-          frictionAir: 0.1
-        });
-      });
-      // Chain them together
-      Composites.chain(tentacle, 0.5, 0, -0.5, 0, {
-        stiffness: 0.8,
-        length: segmentLength,
-        render: { type: 'line' }
-      });
-      // For each segment, create a DOM element for rendering
-      tentacle.bodies.forEach(function(seg) {
-        createDomElement(seg, "tentacleSegment", segmentRadius * 2, segmentRadius * 2);
-      });
-      return tentacle;
+    // Get the tentacle canvas and its context.
+    const tentacleCanvas = document.getElementById("tentacleCanvas");
+    const ctx = tentacleCanvas.getContext("2d");
+    function resizeTentacleCanvas() {
+      tentacleCanvas.width = window.innerWidth;
+      tentacleCanvas.height = window.innerHeight;
     }
-
-    // Attach a tentacle composite to a given body at a specified offset.
-    function attachTentacleToBody(body, anchorOffset, segments, segmentLength, segmentRadius) {
-      const startX = body.position.x + anchorOffset.x;
-      const startY = body.position.y + anchorOffset.y;
-      const tentacle = createTentacleComposite(startX, startY, segments, segmentLength, segmentRadius);
-      const constraint = Constraint.create({
-        bodyA: body,
-        pointA: anchorOffset, // relative offset on the body
-        bodyB: tentacle.bodies[0],
-        pointB: { x: 0, y: 0 },
-        stiffness: 0.8,
-        length: 0
-      });
-      Composite.add(world, [tentacle, constraint]);
-      return tentacle;
+    window.addEventListener('resize', resizeTentacleCanvas, false);
+    resizeTentacleCanvas();
+    // Helper functions for Bezier tentacle drawing.
+    function getAngle(from, to) {
+      var vx = to.x - from.x;
+      var vy = to.y - from.y;
+      return Math.atan2(vy, vx);
+    }
+    function getTangentVector(from, to, length) {
+      var angle = getAngle(from, to);
+      var tangentAngle = angle - (Math.PI / 2);
+      return { x: length * Math.cos(tangentAngle), y: length * Math.sin(tangentAngle) };
+    }
+    function getTangentPoint(from, to, distance, percentage) {
+      var targetX = (to.x - from.x) * percentage + from.x; 
+      var targetY = (to.y - from.y) * percentage + from.y;
+      var tangent = getTangentVector(from, to, distance);
+      return { x: targetX + tangent.x, y: targetY - tangent.y };
+    }
+    // Global time counter for oscillation.
+    let tentacleTime = 0;
+    // Draw a tentacle (Bezier curve) from "from" to "to".
+    function drawTentacle(from, to) {
+      // Oscillate using the global tentacleTime.
+      var sinVal = Math.sin(tentacleTime / 30);
+      var cosVal = Math.cos(tentacleTime / 30);
+      var intensity = 20; // adjust intensity of the tentacle bend.
+      // Fixed percentages along the line.
+      var percent1 = 0.3;
+      var percent2 = 0.7;
+      var tangent1 = getTangentPoint(from, to, intensity * sinVal, percent1);
+      var tangent2 = getTangentPoint(from, to, intensity * cosVal, percent2);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.bezierCurveTo(tangent1.x, tangent1.y, tangent2.x, tangent2.y, to.x, to.y);
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
     // ------------------------------
     // Character Factory (Player Only)
-    // Restored to circles (“bubbles”) with physics-based tentacle attached to the head
+    // Now using circles (“bubbles”) with canvas-drawn tentacle on the head.
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
@@ -457,15 +475,12 @@
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
 
-      // Updated addPart: overlays no CSS tentacle; for head parts, attach a physics tentacle.
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
+        // For the head, do not attach a Matter-based tentacle.
+        // The canvas-based tentacle will be drawn separately.
         if (cls.indexOf("head") !== -1) {
-          // Attach a physics-based tentacle to the head.
-          // Anchor the tentacle at the bottom center of the head.
-          attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
-          // Also add eyes
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           let eyeRight = document.createElement("div");
@@ -529,6 +544,29 @@
       return char;
     }
     let playerChar = createCharacter(100, 100);
+
+    // ------------------------------
+    // Tentacle Drawing: Called each frame.
+    // ------------------------------
+    function drawTentacleForHead() {
+      // Get head position in screen coordinates.
+      // We assume the "game" div is not translated relative to the viewport (camera translation is applied via transform).
+      const headRect = playerChar.head.domElement.getBoundingClientRect();
+      // Define the "from" point at the bottom-center of the head.
+      const from = {
+        x: headRect.left + headRect.width / 2,
+        y: headRect.top + headRect.height
+      };
+      // Define a "to" point some pixels below the head with oscillation.
+      const to = {
+        x: from.x,
+        y: from.y + 50 + 10 * Math.sin(tentacleTime / 20)
+      };
+      // Clear the tentacle canvas.
+      ctx.clearRect(0, 0, tentacleCanvas.width, tentacleCanvas.height);
+      // Draw the tentacle using a Bezier curve.
+      drawTentacle(from, to);
+    }
 
     // ------------------------------
     // Destructible Object Damage Handling
@@ -914,6 +952,9 @@
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
       updateCamera();
+      // Draw the canvas-based tentacle for the head.
+      drawTentacleForHead();
+      tentacleTime++;  // update global time for oscillation
       requestAnimationFrame(update);
     }
     let walkCycle = 0, lastTime = Date.now();
