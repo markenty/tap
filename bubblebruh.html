@@ -25,8 +25,8 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: url('IMG_7194.jpeg') no-repeat center center;
-      background-size: cover;
+      background: url('IMG_7194.jpeg') repeat;
+      /* background-size is removed so the image tiles naturally */
       z-index: 0;
     }
     /* Screen – contains the game world */
@@ -35,7 +35,6 @@
       top: 0; left: 0;
       width: 100vw;
       height: 100vh;
-      /* Removed original black background to let the parallax image show through */
       background: transparent;
       overflow: hidden;
       z-index: 1;
