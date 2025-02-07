@@ -552,7 +552,7 @@
         let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
-      let maxWhipDistance = 40;
+      let maxWhipDistance = 20;
       let whipOrigin = playerChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
       let swingTime = 300;
