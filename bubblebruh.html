@@ -163,12 +163,6 @@
       line-height: 20px;
       text-align: center;
     }
-    /* AI player styling */
-    .ai {
-      border-color: blue !important;
-      box-shadow: 0 0 8px blue;
-    }
-    /* (Unused red enemy styling removed) */
   </style>
 </head>
 <body>
@@ -264,7 +258,9 @@
     // Global joystick aim vector.
     let joystickAim = { x: 0, y: 0 };
 
-    // Level dimensions
+    // Level dimensions:
+    // Previously, levelWidth was 3000, then increased to 30000.
+    // Now, we increase it another 10× to 300000.
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -281,7 +277,6 @@
     game.appendChild(groundEl);
 
     let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
-    let aiChar = null;  // our AI-controlled duplicate
 
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
@@ -296,6 +291,7 @@
     // ------------------------------
     // Platform, TV, and Wall Creation
     // ------------------------------
+
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
@@ -335,7 +331,7 @@
       wall.hp = 100;
       World.add(world, wall);
       const wallEl = document.createElement("div");
-      wallEl.className = "platform";
+      wallEl.className = "platform"; // same styling as platforms
       wallEl.style.width = width + "px";
       wallEl.style.height = height + "px";
       wallEl.style.left = (x + width/2) + "px";
@@ -345,21 +341,26 @@
       walls.push(wall);
     }
 
-    // Generate objects
+    // Generate 800 platforms at random positions.
     for (let i = 0; i < 800; i++) {
-      const platWidth = Math.floor(Math.random() * 101) + 150;
+      const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
       const platX = Math.random() * (levelWidth - platWidth);
+      // y between 300 and (playAreaHeight - 50)
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
+
+    // Generate 800 TVs at random positions.
     for (let i = 0; i < 800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
-      const tvY = 100 + Math.random() * 200;
+      const tvY = 100 + Math.random() * 200;  // y between 100 and 300
       createTV(tvX, tvY, 40, 60);
     }
+
+    // Generate 600 walls at random positions.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
-      const wallY = 100;
+      const wallY = 100; // y fixed at 100
       createWall(wallX, wallY, 20, 200);
     }
 
@@ -375,14 +376,13 @@
     World.add(world, safetyFloor);
 
     // ------------------------------
-    // Character Factory (Player)
+    // Character Factory (Player Only)
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
-      // Create an HP bar container for this character.
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
       const hpBar = document.createElement("div");
@@ -440,56 +440,133 @@
       char.leftUpperLeg = leftUpperLeg; char.leftFoot = leftFoot;
       return char;
     }
-    // Create the main player character.
     let playerChar = createCharacter(100, 100);
 
     // ------------------------------
-    // AI-Controlled Duplicate (a full duplicate of the player)
+    // Destructible Object Damage Handling
     // ------------------------------
-    // Spawn the AI character at a different location.
-    aiChar = createCharacter(2000, 100);
-    // Add an extra "ai" class to each part to visually differentiate (blue tint).
-    for (let key in aiChar) {
-      if (aiChar[key] && aiChar[key].domElement) {
-        aiChar[key].domElement.classList.add("ai");
+    function damageDestructible(obj, damage) {
+      if (typeof obj.hp !== "number") return;
+      obj.hp -= damage;
+      particleBurst(obj.position.x, obj.position.y, "orange");
+      if (obj.hp <= 0) {
+        particleBurst(obj.position.x, obj.position.y, "red");
+        if (obj.label === "wall") {
+          breakWall(obj);
+        } else {
+          World.remove(world, obj);
+          if (obj.domElement && obj.domElement.parentNode) {
+            obj.domElement.parentNode.removeChild(obj.domElement);
+          }
+          if (obj.label === "platform") {
+            let idx = platforms.indexOf(obj);
+            if (idx !== -1) platforms.splice(idx, 1);
+          } else if (obj.label === "tv") {
+            let idx = tvs.indexOf(obj);
+            if (idx !== -1) tvs.splice(idx, 1);
+            spawnCoins(obj.position.x, obj.position.y);
+          }
+        }
       }
     }
 
-    // AI Functions for shooting and melee.
-    function aiShoot() {
-      let dx = playerChar.torso.position.x - aiChar.rightUpperArm.position.x;
-      let dy = playerChar.torso.position.y - aiChar.rightUpperArm.position.y;
-      let mag = Math.hypot(dx, dy);
-      if (mag === 0) return;
-      let norm = { x: dx / mag, y: dy / mag };
-      Body.setPosition(aiChar.rightHand, { 
-        x: aiChar.rightUpperArm.position.x + 20, 
-        y: aiChar.rightUpperArm.position.y 
-      });
-      let origin = { x: aiChar.rightHand.position.x, y: aiChar.rightHand.position.y };
-      shootBullet(origin.x, origin.y, origin.x + norm.x * 100, origin.y + norm.y * 100, aiChar);
+    // Break wall into smaller dynamic chunks.
+    function breakWall(wall) {
+      World.remove(world, wall);
+      if (wall.domElement && wall.domElement.parentNode) {
+        wall.domElement.parentNode.removeChild(wall.domElement);
+      }
+      let idx = walls.indexOf(wall);
+      if (idx !== -1) walls.splice(idx, 1);
+      const chunks = [];
+      const cols = 2, rows = 2;
+      const chunkWidth = wall.width / cols;
+      const chunkHeight = wall.height / rows;
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
+          const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
+          let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
+          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
+          chunks.push(chunk);
+          World.add(world, chunk);
+          const chunkEl = document.createElement("div");
+          chunkEl.className = "platform";
+          chunkEl.style.width = chunkWidth + "px";
+          chunkEl.style.height = chunkHeight + "px";
+          chunkEl.style.left = cx + "px";
+          chunkEl.style.top = cy + "px";
+          game.appendChild(chunkEl);
+          chunk.domElement = chunkEl;
+          domEntities.push(chunk);
+        }
+      }
     }
-    function aiMeleeAttack() {
-      let dx = playerChar.torso.position.x - aiChar.rightUpperArm.position.x;
-      let dy = playerChar.torso.position.y - aiChar.rightUpperArm.position.y;
-      let mag = Math.hypot(dx, dy);
-      if (mag === 0) return;
-      let attackDir = { x: dx / mag, y: dy / mag };
+
+    // Spawn coins as dynamic bodies so they fall and are collectible.
+    function spawnCoins(x, y) {
+      for (let i = 0; i < 3; i++) {
+        let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
+        coin.value = 1;
+        World.add(world, coin);
+        let coinEl = document.createElement("div");
+        coinEl.className = "coin";
+        coinEl.textContent = "$";
+        coinEl.style.width = "20px";
+        coinEl.style.height = "20px";
+        coinEl.style.lineHeight = "20px";
+        coinEl.style.fontSize = "14px";
+        coinEl.style.textAlign = "center";
+        coinEl.style.borderRadius = "50%";
+        coinEl.style.background = "gold";
+        coinEl.style.color = "black";
+        game.appendChild(coinEl);
+        coin.domElement = coinEl;
+        coins.push(coin);
+        let angle = Math.random() * 2 * Math.PI;
+        let speed = Math.random() * 5 + 2;
+        Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
+      }
+    }
+
+    // ------------------------------
+    // Melee Attack with Whip Physics and Directional Control
+    // ------------------------------
+    function meleeAttack() {
+      let inputDir = { x: 0, y: 0 };
+      if (keys["ArrowLeft"]) inputDir.x -= 1;
+      if (keys["ArrowRight"]) inputDir.x += 1;
+      if (keys["ArrowUp"]) inputDir.y -= 1;
+      if (keys["ArrowDown"]) inputDir.y += 1;
+      if (inputDir.x === 0 && inputDir.y === 0) {
+        if (Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
+          inputDir.x = joystickAim.x;
+          inputDir.y = joystickAim.y;
+        }
+      }
+      let attackDir;
+      if (inputDir.x !== 0 || inputDir.y !== 0) {
+        let mag = Math.hypot(inputDir.x, inputDir.y);
+        attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
+      } else {
+        let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
+        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
+      }
       let maxWhipDistance = 60;
-      let whipOrigin = aiChar.rightUpperArm.position;
+      let whipOrigin = playerChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
       let swingTime = 300;
       let steps = 30;
       let stepTime = swingTime / steps;
       let step = 0;
       let interval = setInterval(() => {
-        let currentDistance = Math.hypot(aiChar.rightHand.position.x - whipOrigin.x,
-                                          aiChar.rightHand.position.y - whipOrigin.y);
+        let currentDistance = Math.hypot(playerChar.rightHand.position.x - whipOrigin.x,
+                                         playerChar.rightHand.position.y - whipOrigin.y);
         if (currentDistance < maxWhipDistance) {
           let amplitude = Math.sin(Math.PI * step / steps);
           let forceOut = 0.05;
           let forceTangent = 0.05;
-          Body.applyForce(aiChar.rightHand, aiChar.rightHand.position, {
+          Body.applyForce(playerChar.rightHand, playerChar.rightHand.position, {
             x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
             y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
           });
@@ -498,10 +575,9 @@
         if (step >= steps) clearInterval(interval);
       }, stepTime);
       setTimeout(() => {
-        let attackPos = aiChar.rightHand.position;
+        let attackPos = playerChar.rightHand.position;
         const meleeRange = 60;
         const damageAmount = 30;
-        // Damage objects in range.
         [platforms, tvs, walls].forEach(arr => {
           arr.forEach(obj => {
             let dx = attackPos.x - obj.position.x;
@@ -512,36 +588,7 @@
             }
           });
         });
-        // Also damage the player if close.
-        let pdx = attackPos.x - playerChar.torso.position.x;
-        let pdy = attackPos.y - playerChar.torso.position.y;
-        if (Math.hypot(pdx, pdy) <= meleeRange) {
-          playerChar.hp -= damageAmount;
-          if (playerChar.hp < 0) playerChar.hp = 0;
-        }
       }, 100);
-    }
-    function updateAI() {
-      if (!aiChar) return;
-      // Calculate vector from AI to player.
-      let dx = playerChar.torso.position.x - aiChar.torso.position.x;
-      let dy = playerChar.torso.position.y - aiChar.torso.position.y;
-      let dist = Math.hypot(dx, dy);
-      if (dist === 0) return;
-      // Apply force toward the player.
-      let forceMagnitude = 0.005;
-      Body.applyForce(aiChar.torso, aiChar.torso.position, { 
-        x: (dx / dist) * forceMagnitude, 
-        y: (dy / dist) * forceMagnitude 
-      });
-      // Occasionally shoot if within moderate range.
-      if (dist < 500 && Math.random() < 0.005) {
-        aiShoot();
-      }
-      // Occasionally perform a melee attack if very close.
-      if (dist < 80 && Math.random() < 0.01) {
-        aiMeleeAttack();
-      }
     }
 
     // ------------------------------
@@ -623,7 +670,7 @@
     });
 
     // ------------------------------
-    // Destructible World Collisions
+    // Destructible World Collisions (Gradual Damage on High-Speed Contact)
     // ------------------------------
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
@@ -697,11 +744,6 @@
     // ------------------------------
     function update() {
       Engine.update(engine, 1000/60);
-      
-      // Update the AI character.
-      updateAI();
-      
-      // Update positions of all DOM elements.
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
@@ -741,7 +783,7 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level boundaries.
+      // Clamp player within level boundaries and above the ground.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
@@ -774,15 +816,12 @@
         }
       })();
 
-      // Update HP bars for both player and AI.
-      if (playerChar && playerChar.hpContainer) {
-        playerChar.hpContainer.style.left = (playerChar.torso.position.x - 25) + "px";
-        playerChar.hpContainer.style.top = (playerChar.torso.position.y - 60) + "px";
-      }
-      if (aiChar && aiChar.hpContainer) {
-        aiChar.hpContainer.style.left = (aiChar.torso.position.x - 25) + "px";
-        aiChar.hpContainer.style.top = (aiChar.torso.position.y - 60) + "px";
-      }
+      // Update HP bar.
+      (function updateHpBar(character) {
+        if (!character.hpContainer) return;
+        character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
+        character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
+      })(playerChar);
 
       // Update camera.
       updateCamera();
