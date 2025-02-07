@@ -28,14 +28,13 @@
       background: #000;
       overflow: hidden;
     }
-    /* NEW: Parallax Background Layer */
+    /* Parallax Background Layer */
     #parallax {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      /* Use your IMG_7196.png, repeat horizontally */
       background: url('IMG_7196.png') repeat-x;
       background-size: auto 100%;
       z-index: 0;
@@ -44,13 +43,13 @@
     #game {
       position: absolute;
       top: 0; left: 0;
-      z-index: 1; /* Ensure game elements sit above the parallax */
+      z-index: 1;
     }
     /* Ground styling */
     #ground {
       position: absolute;
       left: 0;
-      background: #0d0c29;
+      background: #855;
     }
     /* Controls (always on top) */
     #controls {
@@ -182,7 +181,6 @@
 <body>
   <div id="gameboy">
     <div id="screen">
-      <!-- NEW: Parallax background layer inserted behind the game world -->
       <div id="parallax"></div>
       <div id="game"></div>
     </div>
@@ -275,8 +273,6 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Previously, levelWidth was 3000, then increased to 30000.
-    // Now, we increase it another 10× to 300000.
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -307,7 +303,6 @@
     // ------------------------------
     // Platform, TV, and Wall Creation
     // ------------------------------
-
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
@@ -347,7 +342,7 @@
       wall.hp = 100;
       World.add(world, wall);
       const wallEl = document.createElement("div");
-      wallEl.className = "platform"; // same styling as platforms
+      wallEl.className = "platform";
       wallEl.style.width = width + "px";
       wallEl.style.height = height + "px";
       wallEl.style.left = (x + width/2) + "px";
@@ -357,26 +352,25 @@
       walls.push(wall);
     }
 
-    // Generate 3800 platforms at random positions.
+    // Generate platforms.
     for (let i = 0; i < 3800; i++) {
-      const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
+      const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
-      // y between 300 and (playAreaHeight - 50)
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
 
-    // Generate 3800 TVs at random positions.
+    // Generate TVs.
     for (let i = 0; i < 3800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
-      const tvY = 100 + Math.random() * 200;  // y between 100 and 300
+      const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
 
-    // Generate 600 walls at random positions.
+    // Generate walls.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
-      const wallY = 100; // y fixed at 100
+      const wallY = 100;
       createWall(wallX, wallY, 20, 200);
     }
 
@@ -572,7 +566,7 @@
       let whipOrigin = playerChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
       let swingTime = 300;
-      let steps = 10;
+      let steps = 30;
       let stepTime = swingTime / steps;
       let step = 0;
       let interval = setInterval(() => {
@@ -665,22 +659,40 @@
     });
 
     // ------------------------------
-    // Collision Handling for Bullets
+    // Collision Handling for Bullets (Updated)
     // ------------------------------
+    const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
-        if (pair.bodyA.label === "bullet" && pair.bodyB.character) {
-          if (pair.bodyB.character !== pair.bodyA.owner) {
-            World.remove(world, pair.bodyA);
-            if (pair.bodyA.domElement && pair.bodyA.domElement.parentNode)
-              pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
+        let bullet = null, target = null;
+        if (pair.bodyA.label === "bullet") {
+          bullet = pair.bodyA;
+          target = pair.bodyB;
+        } else if (pair.bodyB.label === "bullet") {
+          bullet = pair.bodyB;
+          target = pair.bodyA;
+        } else {
+          return;
+        }
+        // Do not damage the bullet owner.
+        if (target.character && target.character === bullet.owner) {
+          return;
+        }
+        const destructibleLabels = ["platform", "tv", "wall", "wallChunk"];
+        if (destructibleLabels.includes(target.label)) {
+          damageDestructible(target, bulletDamage);
+        } else if (target.character && target.character !== bullet.owner) {
+          damageDestructible(target, bulletDamage);
+        } else if (target.label === "coin") {
+          World.remove(world, target);
+          if (target.domElement && target.domElement.parentNode) {
+            target.domElement.parentNode.removeChild(target.domElement);
           }
-        } else if (pair.bodyB.label === "bullet" && pair.bodyA.character) {
-          if (pair.bodyA.character !== pair.bodyB.owner) {
-            World.remove(world, pair.bodyB);
-            if (pair.bodyB.domElement && pair.bodyB.domElement.parentNode)
-              pair.bodyB.domElement.parentNode.removeChild(pair.bodyB.domElement);
-          }
+        }
+        // Always remove the bullet.
+        World.remove(world, bullet);
+        if (bullet.domElement && bullet.domElement.parentNode) {
+          bullet.domElement.parentNode.removeChild(bullet.domElement);
         }
       });
     });
@@ -733,10 +745,8 @@
       const screenHeight = window.innerHeight;
       const deadzoneX = screenWidth * 0.25;
       const deadzoneY = screenHeight * 0.25;
-
       let playerScreenX = playerChar.torso.position.x - cameraX;
       let playerScreenY = playerChar.torso.position.y - cameraY;
-
       if (playerScreenX < deadzoneX) {
         cameraX = playerChar.torso.position.x - deadzoneX;
       } else if (playerScreenX > screenWidth - deadzoneX) {
@@ -747,16 +757,10 @@
       } else if (playerScreenY > screenHeight - deadzoneY) {
         cameraY = playerChar.torso.position.y - (screenHeight - deadzoneY);
       }
-
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth));
       cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight));
-
-      // Apply transform to the game world.
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
-
-      // NEW: Update parallax background position.
-      // The factor (e.g. 0.5) makes the parallax layer move slower than the game.
       document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
 
@@ -778,8 +782,6 @@
           coin.domElement.style.top = coin.position.y + "px";
         }
       });
-      
-      // Player movement via arrow keys.
       if (keys["ArrowLeft"]) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
       }
@@ -803,8 +805,6 @@
       }
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
-      
-      // Clamp player within level boundaries and above the ground.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
@@ -818,8 +818,6 @@
           Body.setVelocity(character.torso, { x: 0, y: 0 });
         }
       })(playerChar);
-
-      // Leg Animation.
       let walkCycle = 0, lastTime = Date.now();
       (function updateWalkCycle() {
         const now = Date.now();
@@ -836,17 +834,12 @@
           Body.setAngle(playerChar.rightFoot, playerChar.torso.angle + rightLegOffset);
         }
       })();
-
-      // Update HP bar.
       (function updateHpBar(character) {
         if (!character.hpContainer) return;
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
-
-      // Update camera.
       updateCamera();
-
       requestAnimationFrame(update);
     }
     update();
