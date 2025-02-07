@@ -2,7 +2,6 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <!-- Prevent unwanted zooming -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pipe Drain Tunneling Game</title>
   <style>
@@ -10,7 +9,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; }
     body { background: #666; font-family: sans-serif; }
-    
+
     /* Game Shell */
     #gameboy {
       position: relative;
@@ -23,34 +22,39 @@
     #screen {
       position: absolute;
       top: 0; left: 0;
-      width: 100vw; height: 100vh;
+      width: 100vw;
+      height: 100vh;
       background: #000;
       overflow: hidden;
     }
-    /* Game World Container – the world is 3000 px wide */
+    /* Game World Container – our world is 3000px wide */
     #game {
       position: absolute;
-      top: 0; left: 0;
-      /* Its transform will be updated to follow the player */
+      top: 0;
+      left: 0;
+      /* We'll update its transform to follow the player */
     }
-    /* “Drain” Ground (the static bottom barrier) */
+    /* Drain (ground) – a simple static bar at the bottom */
     #ground {
       position: absolute;
       left: 0;
       background: #855;
     }
-    /* Controls */
+    /* Controls (D-pad & buttons) */
     #controls {
       position: absolute;
       bottom: 5%;
-      width: 100vw; height: 40vh;
+      width: 100vw;
+      height: 40vh;
       z-index: 10;
     }
     /* D-Pad */
     #dpad {
       position: absolute;
-      left: 5%; bottom: 5%;
-      width: 150px; height: 150px;
+      left: 5%;
+      bottom: 5%;
+      width: 150px;
+      height: 150px;
     }
     #dpad button {
       position: absolute;
@@ -69,8 +73,10 @@
     /* Joystick Disc */
     #dpad #joystick {
       position: absolute;
-      top: 45px; left: 45px;
-      width: 60px; height: 60px;
+      top: 45px;
+      left: 45px;
+      width: 60px;
+      height: 60px;
       background: #333;
       border: 3px solid #777;
       border-radius: 50%;
@@ -80,16 +86,21 @@
     /* A/B/C Buttons */
     #ab-buttons {
       position: absolute;
-      right: 0%; bottom: 5%;
-      width: 250px; height: 80px;
-      display: flex; flex-direction: row;
-      justify-content: space-around; align-items: flex-end;
+      right: 0%;
+      bottom: 5%;
+      width: 250px;
+      height: 80px;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: flex-end;
     }
     #ab-buttons button:nth-child(1) { transform: translateY(-30px); }
     #ab-buttons button:nth-child(2) { transform: translateY(-10px); }
     #ab-buttons button:nth-child(3) { transform: translateY(-20px); }
     #ab-buttons button {
-      width: 70px; height: 70px;
+      width: 70px;
+      height: 70px;
       border-radius: 50%;
       background: #333;
       border: 3px solid #777;
@@ -98,6 +109,7 @@
       cursor: pointer;
     }
     #ab-buttons button:active { background: #777; }
+
     /* In-Game Entities */
     .entity {
       position: absolute;
@@ -109,14 +121,16 @@
     /* HP Bar */
     .hp-bar-container {
       position: absolute;
-      width: 50px; height: 6px;
+      width: 50px;
+      height: 6px;
       background: rgba(0,0,0,0.5);
       border: 1px solid #000;
       border-radius: 3px;
       pointer-events: none;
     }
     .hp-bar {
-      width: 100%; height: 100%;
+      width: 100%;
+      height: 100%;
       background: lime;
       border-radius: 3px;
     }
@@ -131,14 +145,15 @@
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
     }
-    /* Breakable Floor Tiles – Terraria–style solid floor */
+    /* Floor Tiles (the breakable CSS floor) */
     .tile {
       position: absolute;
-      width: 10px; height: 10px;
+      width: 10px;
+      height: 10px;
       background: #4a4a4a;
       border: 1px solid #333;
     }
-    /* Other objects: platforms, TVs, walls (unchanged) */
+    /* Other objects (platforms, TVs, walls) */
     .platform { position: absolute; background: #555; }
     .tv {
       position: absolute;
@@ -250,7 +265,9 @@
     // Global joystick aim vector.
     let joystickAim = { x: 0, y: 0 };
 
-    // Level dimensions – 3000 px wide (for a tunneling mechanism)  
+    // ------------------------------
+    // Level Setup: 3000px wide tunneling world
+    // ------------------------------
     const levelWidth = 3000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -267,13 +284,12 @@
     game.appendChild(groundEl);
 
     // ------------------------------
-    // Create a Breakable CSS Floor (Tile Map)
+    // Generate Breakable Floor Tiles (CSS tiles)
     // ------------------------------
     let floorTiles = [];
     function generateFloorTiles() {
-      // Fill a band at the bottom of the level.
       const tileSize = 10;
-      const rows = 5;  // 5 rows tall
+      const rows = 5;  // 5 rows tall floor
       const startY = playAreaHeight - rows * tileSize;
       const cols = Math.floor(levelWidth / tileSize);
       for (let row = 0; row < rows; row++) {
@@ -298,20 +314,18 @@
     }
     generateFloorTiles();
 
-    // Function to check and remove floor tiles in an impact area.
+    // Remove tiles within a given circular impact area.
     function clearFloorTilesAt(x, y, radius) {
       for (let i = floorTiles.length - 1; i >= 0; i--) {
         let tile = floorTiles[i];
-        // Compute the center of the tile.
-        let centerX = tile.x + tile.width/2;
-        let centerY = tile.y + tile.height/2;
+        let centerX = tile.x + tile.width / 2;
+        let centerY = tile.y + tile.height / 2;
         let dist = Math.hypot(centerX - x, centerY - y);
         if (dist < radius) {
-          // Optionally, add a CSS transition for a falling effect.
+          // Animate tile falling.
           tile.domElement.style.transition = "top 0.5s ease-out, opacity 0.5s ease-out";
           tile.domElement.style.top = gameHeight + "px";
           tile.domElement.style.opacity = "0";
-          // Remove after a delay.
           setTimeout(() => {
             if (tile.domElement && tile.domElement.parentNode) {
               tile.domElement.parentNode.removeChild(tile.domElement);
@@ -321,9 +335,46 @@
         }
       }
     }
+    // Check if a bullet hits any floor tile.
+    function checkBulletFloorCollisions() {
+      bullets.forEach((bullet, bIndex) => {
+        for (let i = floorTiles.length - 1; i >= 0; i--) {
+          let tile = floorTiles[i];
+          if (bullet.position.x >= tile.x && bullet.position.x <= tile.x + tile.width &&
+              bullet.position.y >= tile.y && bullet.position.y <= tile.y + tile.height) {
+            // Remove tile.
+            tile.domElement.style.transition = "top 0.5s ease-out, opacity 0.5s ease-out";
+            tile.domElement.style.top = gameHeight + "px";
+            tile.domElement.style.opacity = "0";
+            setTimeout(() => {
+              if (tile.domElement && tile.domElement.parentNode)
+                tile.domElement.parentNode.removeChild(tile.domElement);
+            }, 500);
+            floorTiles.splice(i, 1);
+            // Remove bullet.
+            World.remove(world, bullet);
+            if (bullet.domElement && bullet.domElement.parentNode)
+              bullet.domElement.parentNode.removeChild(bullet.domElement);
+            let bIdx = bullets.indexOf(bullet);
+            if (bIdx !== -1) bullets.splice(bIdx, 1);
+            break;
+          }
+        }
+      });
+    }
+    // Remove floor tiles that have "fallen" off screen.
+    function clearFallenFloorTiles() {
+      for (let i = floorTiles.length - 1; i >= 0; i--) {
+        if (floorTiles[i].y > playAreaHeight) {
+          if (floorTiles[i].domElement && floorTiles[i].domElement.parentNode)
+            floorTiles[i].domElement.parentNode.removeChild(floorTiles[i].domElement);
+          floorTiles.splice(i, 1);
+        }
+      }
+    }
 
     // ------------------------------
-    // Standard Matter.js Objects: Platforms, TVs, Walls
+    // Standard Matter.js Objects (Platforms, TVs, Walls)
     // ------------------------------
     let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
     function createDomElement(body, cls, w, h) {
@@ -339,51 +390,51 @@
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width; platform.height = height; platform.hp = 50;
       World.add(world, platform);
-      const platformEl = document.createElement("div");
-      platformEl.className = "platform";
-      platformEl.style.width = width + "px";
-      platformEl.style.height = height + "px";
-      platformEl.style.left = (x + width/2) + "px";
-      platformEl.style.top = (y + height/2) + "px";
-      game.appendChild(platformEl);
-      platform.domElement = platformEl;
+      const el = document.createElement("div");
+      el.className = "platform";
+      el.style.width = width + "px";
+      el.style.height = height + "px";
+      el.style.left = (x + width/2) + "px";
+      el.style.top = (y + height/2) + "px";
+      game.appendChild(el);
+      platform.domElement = el;
       platforms.push(platform);
     }
     function createTV(x, y, width, height) {
       const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "tv" });
       tv.width = width; tv.height = height; tv.hp = 30;
       World.add(world, tv);
-      const tvEl = document.createElement("div");
-      tvEl.className = "tv";
-      tvEl.style.width = width + "px";
-      tvEl.style.height = height + "px";
-      tvEl.style.left = (x + width/2) + "px";
-      tvEl.style.top = (y + height/2) + "px";
-      game.appendChild(tvEl);
-      tv.domElement = tvEl;
+      const el = document.createElement("div");
+      el.className = "tv";
+      el.style.width = width + "px";
+      el.style.height = height + "px";
+      el.style.left = (x + width/2) + "px";
+      el.style.top = (y + height/2) + "px";
+      game.appendChild(el);
+      tv.domElement = el;
       tvs.push(tv);
     }
     function createWall(x, y, width, height) {
       const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width; wall.height = height; wall.hp = 100;
       World.add(world, wall);
-      const wallEl = document.createElement("div");
-      wallEl.className = "platform";
-      wallEl.style.width = width + "px";
-      wallEl.style.height = height + "px";
-      wallEl.style.left = (x + width/2) + "px";
-      wallEl.style.top = (y + height/2) + "px";
-      game.appendChild(wallEl);
-      wall.domElement = wallEl;
+      const el = document.createElement("div");
+      el.className = "platform";
+      el.style.width = width + "px";
+      el.style.height = height + "px";
+      el.style.left = (x + width/2) + "px";
+      el.style.top = (y + height/2) + "px";
+      game.appendChild(el);
+      wall.domElement = el;
       walls.push(wall);
     }
-    // For demonstration, add a few objects in the pipe.
+    // For demonstration, add a few objects.
     createPlatform(50, playAreaHeight - 150, 300, 20);
     createTV(50, playAreaHeight - 250, 40, 60);
     createWall(350, playAreaHeight - 300, 20, 200);
 
     // ------------------------------
-    // Static Boundaries & Safety Floor (Drain)
+    // Static Boundaries & Drain (Safety Floor)
     // ------------------------------
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
@@ -394,13 +445,13 @@
     World.add(world, safetyFloor);
 
     // ------------------------------
-    // Character Factory (Player Only)
+    // Character Factory (Player)
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
       const size = 20;
-      const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
-      const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
+      const torsoOpts = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
+      const defOpts = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
       const hpBar = document.createElement("div");
@@ -414,27 +465,27 @@
         body.character = char;
         return body;
       }
-      const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
+      const head = Bodies.circle(x, y - 40, size/2, defOpts);
       addPart(head, "player-part", size, size);
-      const torso = Bodies.circle(x, y - 20, size, torsoOptions);
-      addPart(torso, "player-part", size * 2, size * 2);
-      const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
-      addPart(rightUpperArm, "player-part", size, size);
-      const rightHand = Bodies.circle(x + 30, y - 20 + 20, size / 2, defaultOptions);
-      addPart(rightHand, "player-part", size, size);
-      const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
-      addPart(leftUpperArm, "player-part", size, size);
-      const leftHand = Bodies.circle(x - 30, y - 20 + 20, size / 2, defaultOptions);
-      addPart(leftHand, "player-part", size, size);
-      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
-      addPart(rightUpperLeg, "player-part", size, size);
-      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size / 2, defaultOptions);
-      addPart(rightFoot, "player-part", size, size);
-      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
-      addPart(leftUpperLeg, "player-part", size, size);
-      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, defaultOptions);
-      addPart(leftFoot, "player-part", size, size);
-      World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
+      const torso = Bodies.circle(x, y - 20, size, torsoOpts);
+      addPart(torso, "player-part", size*2, size*2);
+      const rUpperArm = Bodies.circle(x + 30, y - 20, size/2, defOpts);
+      addPart(rUpperArm, "player-part", size, size);
+      const rHand = Bodies.circle(x + 30, y - 20 + 20, size/2, defOpts);
+      addPart(rHand, "player-part", size, size);
+      const lUpperArm = Bodies.circle(x - 30, y - 20, size/2, defOpts);
+      addPart(lUpperArm, "player-part", size, size);
+      const lHand = Bodies.circle(x - 30, y - 20 + 20, size/2, defOpts);
+      addPart(lHand, "player-part", size, size);
+      const rUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defOpts);
+      addPart(rUpperLeg, "player-part", size, size);
+      const rFoot = Bodies.circle(x + 10, y + 10 + 20, size/2, defOpts);
+      addPart(rFoot, "player-part", size, size);
+      const lUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defOpts);
+      addPart(lUpperLeg, "player-part", size, size);
+      const lFoot = Bodies.circle(x - 10, y + 10 + 20, size/2, defOpts);
+      addPart(lFoot, "player-part", size, size);
+      World.add(world, [head, torso, rUpperArm, rHand, lUpperArm, lHand, rUpperLeg, rFoot, lUpperLeg, lFoot]);
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a, pointA: offA, bodyB: b, pointB: offB,
@@ -442,20 +493,20 @@
         });
         World.add(world, con);
       }
-      link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
-      link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
-      link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
-      link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size / 2 });
-      link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
-      link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
+      link(torso, rUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
+      link(rUpperArm, rHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, lUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
+      link(lUpperArm, lHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, rUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
+      link(rUpperLeg, rFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, lUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
+      link(lUpperLeg, lFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
       char.head = head; char.torso = torso;
-      char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
-      char.leftUpperArm = leftUpperArm; char.leftHand = leftHand;
-      char.rightUpperLeg = rightUpperLeg; char.rightFoot = rightFoot;
-      char.leftUpperLeg = leftUpperLeg; char.leftFoot = leftFoot;
+      char.rightUpperArm = rUpperArm; char.rightHand = rHand;
+      char.leftUpperArm = lUpperArm; char.leftHand = lHand;
+      char.rightUpperLeg = rUpperLeg; char.rightFoot = rFoot;
+      char.leftUpperLeg = lUpperLeg; char.leftFoot = lFoot;
       return char;
     }
     let playerChar = createCharacter(100, 100);
@@ -473,9 +524,8 @@
           breakWall(obj);
         } else {
           World.remove(world, obj);
-          if (obj.domElement && obj.domElement.parentNode) {
+          if (obj.domElement && obj.domElement.parentNode)
             obj.domElement.parentNode.removeChild(obj.domElement);
-          }
           if (obj.label === "platform") {
             let idx = platforms.indexOf(obj);
             if (idx !== -1) platforms.splice(idx, 1);
@@ -484,15 +534,27 @@
             if (idx !== -1) tvs.splice(idx, 1);
             spawnCoins(obj.position.x, obj.position.y);
           } else if (obj.label === "clog") {
-            // For clog particles, simply remove.
-            let idx = clogs.indexOf(obj);
-            if (idx !== -1) clogs.splice(idx, 1);
+            // Remove clog tiles.
+            let idx = floorTiles.findIndex(tile => {
+              // Compare tile center to object's position.
+              let centerX = tile.x + tile.width/2;
+              let centerY = tile.y + tile.height/2;
+              return Math.hypot(centerX - obj.position.x, centerY - obj.position.y) < 5;
+            });
+            if (idx !== -1) {
+              let tile = floorTiles[idx];
+              tile.domElement.style.transition = "top 0.5s ease-out, opacity 0.5s ease-out";
+              tile.domElement.style.top = gameHeight + "px";
+              tile.domElement.style.opacity = "0";
+              setTimeout(() => { if (tile.domElement) tile.domElement.parentNode.removeChild(tile.domElement); }, 500);
+              floorTiles.splice(idx, 1);
+            }
           }
         }
       }
     }
 
-    // Break wall into smaller dynamic chunks.
+    // Break wall into dynamic chunks.
     function breakWall(wall) {
       World.remove(world, wall);
       if (wall.domElement && wall.domElement.parentNode) {
@@ -523,7 +585,7 @@
       }
     }
 
-    // Spawn coins as dynamic bodies.
+    // Spawn coins.
     function spawnCoins(x, y) {
       for (let i = 0; i < 3; i++) {
         let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
@@ -550,11 +612,11 @@
     }
 
     // ------------------------------
-    // Melee Attack with Whip Physics & Directional Control (D-Pad or Joystick)
-    // plus limiting whip distance.
+    // Melee Attack with Whip Physics & Directional Control
+    // (Uses D-Pad or Joystick; limits whip distance; defaults: on ground up, in air down)
     // ------------------------------
     function meleeAttack() {
-      // Build directional input from D-Pad; if none, try joystick.
+      // Build directional input.
       let inputDir = { x: 0, y: 0 };
       if (keys["ArrowLeft"]) inputDir.x -= 1;
       if (keys["ArrowRight"]) inputDir.x += 1;
@@ -566,28 +628,19 @@
           inputDir.y = joystickAim.y;
         }
       }
-      // If still zero, choose default: on ground default upward; in air default downward.
       let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
       let defaultDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
-      let attackDir;
-      if (inputDir.x !== 0 || inputDir.y !== 0) {
-        let mag = Math.hypot(inputDir.x, inputDir.y);
-        attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
-      } else {
-        attackDir = defaultDir;
-      }
-      // Maximum whip distance from whip origin (right upper arm).
+      let attackDir = (inputDir.x !== 0 || inputDir.y !== 0)
+                        ? { x: inputDir.x/Math.hypot(inputDir.x,inputDir.y), y: inputDir.y/Math.hypot(inputDir.x,inputDir.y) }
+                        : defaultDir;
+      // Set max whip distance.
       let maxWhipDistance = 60;
       let whipOrigin = playerChar.rightUpperArm.position;
-      // Compute perpendicular (tangent) vector.
+      // Compute perpendicular vector.
       let tangent = { x: attackDir.y, y: -attackDir.x };
-      // Whip swing: apply sine–modulated force over 300ms in steps.
-      let swingTime = 300;
-      let steps = 30;
-      let stepTime = swingTime / steps;
-      let step = 0;
+      // Apply sine–modulated force over 300ms (30 steps) if hand is within range.
+      let swingTime = 300, steps = 30, stepTime = swingTime/steps, step = 0;
       let interval = setInterval(() => {
-        // Only apply force if hand is within max distance.
         let currentDistance = Math.hypot(playerChar.rightHand.position.x - whipOrigin.x,
                                          playerChar.rightHand.position.y - whipOrigin.y);
         if (currentDistance < maxWhipDistance) {
@@ -601,7 +654,7 @@
         step++;
         if (step >= steps) clearInterval(interval);
       }, stepTime);
-      // After 100ms, check for collisions with destructible objects and floor tiles.
+      // After 100ms, clear floor tiles and damage nearby objects.
       setTimeout(() => {
         let attackPos = playerChar.rightHand.position;
         const meleeRange = 60, damageAmount = 30;
@@ -609,13 +662,12 @@
           arr.forEach(obj => {
             let dx = attackPos.x - obj.position.x;
             let dy = attackPos.y - obj.position.y;
-            let dist = Math.hypot(dx, dy);
-            if (dist <= meleeRange) {
+            if (Math.hypot(dx, dy) <= meleeRange) {
               damageDestructible(obj, damageAmount);
             }
           });
         });
-        // Also check our breakable floor tiles.
+        // Also clear floor tiles within a 10px radius.
         clearFloorTilesAt(attackPos.x, attackPos.y, 10);
       }, 100);
     }
@@ -664,7 +716,7 @@
       event.pairs.forEach(pair => {
         if ((pair.bodyA.label === "coin" && pair.bodyB.character) ||
             (pair.bodyB.label === "coin" && pair.bodyA.character)) {
-          let coinBody = pair.bodyA.label === "coin" ? pair.bodyA : pair.bodyB;
+          let coinBody = (pair.bodyA.label === "coin") ? pair.bodyA : pair.bodyB;
           World.remove(world, coinBody);
           if (coinBody.domElement && coinBody.domElement.parentNode)
             coinBody.domElement.parentNode.removeChild(coinBody.domElement);
@@ -677,22 +729,20 @@
     });
 
     // ------------------------------
-    // Collision Handling for Bullets and Clogs
+    // Collision Handling for Bullets (and other interactions)
     // ------------------------------
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
-        // Bullet vs. clog tiles: we handle floor tile hits separately in the main loop.
+        // Standard bullet vs. character collisions.
         if (pair.bodyA.label === "bullet" && pair.bodyB.character) {
           if (pair.bodyB.character !== pair.bodyA.owner) {
             World.remove(world, pair.bodyA);
-            if (pair.bodyA.domElement && pair.bodyA.domElement.parentNode)
-              pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
+            if (pair.bodyA.domElement) pair.bodyA.domElement.parentNode.removeChild(pair.bodyA.domElement);
           }
         } else if (pair.bodyB.label === "bullet" && pair.bodyA.character) {
           if (pair.bodyA.character !== pair.bodyB.owner) {
             World.remove(world, pair.bodyB);
-            if (pair.bodyB.domElement && pair.bodyB.domElement.parentNode)
-              pair.bodyB.domElement.parentNode.removeChild(pair.bodyB.domElement);
+            if (pair.bodyB.domElement) pair.bodyB.domElement.parentNode.removeChild(pair.bodyB.domElement);
           }
         }
       });
@@ -731,50 +781,6 @@
     });
 
     // ------------------------------
-    // Clear Floor Tiles on Bullet Impact (checked in main loop)
-    // ------------------------------
-    function checkBulletFloorCollisions() {
-      bullets.forEach((bullet, bIndex) => {
-        // For each bullet, check if its position falls inside any floor tile.
-        for (let i = floorTiles.length - 1; i >= 0; i--) {
-          let tile = floorTiles[i];
-          if (bullet.position.x >= tile.x && bullet.position.x <= tile.x + tile.width &&
-              bullet.position.y >= tile.y && bullet.position.y <= tile.y + tile.height) {
-            // Remove the tile.
-            tile.domElement.style.transition = "top 0.5s ease-out, opacity 0.5s ease-out";
-            tile.domElement.style.top = gameHeight + "px";
-            tile.domElement.style.opacity = "0";
-            setTimeout(() => {
-              if (tile.domElement && tile.domElement.parentNode)
-                tile.domElement.parentNode.removeChild(tile.domElement);
-            }, 500);
-            floorTiles.splice(i, 1);
-            // Remove the bullet as well.
-            World.remove(world, bullet);
-            if (bullet.domElement && bullet.domElement.parentNode)
-              bullet.domElement.parentNode.removeChild(bullet.domElement);
-            let bIdx = bullets.indexOf(bullet);
-            if (bIdx !== -1) bullets.splice(bIdx, 1);
-            break;  // move to the next bullet.
-          }
-        }
-      });
-    }
-
-    // ------------------------------
-    // Clear any floor tiles that fall below the drain.
-    // ------------------------------
-    function clearFallenFloorTiles() {
-      for (let i = floorTiles.length - 1; i >= 0; i--) {
-        if (floorTiles[i].y > playAreaHeight) {
-          if (floorTiles[i].domElement && floorTiles[i].domElement.parentNode)
-            floorTiles[i].domElement.parentNode.removeChild(floorTiles[i].domElement);
-          floorTiles.splice(i, 1);
-        }
-      }
-    }
-
-    // ------------------------------
     // Main Game Loop
     // ------------------------------
     function update() {
@@ -792,11 +798,8 @@
           coin.domElement.style.top = coin.position.y + "px";
         }
       });
-      // Update floor tile DOM positions (if needed, here they are static)
-      floorTiles.forEach(tile => {
-        // (They remain at their fixed positions.)
-      });
-      
+      // Update floor tile positions (they are static, so no update needed)
+
       // Player movement via arrow keys.
       if (keys["ArrowLeft"]) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
@@ -807,11 +810,11 @@
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
         Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x * 0.98, y: playerChar.torso.velocity.y });
       }
-      // Allow horizontal movement from joystick.
+      // Also allow horizontal movement from joystick.
       if (Math.abs(joystickAim.x) > 0.1) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: joystickAim.x * 0.005, y: 0 });
       }
-      // Jump: if jump key is pressed, use joystick aim if present; otherwise vertical.
+      // Jump: if jump key pressed, use joystick aim if present; else vertical.
       if (keys["KeyB"] || keys["Space"]) {
         const jumpStrength = 22;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
@@ -825,8 +828,8 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level boundaries.
-      (function clampWithinBounds(character) {
+      // Clamp player within the pipe boundaries.
+      (function clampPlayer(character) {
         const margin = 50;
         const pos = character.torso.position;
         let clampedX = pos.x, clampedY = pos.y;
@@ -841,7 +844,7 @@
 
       // Leg Animation.
       let walkCycle = 0, lastTime = Date.now();
-      (function updateWalkCycle() {
+      (function updateLegs() {
         const now = Date.now();
         const dt = (now - lastTime) / 1000;
         lastTime = now;
@@ -864,13 +867,28 @@
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
 
-      // Check for bullet collisions with floor tiles.
+      // Check for bullet-floor collisions.
       checkBulletFloorCollisions();
-      // Clear floor tiles that have "fallen" (if applicable).
+      // Clear floor tiles that have fallen below drain.
       clearFallenFloorTiles();
 
-      // Update camera.
+      // Update camera (follow player).
+      function updateCamera() {
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const scale = 1;
+        const viewWidth = screenWidth;
+        const viewHeight = screenHeight;
+        let cameraX = playerChar.torso.position.x - viewWidth / 2;
+        let cameraY = playerChar.torso.position.y - viewHeight / 2;
+        cameraX = Math.max(0, Math.min(cameraX, levelWidth - viewWidth));
+        cameraY = Math.max(0, Math.min(cameraY, gameHeight - viewHeight));
+        game.style.transformOrigin = "top left";
+        game.style.transform = `scale(${scale}) translate(-${cameraX}px, -${cameraY}px)`;
+      }
       updateCamera();
+
+      // Call clearFallenClogs if needed (if you add additional clog particles).
 
       requestAnimationFrame(update);
     }
@@ -916,14 +934,14 @@
       function snapBack() {
         joystick.style.transition = "transform 0.2s ease-out";
         joystick.style.transform = "translate(0px, 0px)";
-        setTimeout(() => { 
-          joystick.style.transition = ""; 
+        setTimeout(() => {
+          joystick.style.transition = "";
           joystickAim.x = 0;
           joystickAim.y = 0;
         }, 200);
       }
-      joystick.addEventListener("touchend", function(e) { dragging = false; snapBack(); e.preventDefault(); });
-      joystick.addEventListener("touchcancel", function(e) { dragging = false; snapBack(); e.preventDefault(); });
+      joystick.addEventListener("touchend", (e) => { dragging = false; snapBack(); e.preventDefault(); });
+      joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
 
     // ------------------------------
