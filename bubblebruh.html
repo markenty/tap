@@ -18,12 +18,12 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* Parallax Background – full height and tile horizontally */
+    /* Parallax Background – sized to viewport; background tiles horizontally */
     #parallax-bg {
       position: absolute;
       top: 0;
       left: 0;
-      /* The width will be set dynamically in JS to match the level width */
+      width: 100vw;
       height: 100vh;
       background: url('IMG_7194.jpeg') repeat-x;
       background-size: auto 100%;
@@ -180,7 +180,7 @@
 </head>
 <body>
   <div id="gameboy">
-    <!-- Parallax background element -->
+    <!-- Parallax background element (viewport sized) -->
     <div id="parallax-bg"></div>
     <div id="screen">
       <div id="game"></div>
@@ -217,8 +217,7 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Previously, levelWidth was 3000, then increased to 30000.
-    // Now, we increase it another 10× to 300000.
+    // Level width is 300000px; height is set to window.innerHeight.
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -226,8 +225,8 @@
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Set parallax background width to match level width
-    document.getElementById("parallax-bg").style.width = levelWidth + "px";
+    // Note: We no longer set the parallax-bg width to levelWidth.
+    // It remains at 100vw so only visible tiles are drawn.
 
     // Create ground element.
     const groundEl = document.createElement("div");
@@ -253,7 +252,7 @@
     // Platform, TV, and Wall Creation
     // ------------------------------
     function createPlatform(x, y, width, height) {
-      const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
+      const platform = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
       platform.height = height;
       platform.hp = 50;
@@ -262,14 +261,14 @@
       platformEl.className = "platform";
       platformEl.style.width = width + "px";
       platformEl.style.height = height + "px";
-      platformEl.style.left = (x + width/2) + "px";
-      platformEl.style.top = (y + height/2) + "px";
+      platformEl.style.left = (x + width / 2) + "px";
+      platformEl.style.top = (y + height / 2) + "px";
       game.appendChild(platformEl);
       platform.domElement = platformEl;
       platforms.push(platform);
     }
     function createTV(x, y, width, height) {
-      const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "tv" });
+      const tv = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "tv" });
       tv.width = width;
       tv.height = height;
       tv.hp = 30;
@@ -278,14 +277,14 @@
       tvEl.className = "tv";
       tvEl.style.width = width + "px";
       tvEl.style.height = height + "px";
-      tvEl.style.left = (x + width/2) + "px";
-      tvEl.style.top = (y + height/2) + "px";
+      tvEl.style.left = (x + width / 2) + "px";
+      tvEl.style.top = (y + height / 2) + "px";
       game.appendChild(tvEl);
       tv.domElement = tvEl;
       tvs.push(tv);
     }
     function createWall(x, y, width, height) {
-      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
+      const wall = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
       wall.hp = 100;
@@ -294,8 +293,8 @@
       wallEl.className = "platform";
       wallEl.style.width = width + "px";
       wallEl.style.height = height + "px";
-      wallEl.style.left = (x + width/2) + "px";
-      wallEl.style.top = (y + height/2) + "px";
+      wallEl.style.left = (x + width / 2) + "px";
+      wallEl.style.top = (y + height / 2) + "px";
       game.appendChild(wallEl);
       wall.domElement = wallEl;
       walls.push(wall);
@@ -439,10 +438,10 @@
       const chunkHeight = wall.height / rows;
       for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
-          const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
-          const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
+          const cx = wall.position.x - wall.width / 2 + chunkWidth / 2 + j * chunkWidth;
+          const cy = wall.position.y - wall.height / 2 + chunkHeight / 2 + i * chunkHeight;
           let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
-          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
+          Body.setVelocity(chunk, { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 });
           chunks.push(chunk);
           World.add(world, chunk);
           const chunkEl = document.createElement("div");
@@ -692,8 +691,9 @@
 
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
-      // Update parallax background at half the camera speed.
-      document.getElementById("parallax-bg").style.transform = `translate(-${cameraX * 0.5}px, -${cameraY * 0.5}px)`;
+      // Instead of transforming a huge element, update the background position
+      // of the viewport-sized parallax element.
+      document.getElementById("parallax-bg").style.backgroundPosition = `-${cameraX * 0.5}px 0px`;
     }
 
     // ------------------------------
@@ -780,7 +780,7 @@
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
 
-      // Update camera.
+      // Update camera and parallax background.
       updateCamera();
 
       requestAnimationFrame(update);
