@@ -259,7 +259,7 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    const levelWidth = 3000;
+    const levelWidth = 30000;  // Increased 10x from 3000 to 30000
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
     const groundExtraHeight = 100;
@@ -289,6 +289,7 @@
     // ------------------------------
     // Platform, TV, and Wall Creation
     // ------------------------------
+
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
@@ -337,20 +338,32 @@
       wall.domElement = wallEl;
       walls.push(wall);
     }
-    // Sample platforms.
-    createPlatform(300, 400, 200, 20);
-    createPlatform(800, 300, 150, 20);
-    createPlatform(1300, 500, 250, 20);
-    createPlatform(2000, 350, 200, 20);
-    // Sample TVs.
-    createTV(600, 200, 40, 60);
-    createTV(1200, 250, 40, 60);
-    createTV(1800, 150, 40, 60);
-    createTV(2500, 300, 40, 60);
-    // Sample Walls.
-    createWall(500, 100, 20, 200);
-    createWall(1500, 100, 20, 200);
-    createWall(2500, 100, 20, 200);
+
+    // Instead of the original fixed calls, generate approximately double (98% more) objects.
+    // Original counts: 4 platforms, 4 TVs, 3 walls. New targets: ~8 platforms, ~8 TVs, ~6 walls.
+
+    // Generate 8 platforms at random positions.
+    for (let i = 0; i < 8; i++) {
+      const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
+      const platX = Math.random() * (levelWidth - platWidth);
+      // y between 300 and (playAreaHeight - 50)
+      const platY = 300 + Math.random() * (playAreaHeight - 350);
+      createPlatform(platX, platY, platWidth, 20);
+    }
+
+    // Generate 8 TVs at random positions.
+    for (let i = 0; i < 8; i++) {
+      const tvX = Math.random() * (levelWidth - 40);
+      const tvY = 100 + Math.random() * 200;  // y between 100 and 300
+      createTV(tvX, tvY, 40, 60);
+    }
+
+    // Generate 6 walls at random positions.
+    for (let i = 0; i < 6; i++) {
+      const wallX = Math.random() * (levelWidth - 20);
+      const wallY = 100; // as in original sample
+      createWall(wallX, wallY, 20, 200);
+    }
 
     // ------------------------------
     // Static Boundaries & Safety Floor
