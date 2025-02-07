@@ -458,26 +458,70 @@
     const playerChar = createCharacter(100, 100);
 
     // Enemy Implementation
-    function createEnemy(x, y) {
-      let enemy = { hp: 50, alive: true };
-      enemy.body = Bodies.circle(x, y, 20, { friction: 0.5, frictionAir: 0.05, restitution: 0.1, label: "enemy" });
-      createDomElement(enemy.body, "enemy", 40, 40);
-      World.add(world, enemy.body);
-      enemy.update = function() {
-        let dx = playerChar.torso.position.x - enemy.body.position.x;
-        let dy = playerChar.torso.position.y - enemy.body.position.y;
-        let distance = Math.hypot(dx, dy);
-        if (distance < 300) {
-          const forceMagnitude = 0.0005;
-          Body.applyForce(enemy.body, enemy.body.position, { x: dx * forceMagnitude, y: dy * forceMagnitude });
-        }
-      };
-      enemies.push(enemy);
-      return enemy;
-    }
-    // Spawn one enemy for testing
-    createEnemy(500, 100);
+    // Enhanced Enemy Implementation with Platformer AI
+function createEnemy(x, y) {
+  let enemy = {
+    hp: 50,
+    alive: true,
+    state: "patrol",                         // initial state: patrol
+    direction: Math.random() < 0.5 ? -1 : 1    // initial patrol direction (left or right)
+  };
 
+  enemy.body = Bodies.circle(x, y, 20, { 
+    friction: 0.5, 
+    frictionAir: 0.05, 
+    restitution: 0.1, 
+    label: "enemy" 
+  });
+  createDomElement(enemy.body, "enemy", 40, 40);
+  World.add(world, enemy.body);
+
+  enemy.update = function() {
+    // Calculate horizontal and vertical distance from the player.
+    const dx = playerChar.torso.position.x - enemy.body.position.x;
+    const dy = playerChar.torso.position.y - enemy.body.position.y;
+    const horizontalDistance = Math.abs(dx);
+    const verticalDistance = Math.abs(dy);
+    
+    // If the player is close enough horizontally and roughly on the same level, chase.
+    const chaseThreshold = 400;  // pixels
+    const verticalThreshold = 50;  // pixels
+    if (horizontalDistance < chaseThreshold && verticalDistance < verticalThreshold) {
+      enemy.state = "chase";
+    } else {
+      enemy.state = "patrol";
+    }
+    
+    if (enemy.state === "chase") {
+      // Apply a stronger force toward the player.
+      const chaseForce = 0.001;
+      const forceDirection = dx > 0 ? 1 : -1;
+      Body.applyForce(enemy.body, enemy.body.position, { x: forceDirection * chaseForce, y: 0 });
+      
+      // If the player is above and the enemy seems to be on the ground (low vertical speed), jump.
+      if (dy < -20 && Math.abs(enemy.body.velocity.y) < 1) {
+        Body.setVelocity(enemy.body, { x: enemy.body.velocity.x, y: -10 });
+      }
+    } else if (enemy.state === "patrol") {
+      // Patrol with a gentle constant force.
+      const patrolForce = 0.0005;
+      Body.applyForce(enemy.body, enemy.body.position, { x: enemy.direction * patrolForce, y: 0 });
+      
+      // Reverse direction when near level boundaries.
+      if (enemy.body.position.x < 50) {
+        enemy.direction = 1;
+      } else if (enemy.body.position.x > levelWidth - 50) {
+        enemy.direction = -1;
+      }
+    }
+  };
+
+  enemies.push(enemy);
+  return enemy;
+}
+
+// Example: spawn an enemy at (500, 100)
+createEnemy(500, 100);
     // Destructible Object Damage Handling
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
