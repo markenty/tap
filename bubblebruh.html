@@ -568,11 +568,11 @@
         let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
-      let maxWhipDistance = 18;
+      let maxWhipDistance = 20;
       let whipOrigin = playerChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
       let swingTime = 300;
-      let steps = 30;
+      let steps = 10;
       let stepTime = swingTime / steps;
       let step = 0;
       let interval = setInterval(() => {
