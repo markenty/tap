@@ -144,12 +144,12 @@
       background: lime;
       border-radius: 3px;
     }
-    /* Character parts: dark grey rectangles at 3:1 ratio (now 10×30) */
+    /* Player parts as circles (“bubbles”) */
     .player-part {
       background: #222;
-      width: 10px;
-      height: 30px;
-      border-radius: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
       box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
       position: absolute;
     }
@@ -177,27 +177,33 @@
       line-height: 20px;
       text-align: center;
     }
-    /* Custom player visuals: animated tendrils and glowing red eyes */
+    /* Tendrils: 1px “noodle” lines overlaid on each player part */
     .tendril {
-      width: 8px;
-      height: 20px;
-      background: rgba(255, 0, 0, 0.5);
       position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      animation: flowing 1s infinite alternate ease-in-out;
+      width: 1px;
+      height: 10px;
+      background: #fff;
+      top: 100%;  /* attach at bottom of circle */
+      left: 50%;
+      transform-origin: top center;
+      /* Simple wiggling animation */
+      animation: noodleWiggle 1s infinite ease-in-out;
     }
-    @keyframes flowing {
-      from { transform: translateY(-50%) rotate(-10deg); }
-      to { transform: translateY(-50%) rotate(10deg); }
+    @keyframes noodleWiggle {
+      0% { transform: translateX(-50%) rotate(0deg); }
+      50% { transform: translateX(-50%) rotate(10deg); }
+      100% { transform: translateX(-50%) rotate(0deg); }
     }
-    .eye {
+    /* For head parts, add two eyes */
+    .head .eye {
       position: absolute;
       width: 2px;
       height: 2px;
       background: red;
       box-shadow: 0 0 5px red;
     }
+    .head .eye.left { left: 30%; top: 30%; }
+    .head .eye.right { right: 30%; top: 30%; }
   </style>
 </head>
 <body>
@@ -409,11 +415,11 @@
 
     // ------------------------------
     // Character Factory (Player Only)
-    // Updated to use rectangles with 10×30 size, animated tendrils, and red eyes
+    // Restored to circles (“bubbles”) with 1px noodle tendrils overlay
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
-      const width = 10, height = 30;  // New dimensions (half of 20×60)
+      const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
@@ -426,38 +432,50 @@
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
 
-      function addPart(body, cls) {
-        createDomElement(body, cls, width, height);
+      function addPart(body, cls, w, h) {
+        createDomElement(body, cls, w, h);
         body.character = char;
+        // Overlay a 1px noodle tendril on this body part
+        let tendril = document.createElement("div");
+        tendril.className = "tendril";
+        body.domElement.appendChild(tendril);
+        // If this is the head, add two eyes
+        if (cls.indexOf("head") !== -1) {
+          let eyeLeft = document.createElement("div");
+          eyeLeft.className = "eye left";
+          let eyeRight = document.createElement("div");
+          eyeRight.className = "eye right";
+          body.domElement.appendChild(eyeLeft);
+          body.domElement.appendChild(eyeRight);
+        }
         return body;
       }
 
-      // Offsets are scaled by 0.5 relative to the original bubble version.
-      const head = Bodies.rectangle(x, y - 20, width, height, defaultOptions);
-      addPart(head, "player-part head");
+      const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
+      addPart(head, "player-part head", size, size);
 
-      const torso = Bodies.rectangle(x, y, width, height, torsoOptions);
-      addPart(torso, "player-part torso");
+      const torso = Bodies.circle(x, y - 20, size, torsoOptions);
+      addPart(torso, "player-part torso", size * 2, size * 2);
 
-      const rightUpperArm = Bodies.rectangle(x + 15, y - 10, width, height, defaultOptions);
-      addPart(rightUpperArm, "player-part arm");
-      const rightHand = Bodies.rectangle(x + 15, y, width, height, defaultOptions);
-      addPart(rightHand, "player-part hand");
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
+      addPart(rightUpperArm, "player-part arm", size, size);
+      const rightHand = Bodies.circle(x + 30, y, size / 2, defaultOptions);
+      addPart(rightHand, "player-part hand", size, size);
 
-      const leftUpperArm = Bodies.rectangle(x - 15, y - 10, width, height, defaultOptions);
-      addPart(leftUpperArm, "player-part arm");
-      const leftHand = Bodies.rectangle(x - 15, y, width, height, defaultOptions);
-      addPart(leftHand, "player-part hand");
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
+      addPart(leftUpperArm, "player-part arm", size, size);
+      const leftHand = Bodies.circle(x - 30, y, size / 2, defaultOptions);
+      addPart(leftHand, "player-part hand", size, size);
 
-      const rightUpperLeg = Bodies.rectangle(x + 5, y + 5, width, height, defaultOptions);
-      addPart(rightUpperLeg, "player-part leg");
-      const rightFoot = Bodies.rectangle(x + 5, y + 15, width, height, defaultOptions);
-      addPart(rightFoot, "player-part foot");
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
+      addPart(rightUpperLeg, "player-part leg", size, size);
+      const rightFoot = Bodies.circle(x + 10, y + 10 + 20, size / 2, defaultOptions);
+      addPart(rightFoot, "player-part foot", size, size);
 
-      const leftUpperLeg = Bodies.rectangle(x - 5, y + 5, width, height, defaultOptions);
-      addPart(leftUpperLeg, "player-part leg");
-      const leftFoot = Bodies.rectangle(x - 5, y + 15, width, height, defaultOptions);
-      addPart(leftFoot, "player-part foot");
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
+      addPart(leftUpperLeg, "player-part leg", size, size);
+      const leftFoot = Bodies.circle(x - 10, y + 10 + 20, size / 2, defaultOptions);
+      addPart(leftFoot, "player-part foot", size, size);
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
 
@@ -468,15 +486,15 @@
         });
         World.add(world, con);
       }
-      link(head, torso, { x: 0, y: height/2 }, { x: 0, y: -height/2 });
-      link(torso, rightUpperArm, { x: width/2, y: 0 }, { x: -width/2, y: 0 });
-      link(rightUpperArm, rightHand, { x: 0, y: height/2 }, { x: 0, y: -height/2 });
-      link(torso, leftUpperArm, { x: -width/2, y: 0 }, { x: width/2, y: 0 });
-      link(leftUpperArm, leftHand, { x: 0, y: height/2 }, { x: 0, y: -height/2 });
-      link(torso, rightUpperLeg, { x: width/4, y: height/2 }, { x: 0, y: -height/2 });
-      link(rightUpperLeg, rightFoot, { x: 0, y: height/2 }, { x: 0, y: -height/2 });
-      link(torso, leftUpperLeg, { x: -width/4, y: height/2 }, { x: 0, y: -height/2 });
-      link(leftUpperLeg, leftFoot, { x: 0, y: height/2 }, { x: 0, y: -height/2 });
+      link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
+      link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
+      link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
+      link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size / 2 });
+      link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
+      link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
       char.head = head; char.torso = torso;
       char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
@@ -593,7 +611,7 @@
         let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
-      let maxWhipDistance = 60;
+      let maxWhipDistance = 20;
       let attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand;
       let whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
@@ -664,7 +682,7 @@
       let shootingHand = dx < 0 ? playerChar.leftHand : playerChar.rightHand;
       let shootingArm = dx < 0 ? playerChar.leftUpperArm : playerChar.rightUpperArm;
       Body.setPosition(shootingHand, { 
-        x: shootingArm.position.x + (dx * 20 * 0.5),  // offset scaled by 0.5
+        x: shootingArm.position.x + (dx * 20), 
         y: shootingArm.position.y
       });
       const origin = { x: shootingHand.position.x, y: shootingHand.position.y };
@@ -835,7 +853,7 @@
           Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
         }
       }
-      Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 20 });
+      Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       (function clampWithinBounds(character) {
         const margin = 50;
