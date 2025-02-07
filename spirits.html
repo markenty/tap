@@ -150,13 +150,13 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      box-shadow: 0 0 14px rgba(255, 255, 0255, 0.2);
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
       position: absolute;
     }
     .bullet {
-  background: #fff;
-  border-radius: 50%;
-}
+      background: #fff;
+      border-radius: 50%;
+    }
     .bubble-burst {
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
@@ -402,36 +402,30 @@
     // ------------------------------
     // Tentacle Helper Functions
     // ------------------------------
-    // Create a tentacle composite (a chain of small circular bodies)
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
-      // Create a stack of small circular bodies
       const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
         return Bodies.circle(x, y, segmentRadius, {
           collisionFilter: { group: -1 },
           frictionAir: 0.1
         });
       });
-      // Chain them together
       Composites.chain(tentacle, 0.5, 0, -0.5, 0, {
         stiffness: 0.8,
         length: segmentLength,
         render: { type: 'line' }
       });
-      // For each segment, create a DOM element for rendering
       tentacle.bodies.forEach(function(seg) {
         createDomElement(seg, "tentacleSegment", segmentRadius * 2, segmentRadius * 2);
       });
       return tentacle;
     }
-
-    // Attach a tentacle composite to a given body at a specified offset.
     function attachTentacleToBody(body, anchorOffset, segments, segmentLength, segmentRadius) {
       const startX = body.position.x + anchorOffset.x;
       const startY = body.position.y + anchorOffset.y;
       const tentacle = createTentacleComposite(startX, startY, segments, segmentLength, segmentRadius);
       const constraint = Constraint.create({
         bodyA: body,
-        pointA: anchorOffset, // relative offset on the body
+        pointA: anchorOffset,
         bodyB: tentacle.bodies[0],
         pointB: { x: 0, y: 0 },
         stiffness: 0.8,
@@ -443,7 +437,6 @@
 
     // ------------------------------
     // Character Factory (Player Only)
-    // Restored to circles (“bubbles”) with physics-based tentacle attached to the head
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
@@ -460,15 +453,11 @@
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
 
-      // Updated addPart: overlays no CSS tentacle; for head parts, attach a physics tentacle.
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
         if (cls.indexOf("head") !== -1) {
-          // Attach a physics-based tentacle to the head.
-          // Anchor the tentacle at the bottom center of the head.
           attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
-          // Also add eyes
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           let eyeRight = document.createElement("div");
@@ -532,6 +521,38 @@
       return char;
     }
     let playerChar = createCharacter(100, 100);
+
+    // ------------------------------
+    // Enemy Implementation
+    // ------------------------------
+    let enemies = [];
+    function createEnemy(x, y) {
+      let enemy = { hp: 50, alive: true };
+      enemy.body = Bodies.circle(x, y, 20, {
+        friction: 0.5,
+        frictionAir: 0.05,
+        restitution: 0.1,
+        label: "enemy"
+      });
+      createDomElement(enemy.body, "enemy", 40, 40);
+      World.add(world, enemy.body);
+      enemy.update = function() {
+        let dx = playerChar.torso.position.x - enemy.body.position.x;
+        let dy = playerChar.torso.position.y - enemy.body.position.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance < 300) {
+          const forceMagnitude = 0.0005;
+          Body.applyForce(enemy.body, enemy.body.position, {
+            x: dx * forceMagnitude,
+            y: dy * forceMagnitude
+          });
+        }
+      };
+      enemies.push(enemy);
+      return enemy;
+    }
+    // Spawn an enemy at a chosen position.
+    createEnemy(500, 100);
 
     // ------------------------------
     // Destructible Object Damage Handling
@@ -757,7 +778,7 @@
         if (target.character && target.character === bullet.owner) {
           return;
         }
-        const destructibleLabels = ["platform", "tv", "wall", "wallChunk"];
+        const destructibleLabels = ["platform", "tv", "wall", "wallChunk", "enemy"];
         if (destructibleLabels.includes(target.label)) {
           damageDestructible(target, bulletDamage);
         } else if (target.character && target.character !== bullet.owner) {
@@ -858,6 +879,15 @@
         if (coin.domElement) {
           coin.domElement.style.left = coin.position.x + "px";
           coin.domElement.style.top = coin.position.y + "px";
+        }
+      });
+      // Update enemies
+      enemies.forEach(enemy => {
+        enemy.update();
+        if (enemy.body.domElement) {
+          enemy.body.domElement.style.left = enemy.body.position.x + "px";
+          enemy.body.domElement.style.top = enemy.body.position.y + "px";
+          enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
       if (keys["ArrowLeft"]) {
