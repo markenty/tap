@@ -401,17 +401,20 @@
     // ------------------------------
     // Create a tentacle composite (a chain of small circular bodies)
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
+      // Create a stack of small circular bodies
       const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
         return Bodies.circle(x, y, segmentRadius, {
           collisionFilter: { group: -1 },
           frictionAir: 0.1
         });
       });
+      // Chain them together
       Composites.chain(tentacle, 0.5, 0, -0.5, 0, {
         stiffness: 0.8,
         length: segmentLength,
         render: { type: 'line' }
       });
+      // For each segment, create a DOM element for rendering
       tentacle.bodies.forEach(function(seg) {
         createDomElement(seg, "tentacleSegment", segmentRadius * 2, segmentRadius * 2);
       });
@@ -425,7 +428,7 @@
       const tentacle = createTentacleComposite(startX, startY, segments, segmentLength, segmentRadius);
       const constraint = Constraint.create({
         bodyA: body,
-        pointA: anchorOffset,
+        pointA: anchorOffset, // relative offset on the body
         bodyB: tentacle.bodies[0],
         pointB: { x: 0, y: 0 },
         stiffness: 0.8,
@@ -437,6 +440,7 @@
 
     // ------------------------------
     // Character Factory (Player Only)
+    // Restored to circles (“bubbles”) with physics-based tentacle attached to the head
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
@@ -453,13 +457,15 @@
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
 
+      // Updated addPart: overlays no CSS tentacle; for head parts, attach a physics tentacle.
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
         if (cls.indexOf("head") !== -1) {
           // Attach a physics-based tentacle to the head.
+          // Anchor the tentacle at the bottom center of the head.
           attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
-          // Add eyes.
+          // Also add eyes
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           let eyeRight = document.createElement("div");
@@ -522,103 +528,7 @@
       char.leftUpperLeg = leftUpperLeg; char.leftFoot = leftFoot;
       return char;
     }
-
-    // === NEW CODE START ===
-    // Helper function to create an appendage composed of a chain of circles.
-    function createAppendage(origin, angle, numSegments, startRadius, endRadius, segmentGap = 0) {
-      const segments = [];
-      const radiusStep = (startRadius - endRadius) / (numSegments - 1);
-      let prevBody = null;
-      let lastPos = { x: origin.x, y: origin.y };
-
-      for (let i = 0; i < numSegments; i++) {
-        const currentRadius = startRadius - radiusStep * i;
-        const distance = (currentRadius * 2) + segmentGap;
-        const pos = {
-          x: lastPos.x + Math.cos(angle) * distance,
-          y: lastPos.y + Math.sin(angle) * distance
-        };
-
-        const segment = Bodies.circle(pos.x, pos.y, currentRadius, {
-          frictionAir: 0.05
-        });
-        segments.push(segment);
-        World.add(world, segment);
-
-        if (prevBody) {
-          const constraint = Constraint.create({
-            bodyA: prevBody,
-            pointA: { x: 0, y: 0 },
-            bodyB: segment,
-            pointB: { x: 0, y: 0 },
-            stiffness: 0.8,
-            length: distance - currentRadius
-          });
-          World.add(world, constraint);
-        }
-        prevBody = segment;
-        lastPos = pos;
-      }
-      return segments;
-    }
-
-    // Helper function to attach extra limbs (arms and legs) to the character.
-    function addExtraLimbs(character, numArms = 8, numLegs = 8, segmentsPerAppendage = 10) {
-      character.arms = [];
-      character.legs = [];
-
-      const torso = character.torso;
-      const torsoRadius = 20; // Adjust to match torso size.
-
-      // Create arms (upper half: angles from -90° to +90°).
-      for (let i = 0; i < numArms; i++) {
-        const angle = (-Math.PI / 2) + (i / (numArms - 1)) * Math.PI;
-        const offset = {
-          x: Math.cos(angle) * torsoRadius,
-          y: Math.sin(angle) * torsoRadius
-        };
-        const attachPoint = {
-          x: torso.position.x + offset.x,
-          y: torso.position.y + offset.y
-        };
-        const arm = createAppendage(attachPoint, angle, segmentsPerAppendage, 10, 4);
-        const armConstraint = Constraint.create({
-          bodyA: torso,
-          pointA: offset,
-          bodyB: arm[0],
-          pointB: { x: 0, y: 0 },
-          stiffness: 0.8,
-          length: 0
-        });
-        World.add(world, armConstraint);
-        character.arms.push(arm);
-      }
-
-      // Create legs (lower half: angles from +90° to +270°).
-      for (let i = 0; i < numLegs; i++) {
-        const angle = (Math.PI / 2) + (i / (numLegs - 1)) * Math.PI;
-        const offset = {
-          x: Math.cos(angle) * torsoRadius,
-          y: Math.sin(angle) * torsoRadius
-        };
-        const attachPoint = {
-          x: torso.position.x + offset.x,
-          y: torso.position.y + offset.y
-        };
-        const leg = createAppendage(attachPoint, angle, segmentsPerAppendage, 10, 4);
-        const legConstraint = Constraint.create({
-          bodyA: torso,
-          pointA: offset,
-          bodyB: leg[0],
-          pointB: { x: 0, y: 0 },
-          stiffness: 0.8,
-          length: 0
-        });
-        World.add(world, legConstraint);
-        character.legs.push(leg);
-      }
-    }
-    // === NEW CODE END ===
+    let playerChar = createCharacter(100, 100);
 
     // ------------------------------
     // Destructible Object Damage Handling
@@ -1077,13 +987,6 @@
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
     abButtons.querySelector(".C").addEventListener("touchstart", (e) => { e.preventDefault(); meleeAttack(); });
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
-    
-    // Create your player character.
-    let playerChar = createCharacter(100, 100);
-    
-    // === NEW CODE: Attach extra limbs to the player character ===
-    addExtraLimbs(playerChar, 8, 8, 10);
-    
   </script>
 </body>
 </html>
