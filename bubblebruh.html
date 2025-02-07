@@ -342,7 +342,7 @@
     }
 
     // Generate 800 platforms at random positions.
-    for (let i = 0; i < 800; i++) {
+    for (let i = 0; i < 3800; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
       const platX = Math.random() * (levelWidth - platWidth);
       // y between 300 and (playAreaHeight - 50)
@@ -351,7 +351,7 @@
     }
 
     // Generate 800 TVs at random positions.
-    for (let i = 0; i < 800; i++) {
+    for (let i = 0; i < 3800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;  // y between 100 and 300
       createTV(tvX, tvY, 40, 60);
@@ -552,7 +552,7 @@
         let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
-      let maxWhipDistance = 60;
+      let maxWhipDistance = 10;
       let whipOrigin = playerChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
       let swingTime = 300;
