@@ -44,7 +44,7 @@
       top: 0; left: 0;
       z-index: 1;
     }
-    /* Tentacle canvas overlay */
+    /* Canvas overlay for drawing tentacles */
     #tentacleCanvas {
       position: absolute;
       top: 0;
@@ -202,7 +202,7 @@
     <div id="screen">
       <div id="parallax"></div>
       <div id="game"></div>
-      <!-- Canvas for drawing tentacles -->
+      <!-- Canvas overlay for drawing tentacles -->
       <canvas id="tentacleCanvas"></canvas>
     </div>
     <div id="controls">
@@ -409,7 +409,6 @@
     // ------------------------------
     // Tentacle Drawing Functions (Canvas-based)
     // ------------------------------
-    // Get the tentacle canvas and its context.
     const tentacleCanvas = document.getElementById("tentacleCanvas");
     const ctx = tentacleCanvas.getContext("2d");
     function resizeTentacleCanvas() {
@@ -437,13 +436,12 @@
     }
     // Global time counter for oscillation.
     let tentacleTime = 0;
-    // Draw a tentacle (Bezier curve) from "from" to "to".
+    // Draw a tentacle (Bezier curve) from "from" to "to" with dark stroke and increased sway.
     function drawTentacle(from, to) {
       // Oscillate using the global tentacleTime.
       var sinVal = Math.sin(tentacleTime / 30);
       var cosVal = Math.cos(tentacleTime / 30);
-      var intensity = 20; // adjust intensity of the tentacle bend.
-      // Fixed percentages along the line.
+      var intensity = 30; // increased intensity for more gravity sway
       var percent1 = 0.3;
       var percent2 = 0.7;
       var tangent1 = getTangentPoint(from, to, intensity * sinVal, percent1);
@@ -451,14 +449,31 @@
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.bezierCurveTo(tangent1.x, tangent1.y, tangent2.x, tangent2.y, to.x, to.y);
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#222";  // dark like the player
+      ctx.lineWidth = 2;
       ctx.stroke();
+    }
+    // Draw tentacles for every player part.
+    function drawTentaclesForPlayer() {
+      // List all player parts.
+      const parts = [ playerChar.head, playerChar.torso, playerChar.rightUpperArm, playerChar.rightHand,
+                      playerChar.leftUpperArm, playerChar.leftHand, playerChar.rightUpperLeg, playerChar.rightFoot,
+                      playerChar.leftUpperLeg, playerChar.leftFoot ];
+      parts.forEach(function(part) {
+        if (!part.domElement) return;
+        // Get the bounding rect for this part.
+        const rect = part.domElement.getBoundingClientRect();
+        // "from" is the bottom-center of the part.
+        const from = { x: rect.left + rect.width / 2, y: rect.top + rect.height };
+        // "to" is further below the part—with extra downward offset for gravity sway.
+        const to = { x: from.x, y: from.y + 60 + 10 * Math.sin(tentacleTime / 20) };
+        drawTentacle(from, to);
+      });
     }
 
     // ------------------------------
     // Character Factory (Player Only)
-    // Now using circles (“bubbles”) with canvas-drawn tentacle on the head.
+    // Using circles (“bubbles”) with canvas-drawn tentacles on every part.
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
@@ -478,8 +493,7 @@
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
-        // For the head, do not attach a Matter-based tentacle.
-        // The canvas-based tentacle will be drawn separately.
+        // For head parts, add eyes.
         if (cls.indexOf("head") !== -1) {
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
@@ -548,25 +562,55 @@
     // ------------------------------
     // Tentacle Drawing: Called each frame.
     // ------------------------------
-    function drawTentacleForHead() {
-      // Get head position in screen coordinates.
-      // We assume the "game" div is not translated relative to the viewport (camera translation is applied via transform).
-      const headRect = playerChar.head.domElement.getBoundingClientRect();
-      // Define the "from" point at the bottom-center of the head.
-      const from = {
-        x: headRect.left + headRect.width / 2,
-        y: headRect.top + headRect.height
-      };
-      // Define a "to" point some pixels below the head with oscillation.
-      const to = {
-        x: from.x,
-        y: from.y + 50 + 10 * Math.sin(tentacleTime / 20)
-      };
-      // Clear the tentacle canvas.
-      ctx.clearRect(0, 0, tentacleCanvas.width, tentacleCanvas.height);
-      // Draw the tentacle using a Bezier curve.
-      drawTentacle(from, to);
+    function drawTentaclesForPlayer() {
+      // We draw a tentacle for every player part.
+      const parts = [ playerChar.head, playerChar.torso, playerChar.rightUpperArm, playerChar.rightHand,
+                      playerChar.leftUpperArm, playerChar.leftHand, playerChar.rightUpperLeg, playerChar.rightFoot,
+                      playerChar.leftUpperLeg, playerChar.leftFoot ];
+      parts.forEach(function(part) {
+        if (!part.domElement) return;
+        const rect = part.domElement.getBoundingClientRect();
+        // "from" is at the bottom-center of the part.
+        const from = { x: rect.left + rect.width / 2, y: rect.top + rect.height };
+        // "to" is further below with extra downward offset (gravity sway) and slight oscillation.
+        const to = { x: from.x, y: from.y + 60 + 10 * Math.sin(tentacleTime / 20) };
+        drawTentacle(from, to);
+      });
     }
+    // Draw a tentacle (Bezier curve) from "from" to "to".
+    function drawTentacle(from, to) {
+      var sinVal = Math.sin(tentacleTime / 30);
+      var cosVal = Math.cos(tentacleTime / 30);
+      var intensity = 30; // increased intensity for gravity sway
+      var percent1 = 0.3;
+      var percent2 = 0.7;
+      var tangent1 = getTangentPoint(from, to, intensity * sinVal, percent1);
+      var tangent2 = getTangentPoint(from, to, intensity * cosVal, percent2);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.bezierCurveTo(tangent1.x, tangent1.y, tangent2.x, tangent2.y, to.x, to.y);
+      ctx.strokeStyle = "#222"; // dark color like the player
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // Helper functions for tentacle drawing.
+    function getAngle(from, to) {
+      var vx = to.x - from.x;
+      var vy = to.y - from.y;
+      return Math.atan2(vy, vx);
+    }
+    function getTangentVector(from, to, length) {
+      var angle = getAngle(from, to);
+      var tangentAngle = angle - (Math.PI / 2);
+      return { x: length * Math.cos(tangentAngle), y: length * Math.sin(tangentAngle) };
+    }
+    function getTangentPoint(from, to, distance, percentage) {
+      var targetX = (to.x - from.x) * percentage + from.x; 
+      var targetY = (to.y - from.y) * percentage + from.y;
+      var tangent = getTangentVector(from, to, distance);
+      return { x: targetX + tangent.x, y: targetY - tangent.y };
+    }
+    let tentacleTime = 0;
 
     // ------------------------------
     // Destructible Object Damage Handling
@@ -952,9 +996,9 @@
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
       updateCamera();
-      // Draw the canvas-based tentacle for the head.
-      drawTentacleForHead();
-      tentacleTime++;  // update global time for oscillation
+      // Draw canvas-based tentacles for every player part.
+      drawTentaclesForPlayer();
+      tentacleTime++;
       requestAnimationFrame(update);
     }
     let walkCycle = 0, lastTime = Date.now();
