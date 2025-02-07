@@ -683,7 +683,7 @@
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
       bullet.owner = owner;
       const angle = Math.atan2(ty - y, tx - x);
-      const speed = 35;
+      const speed = 85;
       Body.setVelocity(bullet, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
       World.add(world, bullet);
       createDomElement(bullet, "bullet", 10, 10);
