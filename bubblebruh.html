@@ -259,7 +259,9 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    const levelWidth = 30000;  // Increased 10x from 3000 to 30000
+    // Previously, levelWidth was 3000, then increased to 30000.
+    // Now, we increase it another 10× to 300000.
+    const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
     const groundExtraHeight = 100;
@@ -339,11 +341,8 @@
       walls.push(wall);
     }
 
-    // Instead of the original fixed calls, generate approximately double (98% more) objects.
-    // Original counts: 4 platforms, 4 TVs, 3 walls. New targets: ~8 platforms, ~8 TVs, ~6 walls.
-
-    // Generate 8 platforms at random positions.
-    for (let i = 0; i < 8; i++) {
+    // Generate 800 platforms at random positions.
+    for (let i = 0; i < 800; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
       const platX = Math.random() * (levelWidth - platWidth);
       // y between 300 and (playAreaHeight - 50)
@@ -351,17 +350,17 @@
       createPlatform(platX, platY, platWidth, 20);
     }
 
-    // Generate 8 TVs at random positions.
-    for (let i = 0; i < 8; i++) {
+    // Generate 800 TVs at random positions.
+    for (let i = 0; i < 800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;  // y between 100 and 300
       createTV(tvX, tvY, 40, 60);
     }
 
-    // Generate 6 walls at random positions.
-    for (let i = 0; i < 6; i++) {
+    // Generate 600 walls at random positions.
+    for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
-      const wallY = 100; // as in original sample
+      const wallY = 100; // y fixed at 100
       createWall(wallX, wallY, 20, 200);
     }
 
