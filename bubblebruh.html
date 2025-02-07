@@ -18,34 +18,19 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* Parallax Background – viewport sized, looping */
-    #parallax-bg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      /* The image will automatically repeat horizontally */
-      background: url('IMG_7194.jpeg') repeat-x;
-      /* Scale the image so its height fills the viewport */
-      background-size: auto 100%;
-      z-index: 0;
-    }
     /* Screen – contains the game world */
     #screen {
       position: absolute;
       top: 0; left: 0;
       width: 100vw;
       height: 100vh;
-      background: transparent;
+      background: #000;
       overflow: hidden;
-      z-index: 1;
     }
     /* Game World Container – camera transform applied */
     #game {
       position: absolute;
       top: 0; left: 0;
-      z-index: 2;
     }
     /* Ground styling */
     #ground {
@@ -182,8 +167,6 @@
 </head>
 <body>
   <div id="gameboy">
-    <!-- The viewport-sized background element -->
-    <div id="parallax-bg"></div>
     <div id="screen">
       <div id="game"></div>
     </div>
@@ -207,6 +190,63 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
     // ------------------------------
+    // Global Helpers & Screen Shake
+    // ------------------------------
+    let lastScreenShakeTime = 0;
+    function throttledScreenShake(intensity = 5, duration = 300, cooldown = 500) {
+      const now = Date.now();
+      if (now - lastScreenShakeTime > cooldown) {
+        lastScreenShakeTime = now;
+        screenShake(intensity, duration);
+      }
+    }
+    function screenShake(intensity = 5, duration = 300) {
+      const screen = document.getElementById("screen");
+      const startTime = Date.now();
+      (function shake() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+          const dx = (Math.random() - 0.5) * intensity;
+          const dy = (Math.random() - 0.5) * intensity;
+          screen.style.transform = `translate(${dx}px, ${dy}px)`;
+          requestAnimationFrame(shake);
+        } else {
+          screen.style.transform = "";
+        }
+      })();
+    }
+    function particleBurst(x, y, color) {
+      const numParticles = 20;
+      for (let i = 0; i < numParticles; i++) {
+        const particle = document.createElement("div");
+        particle.style.position = "absolute";
+        particle.style.left = x + "px";
+        particle.style.top = y + "px";
+        particle.style.width = "4px";
+        particle.style.height = "4px";
+        particle.style.backgroundColor = color;
+        particle.style.borderRadius = "50%";
+        particle.style.pointerEvents = "none";
+        particle.style.opacity = "1";
+        particle.style.transform = "translate(-50%, -50%)";
+        game.appendChild(particle);
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * 50 + 20;
+        const deltaX = Math.cos(angle) * distance;
+        const deltaY = Math.sin(angle) * distance;
+        particle.animate([
+          { transform: `translate(0px, 0px)`, opacity: 1 },
+          { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 0 }
+        ], {
+          duration: 800 + Math.random() * 400,
+          easing: "ease-out",
+          fill: "forwards"
+        });
+        setTimeout(() => { if (particle.parentNode) particle.parentNode.removeChild(particle); }, 1200);
+      }
+    }
+
+    // ------------------------------
     // Matter.js Setup & World
     // ------------------------------
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
@@ -219,6 +259,8 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
+    // Previously, levelWidth was 3000, then increased to 30000.
+    // Now, we increase it another 10× to 300000.
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -249,8 +291,9 @@
     // ------------------------------
     // Platform, TV, and Wall Creation
     // ------------------------------
+
     function createPlatform(x, y, width, height) {
-      const platform = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "platform" });
+      const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
       platform.height = height;
       platform.hp = 50;
@@ -259,14 +302,14 @@
       platformEl.className = "platform";
       platformEl.style.width = width + "px";
       platformEl.style.height = height + "px";
-      platformEl.style.left = (x + width / 2) + "px";
-      platformEl.style.top = (y + height / 2) + "px";
+      platformEl.style.left = (x + width/2) + "px";
+      platformEl.style.top = (y + height/2) + "px";
       game.appendChild(platformEl);
       platform.domElement = platformEl;
       platforms.push(platform);
     }
     function createTV(x, y, width, height) {
-      const tv = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "tv" });
+      const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "tv" });
       tv.width = width;
       tv.height = height;
       tv.hp = 30;
@@ -275,44 +318,49 @@
       tvEl.className = "tv";
       tvEl.style.width = width + "px";
       tvEl.style.height = height + "px";
-      tvEl.style.left = (x + width / 2) + "px";
-      tvEl.style.top = (y + height / 2) + "px";
+      tvEl.style.left = (x + width/2) + "px";
+      tvEl.style.top = (y + height/2) + "px";
       game.appendChild(tvEl);
       tv.domElement = tvEl;
       tvs.push(tv);
     }
     function createWall(x, y, width, height) {
-      const wall = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "wall" });
+      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
       wall.hp = 100;
       World.add(world, wall);
       const wallEl = document.createElement("div");
-      wallEl.className = "platform";
+      wallEl.className = "platform"; // same styling as platforms
       wallEl.style.width = width + "px";
       wallEl.style.height = height + "px";
-      wallEl.style.left = (x + width / 2) + "px";
-      wallEl.style.top = (y + height / 2) + "px";
+      wallEl.style.left = (x + width/2) + "px";
+      wallEl.style.top = (y + height/2) + "px";
       game.appendChild(wallEl);
       wall.domElement = wallEl;
       walls.push(wall);
     }
 
-    // Generate platforms, TVs, and walls…
-    for (let i = 0; i < 38; i++) {
-      const platWidth = Math.floor(Math.random() * 101) + 150;
+    // Generate 800 platforms at random positions.
+    for (let i = 0; i < 3800; i++) {
+      const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
       const platX = Math.random() * (levelWidth - platWidth);
+      // y between 300 and (playAreaHeight - 50)
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-    for (let i = 0; i < 38; i++) {
+
+    // Generate 800 TVs at random positions.
+    for (let i = 0; i < 3800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
-      const tvY = 100 + Math.random() * 200;
+      const tvY = 100 + Math.random() * 200;  // y between 100 and 300
       createTV(tvX, tvY, 40, 60);
     }
+
+    // Generate 600 walls at random positions.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
-      const wallY = 100;
+      const wallY = 100; // y fixed at 100
       createWall(wallX, wallY, 20, 200);
     }
 
@@ -436,10 +484,10 @@
       const chunkHeight = wall.height / rows;
       for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
-          const cx = wall.position.x - wall.width / 2 + chunkWidth / 2 + j * chunkWidth;
-          const cy = wall.position.y - wall.height / 2 + chunkHeight / 2 + i * chunkHeight;
+          const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
+          const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
           let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
-          Body.setVelocity(chunk, { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 });
+          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
           chunks.push(chunk);
           World.add(world, chunk);
           const chunkEl = document.createElement("div");
@@ -661,11 +709,9 @@
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
     // ------------------------------
-    // Camera Follow & Background Scrolling
+    // Camera Follow Functionality with Deadzone
     // ------------------------------
     let cameraX = 0, cameraY = 0;
-    // Assume the background image's natural width (in pixels)
-    const bgImageWidth = 1920;  // adjust this value as needed
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
@@ -691,11 +737,6 @@
 
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
-
-      // Loop the background image horizontally.
-      // Calculate the background offset using modulo arithmetic.
-      const bgOffset = -(cameraX % bgImageWidth);
-      document.getElementById("parallax-bg").style.backgroundPosition = `${bgOffset}px 0px`;
     }
 
     // ------------------------------
@@ -717,6 +758,7 @@
         }
       });
       
+      // Player movement via arrow keys.
       if (keys["ArrowLeft"]) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
       }
@@ -741,6 +783,7 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
+      // Clamp player within level boundaries and above the ground.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
@@ -755,6 +798,7 @@
         }
       })(playerChar);
 
+      // Leg Animation.
       let walkCycle = 0, lastTime = Date.now();
       (function updateWalkCycle() {
         const now = Date.now();
@@ -772,12 +816,14 @@
         }
       })();
 
+      // Update HP bar.
       (function updateHpBar(character) {
         if (!character.hpContainer) return;
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
 
+      // Update camera.
       updateCamera();
 
       requestAnimationFrame(update);
@@ -854,4 +900,4 @@
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
   </script>
 </body>
-</html>
+</html> 
