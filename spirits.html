@@ -144,12 +144,12 @@
       background: lime;
       border-radius: 3px;
     }
-    /* Character parts: dark grey rectangles (20×60 px, 3:1 ratio) */
+    /* Character parts: dark grey rectangles at 3:1 ratio (now 10×30) */
     .player-part {
       background: #222;
-      width: 20px;
-      height: 60px;
-      border-radius: 5px;
+      width: 10px;
+      height: 30px;
+      border-radius: 3px;
       box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
       position: absolute;
     }
@@ -180,7 +180,7 @@
     /* Custom player visuals: animated tendrils and glowing red eyes */
     .tendril {
       width: 8px;
-      height: 40px;
+      height: 20px;
       background: rgba(255, 0, 0, 0.5);
       position: absolute;
       top: 50%;
@@ -409,11 +409,11 @@
 
     // ------------------------------
     // Character Factory (Player Only)
-    // Updated to use rectangles with 20×60 size, animated tendrils, and red eyes
+    // Updated to use rectangles with 10×30 size, animated tendrils, and red eyes
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
-      const width = 10, height =30;
+      const width = 10, height = 30;  // New dimensions (half of 20×60)
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
 
@@ -432,30 +432,31 @@
         return body;
       }
 
-      const head = Bodies.rectangle(x, y - 40, width, height, defaultOptions);
+      // Offsets are scaled by 0.5 relative to the original bubble version.
+      const head = Bodies.rectangle(x, y - 20, width, height, defaultOptions);
       addPart(head, "player-part head");
 
       const torso = Bodies.rectangle(x, y, width, height, torsoOptions);
       addPart(torso, "player-part torso");
 
-      const rightUpperArm = Bodies.rectangle(x + 30, y - 20, width, height, defaultOptions);
+      const rightUpperArm = Bodies.rectangle(x + 15, y - 10, width, height, defaultOptions);
       addPart(rightUpperArm, "player-part arm");
-      const rightHand = Bodies.rectangle(x + 30, y, width, height, defaultOptions);
+      const rightHand = Bodies.rectangle(x + 15, y, width, height, defaultOptions);
       addPart(rightHand, "player-part hand");
 
-      const leftUpperArm = Bodies.rectangle(x - 30, y - 20, width, height, defaultOptions);
+      const leftUpperArm = Bodies.rectangle(x - 15, y - 10, width, height, defaultOptions);
       addPart(leftUpperArm, "player-part arm");
-      const leftHand = Bodies.rectangle(x - 30, y, width, height, defaultOptions);
+      const leftHand = Bodies.rectangle(x - 15, y, width, height, defaultOptions);
       addPart(leftHand, "player-part hand");
 
-      const rightUpperLeg = Bodies.rectangle(x + 10, y + 10, width, height, defaultOptions);
+      const rightUpperLeg = Bodies.rectangle(x + 5, y + 5, width, height, defaultOptions);
       addPart(rightUpperLeg, "player-part leg");
-      const rightFoot = Bodies.rectangle(x + 10, y + 30, width, height, defaultOptions);
+      const rightFoot = Bodies.rectangle(x + 5, y + 15, width, height, defaultOptions);
       addPart(rightFoot, "player-part foot");
 
-      const leftUpperLeg = Bodies.rectangle(x - 10, y + 10, width, height, defaultOptions);
+      const leftUpperLeg = Bodies.rectangle(x - 5, y + 5, width, height, defaultOptions);
       addPart(leftUpperLeg, "player-part leg");
-      const leftFoot = Bodies.rectangle(x - 10, y + 30, width, height, defaultOptions);
+      const leftFoot = Bodies.rectangle(x - 5, y + 15, width, height, defaultOptions);
       addPart(leftFoot, "player-part foot");
 
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
@@ -663,7 +664,7 @@
       let shootingHand = dx < 0 ? playerChar.leftHand : playerChar.rightHand;
       let shootingArm = dx < 0 ? playerChar.leftUpperArm : playerChar.rightUpperArm;
       Body.setPosition(shootingHand, { 
-        x: shootingArm.position.x + (dx * 20), 
+        x: shootingArm.position.x + (dx * 20 * 0.5),  // offset scaled by 0.5
         y: shootingArm.position.y
       });
       const origin = { x: shootingHand.position.x, y: shootingHand.position.y };
@@ -834,7 +835,7 @@
           Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
         }
       }
-      Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
+      Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 20 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       (function clampWithinBounds(character) {
         const margin = 50;
