@@ -23,7 +23,7 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 100vw;
+      /* The width will be set dynamically in JS to match the level width */
       height: 100vh;
       background: url('IMG_7194.jpeg') repeat-x;
       background-size: auto 100%;
@@ -205,63 +205,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
     // ------------------------------
-    // Global Helpers & Screen Shake
-    // ------------------------------
-    let lastScreenShakeTime = 0;
-    function throttledScreenShake(intensity = 5, duration = 300, cooldown = 500) {
-      const now = Date.now();
-      if (now - lastScreenShakeTime > cooldown) {
-        lastScreenShakeTime = now;
-        screenShake(intensity, duration);
-      }
-    }
-    function screenShake(intensity = 5, duration = 300) {
-      const screen = document.getElementById("screen");
-      const startTime = Date.now();
-      (function shake() {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < duration) {
-          const dx = (Math.random() - 0.5) * intensity;
-          const dy = (Math.random() - 0.5) * intensity;
-          screen.style.transform = `translate(${dx}px, ${dy}px)`;
-          requestAnimationFrame(shake);
-        } else {
-          screen.style.transform = "";
-        }
-      })();
-    }
-    function particleBurst(x, y, color) {
-      const numParticles = 20;
-      for (let i = 0; i < numParticles; i++) {
-        const particle = document.createElement("div");
-        particle.style.position = "absolute";
-        particle.style.left = x + "px";
-        particle.style.top = y + "px";
-        particle.style.width = "4px";
-        particle.style.height = "4px";
-        particle.style.backgroundColor = color;
-        particle.style.borderRadius = "50%";
-        particle.style.pointerEvents = "none";
-        particle.style.opacity = "1";
-        particle.style.transform = "translate(-50%, -50%)";
-        game.appendChild(particle);
-        const angle = Math.random() * 2 * Math.PI;
-        const distance = Math.random() * 50 + 20;
-        const deltaX = Math.cos(angle) * distance;
-        const deltaY = Math.sin(angle) * distance;
-        particle.animate([
-          { transform: `translate(0px, 0px)`, opacity: 1 },
-          { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 0 }
-        ], {
-          duration: 800 + Math.random() * 400,
-          easing: "ease-out",
-          fill: "forwards"
-        });
-        setTimeout(() => { if (particle.parentNode) particle.parentNode.removeChild(particle); }, 1200);
-      }
-    }
-
-    // ------------------------------
     // Matter.js Setup & World
     // ------------------------------
     const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
@@ -282,6 +225,9 @@
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
+
+    // Set parallax background width to match level width
+    document.getElementById("parallax-bg").style.width = levelWidth + "px";
 
     // Create ground element.
     const groundEl = document.createElement("div");
@@ -306,7 +252,6 @@
     // ------------------------------
     // Platform, TV, and Wall Creation
     // ------------------------------
-
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
@@ -346,7 +291,7 @@
       wall.hp = 100;
       World.add(world, wall);
       const wallEl = document.createElement("div");
-      wallEl.className = "platform"; // same styling as platforms
+      wallEl.className = "platform";
       wallEl.style.width = width + "px";
       wallEl.style.height = height + "px";
       wallEl.style.left = (x + width/2) + "px";
@@ -356,26 +301,21 @@
       walls.push(wall);
     }
 
-    // Generate 800 platforms at random positions.
+    // Generate platforms, TVs, and walls…
     for (let i = 0; i < 3800; i++) {
-      const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
+      const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
-      // y between 300 and (playAreaHeight - 50)
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-
-    // Generate 800 TVs at random positions.
     for (let i = 0; i < 3800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
-      const tvY = 100 + Math.random() * 200;  // y between 100 and 300
+      const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
-
-    // Generate 600 walls at random positions.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
-      const wallY = 100; // y fixed at 100
+      const wallY = 100;
       createWall(wallX, wallY, 20, 200);
     }
 
