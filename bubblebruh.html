@@ -625,27 +625,44 @@
       bullets.push(bullet);
     }
     function playerShoot() {
-      let dx = 0, dy = 0;
-      const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
-      if (aimMag > 0.1) {
-        dx = joystickAim.x;
-        dy = joystickAim.y;
-      } else {
-        if (keys["ArrowUp"])    dy = -1;
-        if (keys["ArrowDown"])  dy =  1;
-        if (keys["ArrowLeft"])  dx = -1;
-        if (keys["ArrowRight"]) dx =  1;
-        if (dx === 0 && dy === 0) dx = 1;
-        const mag = Math.hypot(dx, dy);
-        dx /= mag; dy /= mag;
-      }
-      Body.setPosition(playerChar.rightHand, { 
-        x: playerChar.rightUpperArm.position.x + 20, 
-        y: playerChar.rightUpperArm.position.y 
-      });
-      const origin = { x: playerChar.rightHand.position.x, y: playerChar.rightHand.position.y };
-      shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
-    }
+  let dx = 0, dy = 0;
+  
+  // Use joystick input if available
+  const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
+  if (aimMag > 0.1) {
+    dx = joystickAim.x;
+    dy = joystickAim.y;
+  } else {
+    if (keys["ArrowUp"]) dy = -1;
+    if (keys["ArrowDown"]) dy = 1;
+    if (keys["ArrowLeft"]) dx = -1;
+    if (keys["ArrowRight"]) dx = 1;
+
+    // Default to right if no input
+    if (dx === 0 && dy === 0) dx = 1;
+
+    // Normalize direction
+    const mag = Math.hypot(dx, dy);
+    dx /= mag;
+    dy /= mag;
+  }
+
+  // Determine shooting hand (left for left direction, right for right)
+  let shootingHand = dx < 0 ? playerChar.leftHand : playerChar.rightHand;
+  let shootingArm = dx < 0 ? playerChar.leftUpperArm : playerChar.rightUpperArm;
+
+  // Position hand slightly forward before firing
+  Body.setPosition(shootingHand, { 
+    x: shootingArm.position.x + (dx * 20), 
+    y: shootingArm.position.y
+  });
+
+  // Bullet spawn position
+  const origin = { x: shootingHand.position.x, y: shootingHand.position.y };
+
+  // Fire the bullet in the correct direction
+  shootBullet(origin.x, origin.y, origin.x + dx * 100, origin.y + dy * 100, playerChar);
+}
 
     // ------------------------------
     // Coin Collection (Player collects coins)
