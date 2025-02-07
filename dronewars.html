@@ -328,7 +328,7 @@
     }
 
     // ------------------------------
-    // Platform, TV, and Wall Creation
+    // Platform, TV, and Wall Creation (using reduced counts)
     // ------------------------------
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
@@ -379,20 +379,20 @@
       walls.push(wall);
     }
 
-    // Generate platforms (reduced to ~10%: 380 instead of 3800).
+    // Generate platforms (380 items).
     for (let i = 0; i < 380; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-    // Generate TVs (reduced to ~10%).
+    // Generate TVs (380 items).
     for (let i = 0; i < 380; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
-    // Generate walls (reduced to ~10%).
+    // Generate walls (60 items).
     for (let i = 0; i < 60; i++) {
       const wallX = Math.random() * (levelWidth - 20);
       const wallY = 100;
@@ -687,7 +687,7 @@
         }
         const destructibleLabels = ["platform", "tv", "wall", "wallChunk"];
         if (destructibleLabels.includes(target.label)) {
-          // Environment damage logic could be added here.
+          // (Environment damage logic could be added here.)
         } else if (target.character && target.character !== bullet.owner) {
           takeDamageCharacter(target.character, bulletDamage, bullet);
         } else if (target.label === "coin") {
@@ -729,7 +729,7 @@
           const vx = playerChar.torso.velocity.x, vy = playerChar.torso.velocity.y;
           const playerSpeed = Math.hypot(vx, vy);
           if (playerSpeed >= destructionSpeedThreshold) {
-            // Environment objects could take damage here.
+            // (Environment objects could take damage here.)
           }
         }
       });
@@ -738,14 +738,15 @@
     // ------------------------------
     // Utility: Clamp a character within level bounds
     // ------------------------------
+    // NOTE: Only clamping left/right and top so that the player is not “frozen” on the ground.
     function clampWithinBounds(character) {
       const margin = 50;
       const pos = character.torso.position;
-      let clampedX = pos.x, clampedY = pos.y;
+      let clampedX = pos.x;
+      let clampedY = pos.y;
       if (pos.x < margin) clampedX = margin;
       if (pos.x > levelWidth - margin) clampedX = levelWidth - margin;
       if (pos.y < margin) clampedY = margin;
-      if (pos.y > playAreaHeight - margin) clampedY = playAreaHeight - margin;
       if (clampedX !== pos.x || clampedY !== pos.y) {
         Body.setPosition(character.torso, { x: clampedX, y: clampedY });
         Body.setVelocity(character.torso, { x: 0, y: 0 });
@@ -865,6 +866,7 @@
           Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength });
         }
       }
+      // Keep the head locked as before.
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       clampWithinBounds(playerChar);
