@@ -18,14 +18,16 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* Parallax Background – sized to viewport; background tiles horizontally */
+    /* Parallax Background – viewport sized, looping */
     #parallax-bg {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
+      /* The image will automatically repeat horizontally */
       background: url('IMG_7194.jpeg') repeat-x;
+      /* Scale the image so its height fills the viewport */
       background-size: auto 100%;
       z-index: 0;
     }
@@ -180,7 +182,7 @@
 </head>
 <body>
   <div id="gameboy">
-    <!-- Parallax background element (viewport sized) -->
+    <!-- The viewport-sized background element -->
     <div id="parallax-bg"></div>
     <div id="screen">
       <div id="game"></div>
@@ -217,16 +219,12 @@
     let joystickAim = { x: 0, y: 0 };
 
     // Level dimensions:
-    // Level width is 300000px; height is set to window.innerHeight.
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
-
-    // Note: We no longer set the parallax-bg width to levelWidth.
-    // It remains at 100vw so only visible tiles are drawn.
 
     // Create ground element.
     const groundEl = document.createElement("div");
@@ -663,9 +661,11 @@
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
     // ------------------------------
-    // Camera Follow Functionality with Deadzone
+    // Camera Follow & Background Scrolling
     // ------------------------------
     let cameraX = 0, cameraY = 0;
+    // Assume the background image's natural width (in pixels)
+    const bgImageWidth = 1920;  // adjust this value as needed
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
@@ -691,9 +691,11 @@
 
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
-      // Instead of transforming a huge element, update the background position
-      // of the viewport-sized parallax element.
-      document.getElementById("parallax-bg").style.backgroundPosition = `-${cameraX * 0.5}px 0px`;
+
+      // Loop the background image horizontally.
+      // Calculate the background offset using modulo arithmetic.
+      const bgOffset = -(cameraX % bgImageWidth);
+      document.getElementById("parallax-bg").style.backgroundPosition = `${bgOffset}px 0px`;
     }
 
     // ------------------------------
@@ -715,7 +717,6 @@
         }
       });
       
-      // Player movement via arrow keys.
       if (keys["ArrowLeft"]) {
         Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 });
       }
@@ -740,7 +741,6 @@
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       
-      // Clamp player within level boundaries and above the ground.
       (function clampWithinBounds(character) {
         const margin = 50;
         const pos = character.torso.position;
@@ -755,7 +755,6 @@
         }
       })(playerChar);
 
-      // Leg Animation.
       let walkCycle = 0, lastTime = Date.now();
       (function updateWalkCycle() {
         const now = Date.now();
@@ -773,14 +772,12 @@
         }
       })();
 
-      // Update HP bar.
       (function updateHpBar(character) {
         if (!character.hpContainer) return;
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
 
-      // Update camera and parallax background.
       updateCamera();
 
       requestAnimationFrame(update);
