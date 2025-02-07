@@ -177,24 +177,25 @@
       line-height: 20px;
       text-align: center;
     }
-    /* Tendrils: 1px “noodle” lines overlaid on each player part */
-    .tendril {
+    /* Tentacles using pure CSS */
+    .tentacle {
       position: absolute;
-      width: 1px;
-      height: 10px;
-      background: #fff;
-      top: 100%;  /* attach at bottom of circle */
+      top: 100%; /* attach at bottom of bubble */
       left: 50%;
-      transform-origin: top center;
-      /* Simple wiggling animation */
-      animation: noodleWiggle 1s infinite ease-in-out;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 20px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.8), transparent);
+      border-radius: 1px;
+      /* Animate a gentle wiggle */
+      animation: tentacleWiggle 1s infinite ease-in-out;
     }
-    @keyframes noodleWiggle {
+    @keyframes tentacleWiggle {
       0% { transform: translateX(-50%) rotate(0deg); }
-      50% { transform: translateX(-50%) rotate(10deg); }
+      50% { transform: translateX(-50%) rotate(20deg); }
       100% { transform: translateX(-50%) rotate(0deg); }
     }
-    /* For head parts, add two eyes */
+    /* Head eyes */
     .head .eye {
       position: absolute;
       width: 2px;
@@ -415,7 +416,7 @@
 
     // ------------------------------
     // Character Factory (Player Only)
-    // Restored to circles (“bubbles”) with 1px noodle tendrils overlay
+    // Restored to circles (“bubbles”) with CSS tentacle overlays
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
@@ -432,14 +433,14 @@
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
 
+      // Updated addPart: overlays a CSS tentacle using a div with class "tentacle"
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
-        // Overlay a 1px noodle tendril on this body part
-        let tendril = document.createElement("div");
-        tendril.className = "tendril";
-        body.domElement.appendChild(tendril);
-        // If this is the head, add two eyes
+        let tentacle = document.createElement("div");
+        tentacle.className = "tentacle";
+        body.domElement.appendChild(tentacle);
+        // For head parts, add two eyes
         if (cls.indexOf("head") !== -1) {
           let eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
