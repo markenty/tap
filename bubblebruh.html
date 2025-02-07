@@ -168,11 +168,7 @@
       border-color: blue !important;
       box-shadow: 0 0 8px blue;
     }
-    /* Enemy styling (unused now) */
-    .enemy {
-      background: red;
-      border: 2px solid darkred;
-    }
+    /* (Unused red enemy styling removed) */
   </style>
 </head>
 <body>
@@ -268,7 +264,7 @@
     // Global joystick aim vector.
     let joystickAim = { x: 0, y: 0 };
 
-    // Level dimensions (remains at 300000 from previous changes)
+    // Level dimensions
     const levelWidth = 300000;
     const gameHeight = window.innerHeight;
     const playAreaHeight = window.innerHeight - 100;
@@ -285,8 +281,7 @@
     game.appendChild(groundEl);
 
     let domEntities = [], platforms = [], tvs = [], walls = [], coins = [], bullets = [];
-    // We'll remove the red-dot enemy spawns and use an AI-controlled duplicate of the player.
-    let aiChar = null; // the AI-controlled character
+    let aiChar = null;  // our AI-controlled duplicate
 
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
@@ -350,22 +345,18 @@
       walls.push(wall);
     }
 
-    // Generate 800 platforms at random positions.
+    // Generate objects
     for (let i = 0; i < 800; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150;
       const platX = Math.random() * (levelWidth - platWidth);
       const platY = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(platX, platY, platWidth, 20);
     }
-
-    // Generate 800 TVs at random positions.
     for (let i = 0; i < 800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;
       createTV(tvX, tvY, 40, 60);
     }
-
-    // Generate 600 walls at random positions.
     for (let i = 0; i < 600; i++) {
       const wallX = Math.random() * (levelWidth - 20);
       const wallY = 100;
@@ -384,13 +375,14 @@
     World.add(world, safetyFloor);
 
     // ------------------------------
-    // Character Factory (Player Only)
+    // Character Factory (Player)
     // ------------------------------
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y } };
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.01, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
+      // Create an HP bar container for this character.
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
       const hpBar = document.createElement("div");
@@ -452,24 +444,28 @@
     let playerChar = createCharacter(100, 100);
 
     // ------------------------------
-    // AI-Controlled Duplicate of the Player
+    // AI-Controlled Duplicate (a full duplicate of the player)
     // ------------------------------
     // Spawn the AI character at a different location.
     aiChar = createCharacter(2000, 100);
-    // Add an extra class to each of its parts for visual differentiation.
+    // Add an extra "ai" class to each part to visually differentiate (blue tint).
     for (let key in aiChar) {
       if (aiChar[key] && aiChar[key].domElement) {
         aiChar[key].domElement.classList.add("ai");
       }
     }
-    // Define AI functions for shooting and melee attack.
+
+    // AI Functions for shooting and melee.
     function aiShoot() {
       let dx = playerChar.torso.position.x - aiChar.rightUpperArm.position.x;
       let dy = playerChar.torso.position.y - aiChar.rightUpperArm.position.y;
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
-      let norm = { x: dx/mag, y: dy/mag };
-      Body.setPosition(aiChar.rightHand, { x: aiChar.rightUpperArm.position.x + 20, y: aiChar.rightUpperArm.position.y });
+      let norm = { x: dx / mag, y: dy / mag };
+      Body.setPosition(aiChar.rightHand, { 
+        x: aiChar.rightUpperArm.position.x + 20, 
+        y: aiChar.rightUpperArm.position.y 
+      });
       let origin = { x: aiChar.rightHand.position.x, y: aiChar.rightHand.position.y };
       shootBullet(origin.x, origin.y, origin.x + norm.x * 100, origin.y + norm.y * 100, aiChar);
     }
@@ -478,7 +474,7 @@
       let dy = playerChar.torso.position.y - aiChar.rightUpperArm.position.y;
       let mag = Math.hypot(dx, dy);
       if (mag === 0) return;
-      let attackDir = { x: dx/mag, y: dy/mag };
+      let attackDir = { x: dx / mag, y: dy / mag };
       let maxWhipDistance = 60;
       let whipOrigin = aiChar.rightUpperArm.position;
       let tangent = { x: attackDir.y, y: -attackDir.x };
@@ -505,7 +501,7 @@
         let attackPos = aiChar.rightHand.position;
         const meleeRange = 60;
         const damageAmount = 30;
-        // Damage any destructible objects in range...
+        // Damage objects in range.
         [platforms, tvs, walls].forEach(arr => {
           arr.forEach(obj => {
             let dx = attackPos.x - obj.position.x;
@@ -516,11 +512,10 @@
             }
           });
         });
-        // Also, if close to the player, damage the player.
+        // Also damage the player if close.
         let pdx = attackPos.x - playerChar.torso.position.x;
         let pdy = attackPos.y - playerChar.torso.position.y;
-        let pdist = Math.hypot(pdx, pdy);
-        if (pdist <= meleeRange) {
+        if (Math.hypot(pdx, pdy) <= meleeRange) {
           playerChar.hp -= damageAmount;
           if (playerChar.hp < 0) playerChar.hp = 0;
         }
@@ -532,13 +527,14 @@
       let dx = playerChar.torso.position.x - aiChar.torso.position.x;
       let dy = playerChar.torso.position.y - aiChar.torso.position.y;
       let dist = Math.hypot(dx, dy);
+      if (dist === 0) return;
       // Apply force toward the player.
       let forceMagnitude = 0.005;
       Body.applyForce(aiChar.torso, aiChar.torso.position, { 
-        x: (dx/dist) * forceMagnitude, 
-        y: (dy/dist) * forceMagnitude 
+        x: (dx / dist) * forceMagnitude, 
+        y: (dy / dist) * forceMagnitude 
       });
-      // Occasionally shoot if within a moderate range.
+      // Occasionally shoot if within moderate range.
       if (dist < 500 && Math.random() < 0.005) {
         aiShoot();
       }
@@ -627,7 +623,7 @@
     });
 
     // ------------------------------
-    // Destructible World Collisions (Gradual Damage on High-Speed Contact)
+    // Destructible World Collisions
     // ------------------------------
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
@@ -702,7 +698,7 @@
     function update() {
       Engine.update(engine, 1000/60);
       
-      // Update the AI-controlled character.
+      // Update the AI character.
       updateAI();
       
       // Update positions of all DOM elements.
@@ -778,12 +774,15 @@
         }
       })();
 
-      // Update HP bar.
-      (function updateHpBar(character) {
-        if (!character.hpContainer) return;
-        character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
-        character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
-      })(playerChar);
+      // Update HP bars for both player and AI.
+      if (playerChar && playerChar.hpContainer) {
+        playerChar.hpContainer.style.left = (playerChar.torso.position.x - 25) + "px";
+        playerChar.hpContainer.style.top = (playerChar.torso.position.y - 60) + "px";
+      }
+      if (aiChar && aiChar.hpContainer) {
+        aiChar.hpContainer.style.left = (aiChar.torso.position.x - 25) + "px";
+        aiChar.hpContainer.style.top = (aiChar.torso.position.y - 60) + "px";
+      }
 
       // Update camera.
       updateCamera();
