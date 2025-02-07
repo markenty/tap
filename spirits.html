@@ -436,12 +436,12 @@
     }
     // Global time counter for oscillation.
     let tentacleTime = 0;
-    // Draw a tentacle (Bezier curve) from "from" to "to" with dark stroke and increased sway.
+    // Draw a tentacle (Bezier curve) from "from" to "to".
+    // Uses a dark stroke and extra sway.
     function drawTentacle(from, to) {
-      // Oscillate using the global tentacleTime.
       var sinVal = Math.sin(tentacleTime / 30);
       var cosVal = Math.cos(tentacleTime / 30);
-      var intensity = 30; // increased intensity for more gravity sway
+      var intensity = 30; // increased intensity for gravity sway
       var percent1 = 0.3;
       var percent2 = 0.7;
       var tangent1 = getTangentPoint(from, to, intensity * sinVal, percent1);
@@ -455,17 +455,15 @@
     }
     // Draw tentacles for every player part.
     function drawTentaclesForPlayer() {
-      // List all player parts.
       const parts = [ playerChar.head, playerChar.torso, playerChar.rightUpperArm, playerChar.rightHand,
                       playerChar.leftUpperArm, playerChar.leftHand, playerChar.rightUpperLeg, playerChar.rightFoot,
                       playerChar.leftUpperLeg, playerChar.leftFoot ];
       parts.forEach(function(part) {
         if (!part.domElement) return;
-        // Get the bounding rect for this part.
         const rect = part.domElement.getBoundingClientRect();
-        // "from" is the bottom-center of the part.
+        // "from": bottom-center of the part.
         const from = { x: rect.left + rect.width / 2, y: rect.top + rect.height };
-        // "to" is further below the part—with extra downward offset for gravity sway.
+        // "to": further below with extra gravity sway.
         const to = { x: from.x, y: from.y + 60 + 10 * Math.sin(tentacleTime / 20) };
         drawTentacle(from, to);
       });
@@ -572,16 +570,15 @@
         const rect = part.domElement.getBoundingClientRect();
         // "from" is at the bottom-center of the part.
         const from = { x: rect.left + rect.width / 2, y: rect.top + rect.height };
-        // "to" is further below with extra downward offset (gravity sway) and slight oscillation.
+        // "to" is further below with extra downward offset.
         const to = { x: from.x, y: from.y + 60 + 10 * Math.sin(tentacleTime / 20) };
         drawTentacle(from, to);
       });
     }
-    // Draw a tentacle (Bezier curve) from "from" to "to".
     function drawTentacle(from, to) {
       var sinVal = Math.sin(tentacleTime / 30);
       var cosVal = Math.cos(tentacleTime / 30);
-      var intensity = 30; // increased intensity for gravity sway
+      var intensity = 30;
       var percent1 = 0.3;
       var percent2 = 0.7;
       var tangent1 = getTangentPoint(from, to, intensity * sinVal, percent1);
@@ -589,11 +586,10 @@
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.bezierCurveTo(tangent1.x, tangent1.y, tangent2.x, tangent2.y, to.x, to.y);
-      ctx.strokeStyle = "#222"; // dark color like the player
+      ctx.strokeStyle = "#222"; // dark like the player
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-    // Helper functions for tentacle drawing.
     function getAngle(from, to) {
       var vx = to.x - from.x;
       var vy = to.y - from.y;
@@ -996,7 +992,8 @@
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
       updateCamera();
-      // Draw canvas-based tentacles for every player part.
+      // Clear the tentacle canvas and draw tentacles for every player part.
+      ctx.clearRect(0, 0, tentacleCanvas.width, tentacleCanvas.height);
       drawTentaclesForPlayer();
       tentacleTime++;
       requestAnimationFrame(update);
