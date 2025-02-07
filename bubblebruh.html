@@ -543,63 +543,73 @@
     // Melee Attack with Whip Physics and Directional Control
     // ------------------------------
     function meleeAttack() {
-      let inputDir = { x: 0, y: 0 };
-      if (keys["ArrowLeft"]) inputDir.x -= 1;
-      if (keys["ArrowRight"]) inputDir.x += 1;
-      if (keys["ArrowUp"]) inputDir.y -= 1;
-      if (keys["ArrowDown"]) inputDir.y += 1;
-      if (inputDir.x === 0 && inputDir.y === 0) {
-        if (Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
-          inputDir.x = joystickAim.x;
-          inputDir.y = joystickAim.y;
-        }
-      }
-      let attackDir;
-      if (inputDir.x !== 0 || inputDir.y !== 0) {
-        let mag = Math.hypot(inputDir.x, inputDir.y);
-        attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
-      } else {
-        let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
-        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
-      }
-      let maxWhipDistance = 20;
-      let whipOrigin = playerChar.rightUpperArm.position;
-      let tangent = { x: attackDir.y, y: -attackDir.x };
-      let swingTime = 300;
-      let steps = 15;
-      let stepTime = swingTime / steps;
-      let step = 0;
-      let interval = setInterval(() => {
-        let currentDistance = Math.hypot(playerChar.rightHand.position.x - whipOrigin.x,
-                                         playerChar.rightHand.position.y - whipOrigin.y);
-        if (currentDistance < maxWhipDistance) {
-          let amplitude = Math.sin(Math.PI * step / steps);
-          let forceOut = 0.05;
-          let forceTangent = 0.05;
-          Body.applyForce(playerChar.rightHand, playerChar.rightHand.position, {
-            x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
-            y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
-          });
-        }
-        step++;
-        if (step >= steps) clearInterval(interval);
-      }, stepTime);
-      setTimeout(() => {
-        let attackPos = playerChar.rightHand.position;
-        const meleeRange = 60;
-        const damageAmount = 30;
-        [platforms, tvs, walls].forEach(arr => {
-          arr.forEach(obj => {
-            let dx = attackPos.x - obj.position.x;
-            let dy = attackPos.y - obj.position.y;
-            let dist = Math.hypot(dx, dy);
-            if (dist <= meleeRange) {
-              damageDestructible(obj, damageAmount);
-            }
-          });
-        });
-      }, 100);
+  let inputDir = { x: 0, y: 0 };
+
+  if (keys["ArrowLeft"]) inputDir.x -= 1;
+  if (keys["ArrowRight"]) inputDir.x += 1;
+  if (keys["ArrowUp"]) inputDir.y -= 1;
+  if (keys["ArrowDown"]) inputDir.y += 1;
+
+  // Use joystick aim if no key input
+  if (inputDir.x === 0 && inputDir.y === 0) {
+    if (Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
+      inputDir.x = joystickAim.x;
+      inputDir.y = joystickAim.y;
     }
+  }
+
+  let attackDir;
+  if (inputDir.x !== 0 || inputDir.y !== 0) {
+    let mag = Math.hypot(inputDir.x, inputDir.y);
+    attackDir = { x: inputDir.x / mag, y: inputDir.y / mag };
+  } else {
+    let onGround = (playerChar.torso.position.y >= playAreaHeight - 5);
+    attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
+  }
+
+  let maxWhipDistance = 20;
+  let attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand; // Swap hand
+  let whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
+  let tangent = { x: attackDir.y, y: -attackDir.x };
+  let swingTime = 300;
+  let steps = 15;
+  let stepTime = swingTime / steps;
+  let step = 0;
+
+  let interval = setInterval(() => {
+    let currentDistance = Math.hypot(attackHand.position.x - whipOrigin.x, attackHand.position.y - whipOrigin.y);
+    if (currentDistance < maxWhipDistance) {
+      let amplitude = Math.sin(Math.PI * step / steps);
+      let forceOut = 0.05;
+      let forceTangent = 0.05;
+
+      Body.applyForce(attackHand, attackHand.position, {
+        x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+        y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+      });
+    }
+    step++;
+    if (step >= steps) clearInterval(interval);
+  }, stepTime);
+
+  // Damage objects in melee range after delay
+  setTimeout(() => {
+    let attackPos = attackHand.position;
+    const meleeRange = 60;
+    const damageAmount = 30;
+
+    [platforms, tvs, walls].forEach(arr => {
+      arr.forEach(obj => {
+        let dx = attackPos.x - obj.position.x;
+        let dy = attackPos.y - obj.position.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist <= meleeRange) {
+          damageDestructible(obj, damageAmount);
+        }
+      });
+    });
+  }, 100);
+}
 
     // ------------------------------
     // Bullet Functions
