@@ -10,6 +10,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; }
     body { background: #666; font-family: sans-serif; }
+    
     /* Game Shell */
     #gameboy {
       position: relative;
@@ -18,7 +19,7 @@
       background: #a3c1a3;
       overflow: hidden;
     }
-    /* Screen – contains the game world */
+    /* Screen – contains the game world and parallax background */
     #screen {
       position: absolute;
       top: 0; left: 0;
@@ -27,10 +28,23 @@
       background: #000;
       overflow: hidden;
     }
+    /* NEW: Parallax Background Layer */
+    #parallax {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* Use your IMG_7196.png, repeat horizontally */
+      background: url('IMG_7196.png') repeat-x;
+      background-size: auto 100%;
+      z-index: 0;
+    }
     /* Game World Container – camera transform applied */
     #game {
       position: absolute;
       top: 0; left: 0;
+      z-index: 1; /* Ensure game elements sit above the parallax */
     }
     /* Ground styling */
     #ground {
@@ -168,6 +182,8 @@
 <body>
   <div id="gameboy">
     <div id="screen">
+      <!-- NEW: Parallax background layer inserted behind the game world -->
+      <div id="parallax"></div>
       <div id="game"></div>
     </div>
     <div id="controls">
@@ -341,7 +357,7 @@
       walls.push(wall);
     }
 
-    // Generate 800 platforms at random positions.
+    // Generate 3800 platforms at random positions.
     for (let i = 0; i < 3800; i++) {
       const platWidth = Math.floor(Math.random() * 101) + 150; // width between 150 and 250
       const platX = Math.random() * (levelWidth - platWidth);
@@ -350,7 +366,7 @@
       createPlatform(platX, platY, platWidth, 20);
     }
 
-    // Generate 800 TVs at random positions.
+    // Generate 3800 TVs at random positions.
     for (let i = 0; i < 3800; i++) {
       const tvX = Math.random() * (levelWidth - 40);
       const tvY = 100 + Math.random() * 200;  // y between 100 and 300
@@ -735,8 +751,13 @@
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth));
       cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight));
 
+      // Apply transform to the game world.
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
+
+      // NEW: Update parallax background position.
+      // The factor (e.g. 0.5) makes the parallax layer move slower than the game.
+      document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
 
     // ------------------------------
@@ -900,4 +921,4 @@
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
   </script>
 </body>
-</html> 
+</html>
