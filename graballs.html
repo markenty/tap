@@ -653,7 +653,7 @@ let tvs = [];
         obj.collisionFilter.mask = 0xFFFFFFFF;
         playerChar.heldObject = null;
       } else {
-        const grabRange = 100;
+        const grabRange = 110;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         let bodies = Composite.allBodies(world);
         let candidate = null;
