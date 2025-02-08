@@ -551,27 +551,34 @@
     function playerShoot() {
       // If already holding an object, throw it.
       if (playerChar.heldObject) {
-        let obj = playerChar.heldObject;
-        let dx = 0, dy = 0;
-        const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
-        if (aimMag > 0.1) {
-          dx = joystickAim.x;
-          dy = joystickAim.y;
-        } else {
-          if (keys["ArrowUp"])    dy = -1;
-          if (keys["ArrowDown"])  dy =  1;
-          if (keys["ArrowLeft"])  dx = -1;
-          if (keys["ArrowRight"]) dx =  1;
-          if (dx === 0 && dy === 0) dx = (playerFacing === "left") ? -1 : 1;
-          let mag = Math.hypot(dx, dy);
-          dx /= mag; dy /= mag;
-        }
-        const throwSpeed = 30;
-        Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
-        Body.setAngularVelocity(obj, 0.5);
-        obj.collisionFilter.mask = 0xFFFFFFFF;
-        playerChar.heldObject = null;
-      } else {
+  let obj = playerChar.heldObject;
+  // Remove the constraint if it exists
+  if (playerChar.heldConstraint) {
+    World.remove(world, playerChar.heldConstraint);
+    playerChar.heldConstraint = null;
+  }
+  // Determine throw direction using joystick or arrow keys (existing code)
+  let dx = 0, dy = 0;
+  const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
+  if (aimMag > 0.1) {
+    dx = joystickAim.x;
+    dy = joystickAim.y;
+  } else {
+    if (keys["ArrowUp"])    dy = -1;
+    if (keys["ArrowDown"])  dy =  1;
+    if (keys["ArrowLeft"])  dx = -1;
+    if (keys["ArrowRight"]) dx =  1;
+    if (dx === 0 && dy === 0) dx = (playerFacing === "left") ? -1 : 1;
+    let mag = Math.hypot(dx, dy);
+    dx /= mag; dy /= mag;
+  }
+  const throwSpeed = 30;
+  Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
+  Body.setAngularVelocity(obj, 0.5);
+  // Restore collisions
+  obj.collisionFilter.mask = 0xFFFFFFFF;
+  playerChar.heldObject = null;
+} else {
         // Grab from the hand corresponding to playerFacing.
         const grabRange = 60;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
@@ -593,12 +600,24 @@
           }
         }
         if (candidate) {
-          playerChar.heldObject = candidate;
-          Body.setVelocity(candidate, { x: 0, y: 0 });
-          candidate.collisionFilter.mask = 0;
-        }
-      }
-    }
+  playerChar.heldObject = candidate;
+  // Zero its velocity so it doesn't drift
+  Body.setVelocity(candidate, { x: 0, y: 0 });
+  // Temporarily disable collisions so it doesn't interfere while being held
+  candidate.collisionFilter.mask = 0;
+  // Determine the hand based on playerFacing ("left" or "right")
+  const hand = (playerFacing === "left") ? playerChar.leftHand : playerChar.rightHand;
+  // Create a constraint that "snaps" the object to the hand
+  playerChar.heldConstraint = Constraint.create({
+    bodyA: candidate,
+    pointA: { x: 0, y: 0 },
+    bodyB: hand,
+    pointB: { x: 0, y: 0 },
+    stiffness: 1.0,  // Increase for a snappier effect
+    damping: 0.1     // Damping to reduce overshoot
+  });
+  World.add(world, playerChar.heldConstraint);
+}
 
     // --- Update: Snap held object to the hand based on playerFacing ---
     function updateHeldObject() {
