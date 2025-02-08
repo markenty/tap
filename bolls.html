@@ -424,7 +424,8 @@
       const x = Math.random() * (levelWidth - width);
       createWall(x, 100, width, 200);
     }
-
+// Create one TV for testing:
+    createTV(200, 300, 150, 60);
     // Static Boundaries & Safety Floor
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
