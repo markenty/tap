@@ -266,7 +266,6 @@
     </div>
   </div>
 
-  <!-- Additional overlay for flash (created dynamically) -->
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
@@ -297,10 +296,9 @@
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
 
-    // Create ground element
+    // Create ground element (aligning its top edge with the physics ground top)
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
-    // Adjust the top position so the visual ground aligns with the physics ground's top edge.
     groundEl.style.top = (playAreaHeight - 20) + "px";
     groundEl.style.width = levelWidth + "px";
     groundEl.style.height = groundExtraHeight + "px";
@@ -317,7 +315,7 @@
       domEntities.push(body);
     }
 
-    // Platform, TV, Wall Creation Functions
+    // Platform Creation Function (TVs removed)
     function createPlatform(x, y, width, height) {
       const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
@@ -334,7 +332,7 @@
       platform.domElement = el;
       platforms.push(platform);
     }
-    // No TVs loop.
+    // Wall Creation Function
     function createWall(x, y, width, height) {
       const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
@@ -374,7 +372,7 @@
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, { isStatic: true, label: "safetyFloor" });
     World.add(world, safetyFloor);
 
-    // --- New: Create Goal Sensors & Scoreboard ---
+    // --- Create Goal Sensors & Scoreboard ---
     const goalWidth = 20;
     const goalHeight = 200;
     const leftGoal = Bodies.rectangle(50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
@@ -396,7 +394,10 @@
     // --- Tentacle Helpers ---
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
       const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
-        return Bodies.circle(x, y, segmentRadius, { collisionFilter: { group: -1 }, frictionAir: 0.1 });
+        return Bodies.circle(x, y, segmentRadius, { 
+          collisionFilter: { group: -1 }, 
+          frictionAir: 0.1 
+        });
       });
       Composites.chain(tentacle, 0.5, 0, -0.5, 0, { stiffness: 0.8, length: segmentLength });
       tentacle.bodies.forEach(function(seg) {
@@ -422,7 +423,7 @@
 
     // --- Character Factory (Player) ---
     function createCharacter(x, y) {
-      const char = { hp: 100, alive: true, spawn: { x, y }, heldObject: null };
+      const char = { hp: 100, alive: true, spawn: { x, y }, heldObject: null, heldConstraint: null };
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.11, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
@@ -551,34 +552,32 @@
     function playerShoot() {
       // If already holding an object, throw it.
       if (playerChar.heldObject) {
-  let obj = playerChar.heldObject;
-  // Remove the constraint if it exists
-  if (playerChar.heldConstraint) {
-    World.remove(world, playerChar.heldConstraint);
-    playerChar.heldConstraint = null;
-  }
-  // Determine throw direction using joystick or arrow keys (existing code)
-  let dx = 0, dy = 0;
-  const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
-  if (aimMag > 0.1) {
-    dx = joystickAim.x;
-    dy = joystickAim.y;
-  } else {
-    if (keys["ArrowUp"])    dy = -1;
-    if (keys["ArrowDown"])  dy =  1;
-    if (keys["ArrowLeft"])  dx = -1;
-    if (keys["ArrowRight"]) dx =  1;
-    if (dx === 0 && dy === 0) dx = (playerFacing === "left") ? -1 : 1;
-    let mag = Math.hypot(dx, dy);
-    dx /= mag; dy /= mag;
-  }
-  const throwSpeed = 30;
-  Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
-  Body.setAngularVelocity(obj, 0.5);
-  // Restore collisions
-  obj.collisionFilter.mask = 0xFFFFFFFF;
-  playerChar.heldObject = null;
-} else {
+        let obj = playerChar.heldObject;
+        // Remove the constraint if it exists.
+        if (playerChar.heldConstraint) {
+          World.remove(world, playerChar.heldConstraint);
+          playerChar.heldConstraint = null;
+        }
+        let dx = 0, dy = 0;
+        const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
+        if (aimMag > 0.1) {
+          dx = joystickAim.x;
+          dy = joystickAim.y;
+        } else {
+          if (keys["ArrowUp"])    dy = -1;
+          if (keys["ArrowDown"])  dy =  1;
+          if (keys["ArrowLeft"])  dx = -1;
+          if (keys["ArrowRight"]) dx =  1;
+          if (dx === 0 && dy === 0) dx = (playerFacing === "left") ? -1 : 1;
+          let mag = Math.hypot(dx, dy);
+          dx /= mag; dy /= mag;
+        }
+        const throwSpeed = 30;
+        Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
+        Body.setAngularVelocity(obj, 0.5);
+        obj.collisionFilter.mask = 0xFFFFFFFF;
+        playerChar.heldObject = null;
+      } else {
         // Grab from the hand corresponding to playerFacing.
         const grabRange = 60;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
@@ -599,25 +598,28 @@
             candidateDist = dist;
           }
         }
+        // Replace the old grab block with the constraint-based approach:
         if (candidate) {
-  playerChar.heldObject = candidate;
-  // Zero its velocity so it doesn't drift
-  Body.setVelocity(candidate, { x: 0, y: 0 });
-  // Temporarily disable collisions so it doesn't interfere while being held
-  candidate.collisionFilter.mask = 0;
-  // Determine the hand based on playerFacing ("left" or "right")
-  const hand = (playerFacing === "left") ? playerChar.leftHand : playerChar.rightHand;
-  // Create a constraint that "snaps" the object to the hand
-  playerChar.heldConstraint = Constraint.create({
-    bodyA: candidate,
-    pointA: { x: 0, y: 0 },
-    bodyB: hand,
-    pointB: { x: 0, y: 0 },
-    stiffness: 1.0,  // Increase for a snappier effect
-    damping: 0.1     // Damping to reduce overshoot
-  });
-  World.add(world, playerChar.heldConstraint);
-}
+          playerChar.heldObject = candidate;
+          // Zero its velocity so it doesn't drift
+          Body.setVelocity(candidate, { x: 0, y: 0 });
+          // Temporarily disable collisions so it doesn't interfere while being held
+          candidate.collisionFilter.mask = 0;
+          // Determine the hand based on playerFacing ("left" or "right")
+          const hand = (playerFacing === "left") ? playerChar.leftHand : playerChar.rightHand;
+          // Create a constraint that "snaps" the object to the hand
+          playerChar.heldConstraint = Constraint.create({
+            bodyA: candidate,
+            pointA: { x: 0, y: 0 },
+            bodyB: hand,
+            pointB: { x: 0, y: 0 },
+            stiffness: 1.0,  // Increase for a snappier effect
+            damping: 0.1     // Damping to reduce overshoot
+          });
+          World.add(world, playerChar.heldConstraint);
+        }
+      }
+    }
 
     // --- Update: Snap held object to the hand based on playerFacing ---
     function updateHeldObject() {
@@ -633,33 +635,33 @@
       else if (keys["ArrowRight"]) { playerFacing = "right"; }
     }
 
-    // --- Goal Effects: Screen Flash, Shake & "GOAL!" Text Animation ---
+    // --- New: Goal Effects: Flash, Shake & GOAL! Text Animation ---
     function triggerGoalEffect() {
-      // Create or reuse a flash overlay
+      // Flash overlay
       let flash = document.getElementById("flashOverlay");
       if (!flash) {
         flash = document.createElement("div");
         flash.id = "flashOverlay";
         flash.style.position = "absolute";
-        flash.style.top = 0;
-        flash.style.left = 0;
+        flash.style.top = "0";
+        flash.style.left = "0";
         flash.style.width = "100%";
         flash.style.height = "100%";
-        flash.style.zIndex = 50;
+        flash.style.zIndex = "50";
         flash.style.pointerEvents = "none";
         game.appendChild(flash);
       }
       flash.classList.remove("flash");
-      void flash.offsetWidth; // trigger reflow
+      void flash.offsetWidth;
       flash.classList.add("flash");
 
-      // Apply screen shake to the #screen element
+      // Screen shake on the screen container
       let screenEl = document.getElementById("screen");
       screenEl.classList.remove("shake");
       void screenEl.offsetWidth;
       screenEl.classList.add("shake");
 
-      // Create and display goal text
+      // GOAL text overlay
       let goalText = document.createElement("div");
       goalText.id = "goalText";
       goalText.innerText = "GOAL!";
@@ -671,13 +673,12 @@
       goalText.style.fontWeight = "bold";
       goalText.style.fontFamily = '"Impact", "Arial Black", sans-serif';
       goalText.style.color = "white";
-      goalText.style.zIndex = 60;
+      goalText.style.zIndex = "60";
       goalText.style.pointerEvents = "none";
       game.appendChild(goalText);
       goalText.classList.add("goalTextAnimation");
-      // Remove the goal text after 1 second.
       setTimeout(() => {
-        if (goalText.parentNode) goalText.parentNode.removeChild(goalText);
+        if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); }
       }, 1000);
     }
 
@@ -787,7 +788,7 @@
       });
     });
 
-    // --- New: Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
+    // --- Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
     function updateScoreboard() {
       document.getElementById("leftScore").textContent = leftScore;
       document.getElementById("rightScore").textContent = rightScore;
@@ -829,7 +830,7 @@
       });
     });
 
-    // --- New: Screen Flash, Shake & GOAL! Text Effect ---
+    // --- Screen Flash, Shake & GOAL! Text Effect ---
     function triggerGoalEffect() {
       // Flash overlay
       let flash = document.getElementById("flashOverlay");
@@ -846,10 +847,10 @@
         game.appendChild(flash);
       }
       flash.classList.remove("flash");
-      void flash.offsetWidth;
+      void flash.offsetWidth; // trigger reflow
       flash.classList.add("flash");
 
-      // Screen shake on the screen container
+      // Screen shake on the #screen element
       let screenEl = document.getElementById("screen");
       screenEl.classList.remove("shake");
       void screenEl.offsetWidth;
@@ -876,7 +877,7 @@
       }, 1000);
     }
 
-    // --- Knockback & Damage: Destructible Object Handling ---
+    // --- Destructible Object Damage Handling ---
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
@@ -953,7 +954,7 @@
       }
     }
 
-    // Particle Burst Effect
+    // --- Particle Burst Effect ---
     function particleBurst(x, y, color) {
       const numParticles = 20;
       for (let i = 0; i < numParticles; i++) {
@@ -985,7 +986,7 @@
       }
     }
 
-    // Input Handling
+    // --- Input Handling ---
     let keys = {};
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
@@ -996,7 +997,7 @@
       else if (keys["ArrowRight"]) { playerFacing = "right"; }
     }
 
-    // Camera Follow with Deadzone
+    // --- Camera Follow with Deadzone ---
     let cameraX = 0, cameraY = 0;
     function updateCamera() {
       const screenWidth = window.innerWidth;
@@ -1016,7 +1017,7 @@
       document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
 
-    // Main Game Loop
+    // --- Main Game Loop ---
     let walkCycle = 0, lastTime = Date.now();
     function update() {
       Engine.update(engine, 1000/60);
@@ -1097,12 +1098,13 @@
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
+      updateHeldObject();
       updateCamera();
       requestAnimationFrame(update);
     }
     update();
 
-    // Joystick Functionality
+    // --- Joystick Functionality ---
     (function() {
       const joystick = document.getElementById("joystick");
       let startX, startY;
@@ -1141,7 +1143,7 @@
       joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
 
-    // Touch & Button Mappings
+    // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
     dpad.querySelector(".up").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
