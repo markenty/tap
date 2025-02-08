@@ -416,7 +416,8 @@
       const width = Math.floor(Math.random() * 101) + 200;
       const x = Math.random() * (levelWidth - width);
       const y = 300 + Math.random() * (playAreaHeight - 350);
-      createPlatform(x, y, width, 20);
+      createPlatform(x, y, width, 20);// Instead of using createPlatform for some objects, call:
+createTV(200, 300, 150, 60);
     }
     // Create a wall with a wider width (40px instead of 20) for testing stalactite
     for (let i = 0; i < 1; i++) {
