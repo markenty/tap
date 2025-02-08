@@ -61,7 +61,7 @@
       left: 0;
       background: #0d0c29;
     }
-    /* Controls – modified to be auto-sized below the ground line */
+    /* Controls – auto-sized below ground line */
     #controls {
       position: absolute;
       left: 0;
@@ -71,7 +71,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      /* Height will be set dynamically via JavaScript */
+      /* Height is set dynamically via JavaScript */
     }
     /* D-Pad */
     #dpad {
@@ -213,7 +213,7 @@
       background: rgba(0, 0, 255, 0.3);
       border: 2px dashed #00f;
     }
-    /* New Flash Overlay and Shake styles */
+    /* Flash Overlay & Shake Animations */
     @keyframes flashAnimation {
       0% { background-color: rgba(255,255,255,0.8); }
       100% { background-color: rgba(255,255,255,0); }
@@ -291,10 +291,10 @@
     // Global variable to track player facing ("left" or "right")
     let playerFacing = "right";
 
-    // Level dimensions (reduced for testing)
+    // Level dimensions
     const levelWidth = 3000;
-    const gameHeight = window.innerHeight;
-    const playAreaHeight = window.innerHeight - 100;
+    let gameHeight = window.innerHeight;
+    let playAreaHeight = window.innerHeight - 100;
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
@@ -302,7 +302,7 @@
     // Create ground element
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
-    // Adjust the top position so the visual ground aligns with the physics ground's top edge.
+    // Align ground visual with physics ground's top edge.
     groundEl.style.top = (playAreaHeight - 20) + "px";
     groundEl.style.width = levelWidth + "px";
     groundEl.style.height = groundExtraHeight + "px";
@@ -319,9 +319,9 @@
       domEntities.push(body);
     }
 
-    // Platform, Wall Creation Functions
+    // Platform & Wall Creation Functions
     function createPlatform(x, y, width, height) {
-      const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
+      const platform = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
       platform.height = height;
       platform.hp = 50;
@@ -330,14 +330,14 @@
       el.className = "platform";
       el.style.width = width + "px";
       el.style.height = height + "px";
-      el.style.left = (x + width/2) + "px";
-      el.style.top = (y + height/2) + "px";
+      el.style.left = (x + width / 2) + "px";
+      el.style.top = (y + height / 2) + "px";
       game.appendChild(el);
       platform.domElement = el;
       platforms.push(platform);
     }
     function createWall(x, y, width, height) {
-      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
+      const wall = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
       wall.hp = 100;
@@ -346,8 +346,8 @@
       el.className = "platform";
       el.style.width = width + "px";
       el.style.height = height + "px";
-      el.style.left = (x + width/2) + "px";
-      el.style.top = (y + height/2) + "px";
+      el.style.left = (x + width / 2) + "px";
+      el.style.top = (y + height / 2) + "px";
       game.appendChild(el);
       wall.domElement = el;
       walls.push(wall);
@@ -378,8 +378,8 @@
     // --- New: Create Goal Sensors & Scoreboard ---
     const goalWidth = 20;
     const goalHeight = 200;
-    const leftGoal = Bodies.rectangle(50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
-    const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
+    const leftGoal = Bodies.rectangle(50, playAreaHeight / 2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
+    const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight / 2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
     World.add(world, [leftGoal, rightGoal]);
     function createGoalDom(goalBody, cls) {
       const el = document.createElement("div");
@@ -441,7 +441,7 @@
         createDomElement(body, cls, w, h);
         body.character = char;
         if (cls.indexOf("head") !== -1) {
-          attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
+          attachTentacleToBody(body, { x: 0, y: size / 2 }, 5, 10, 2);
           const eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           const eyeRight = document.createElement("div");
@@ -883,10 +883,10 @@
       const chunkHeight = wall.height / rows;
       for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
-          const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
-          const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
+          const cx = wall.position.x - wall.width / 2 + chunkWidth / 2 + j * chunkWidth;
+          const cy = wall.position.y - wall.height / 2 + chunkHeight / 2 + i * chunkHeight;
           let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
-          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
+          Body.setVelocity(chunk, { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 });
           World.add(world, chunk);
           const el = document.createElement("div");
           el.className = "platform";
@@ -988,10 +988,32 @@
       document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
 
+    // --- Auto Size Controls: Adjust #controls height based on ground position ---
+    function updateControlsSize() {
+      const groundRect = groundEl.getBoundingClientRect();
+      const availableSpace = window.innerHeight - groundRect.bottom;
+      const controls = document.getElementById("controls");
+      controls.style.height = availableSpace + "px";
+    }
+
+    // --- Update Game Dimensions: Recalculate game height and ground position ---
+    function updateGameDimensions() {
+      gameHeight = window.innerHeight;
+      playAreaHeight = window.innerHeight - 100;
+      game.style.height = gameHeight + "px";
+      groundEl.style.top = (playAreaHeight - 20) + "px";
+    }
+    window.addEventListener("resize", () => {
+      updateGameDimensions();
+      updateControlsSize();
+    });
+    updateGameDimensions();
+    updateControlsSize();
+
     // Main Game Loop
     let walkCycle = 0, lastTime = Date.now();
     function update() {
-      Engine.update(engine, 1000/60);
+      Engine.update(engine, 1000 / 60);
       updatePlayerFacing();
       // Update DOM positions for physics bodies
       domEntities.forEach(body => {
@@ -1073,16 +1095,6 @@
       requestAnimationFrame(update);
     }
     update();
-
-    // --- Auto Size Controls: Adjust #controls height based on ground position ---
-    function updateControlsSize() {
-      const groundRect = groundEl.getBoundingClientRect();
-      const availableSpace = window.innerHeight - groundRect.bottom;
-      const controls = document.getElementById("controls");
-      controls.style.height = availableSpace + "px";
-    }
-    window.addEventListener("resize", updateControlsSize);
-    updateControlsSize();
 
     // Joystick Functionality
     (function() {
