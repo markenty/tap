@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Goals, Scoring & Dual-Hand Grab-Throw Shooting</title>
+  <title>Pushball</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -571,7 +571,7 @@
         playerChar.heldObject = null;
       } else {
         // Grab from the hand corresponding to playerFacing.
-        const grabRange = 60;
+        const grabRange = 80;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         let bodies = Composite.allBodies(world);
         let candidate = null;
