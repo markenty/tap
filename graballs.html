@@ -160,15 +160,54 @@
       background: lime;
       border-radius: 3px;
     }
-    /* Player parts as circles (“bubbles”) */
-    .player-part {
-      background: #fff;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
-      position: absolute;
-    }
+    /* Player parts as circles (“bubbles”) */.player-part {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(13, 12, 41, 0.7); /* crystal-like transparent dark background */
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+/* Static light glint */
+.player-part::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.5), transparent 60%);
+  pointer-events: none;
+}
+
+/* Moving shine effect */
+.player-part::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.2) 25%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.2) 75%);
+  transform: rotate(45deg);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: partShine 2s infinite;
+}
+
+@keyframes partShine {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  50% {
+    transform: translateX(100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+}
     .bullet {
       background: #fff;
       border-radius: 50%;
