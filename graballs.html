@@ -185,7 +185,7 @@
   left: 0;        /* Start at the left edge */
   width: 100%;    /* Cover the entire width */
   height: 100%;   /* Cover the entire height */
-  background: url('overlay.gif') center/cover no-repeat;
+  background: url('texture.gif') center/cover no-repeat;
   pointer-events: none;
   z-index: 10;
   transform-origin: center;
@@ -228,6 +228,14 @@
       height: 2px;
       background: red;
       box-shadow: 0 0 5px red;
+      /* Mask properties */
+  mask-image: url('overlay.gif'); /* Your mask image */
+  mask-size: cover;
+  mask-repeat: no-repeat;
+  /* For WebKit browsers */
+  -webkit-mask-image: url('overlay.gif');
+  -webkit-mask-size: cover;
+  -webkit-mask-repeat: no-repeat;
     }
     .head .eye.left { left: 30%; top: 30%; }
     .head .eye.right { right: 30%; top: 30%; }
