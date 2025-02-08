@@ -544,7 +544,7 @@
         playerChar.heldObject = null;
       } else {
         // Grab from the hand corresponding to playerFacing.
-        const grabRange = 60;
+        const grabRange = 160;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         let bodies = Composite.allBodies(world);
         let candidate = null;
