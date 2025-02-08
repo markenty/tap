@@ -831,14 +831,17 @@ let coinCount = 0; // Global counter for collected coins
 
 function collectCoin(coin) {
   coinCount++;
-  // Remove coin from world and from the coins array if you're tracking them
+  // Spawn a spark effect at the coin's position:
+  spawnSpark(coin.position.x, coin.position.y);
+  
+  // Remove the coin from the physics world:
   World.remove(world, coin);
   coins = coins.filter(c => c !== coin);
-  // Remove its DOM element
+  
+  // Remove the coin's DOM element:
   if (coin.domElement && coin.domElement.parentNode) {
     coin.domElement.parentNode.removeChild(coin.domElement);
   }
-  // Optionally update the UI or scoreboard with the new coinCount
   console.log("Coin collected! Total:", coinCount);
 }
     // High-Speed Enemy Collisions: Extra damage when an enemy moving fast collides with a destructible object.
@@ -1083,16 +1086,23 @@ function createTV(x, y, width, height) {
     }
 // When a TV is destroyed, remove it and spawn coins at its location.
 function breakTV(tv) {
+  // Remove TV from the world and DOM
   World.remove(world, tv);
   if (tv.domElement && tv.domElement.parentNode) {
     tv.domElement.parentNode.removeChild(tv.domElement);
   }
-  // Remove from your tvs array if needed.
+  // Remove the tv from its array (ensure tvs is defined)
   const idx = tvs.indexOf(tv);
-  if (idx !== -1) {
-    tvs.splice(idx, 1);
-  }
-  // Spawn coins at the TV's position.
+  if (idx !== -1) { tvs.splice(idx, 1); }
+
+  // Trigger screen shake effect:
+  const screenEl = document.getElementById("screen");
+  // Remove any existing shake class (forces reflow)
+  screenEl.classList.remove("shake");
+  void screenEl.offsetWidth; // Force reflow to restart animation
+  screenEl.classList.add("shake");
+
+  // Then spawn coins at the TV's position.
   spawnCoins(tv.position.x, tv.position.y);
 }
 
@@ -1123,7 +1133,36 @@ function spawnCoins(x, y) {
     Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
   }
 }
-
+function spawnSpark(x, y) {
+  const spark = document.createElement("div");
+  spark.style.position = "absolute";
+  spark.style.left = x + "px";
+  spark.style.top = y + "px";
+  spark.style.width = "10px";
+  spark.style.height = "10px";
+  spark.style.background = "rgba(255,255,150,1)";
+  spark.style.borderRadius = "50%";
+  spark.style.boxShadow = "0 0 15px 5px rgba(255,255,150,0.8)";
+  spark.style.pointerEvents = "none";
+  // Optionally set an initial opacity if desired:
+  spark.style.opacity = "1";
+  game.appendChild(spark);
+  
+  // Animate the spark using the Web Animations API:
+  spark.animate([
+    { transform: "scale(1)", opacity: 1 },
+    { transform: "scale(2)", opacity: 0 }
+  ], {
+    duration: 500,
+    easing: "ease-out",
+    fill: "forwards"
+  });
+  
+  // Remove the spark after the animation completes
+  setTimeout(() => {
+    if (spark.parentNode) { spark.parentNode.removeChild(spark); }
+  }, 500);
+}
     // --- Particle Burst Effect ---
     function particleBurst(x, y, color) {
       const numParticles = 20;
