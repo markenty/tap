@@ -330,7 +330,7 @@
     /* --- Boulders (formerly platforms) ---
        Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
        A random slope between 0.3 and 0.7 produces a random top width.
-       The DOM element is styled with the ground color and a clip-path that matches the physics body.
+       The DOM element is styled with the ground color and a clip-path.
     */
     function createPlatform(x, y, width, height) {
       const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
@@ -346,13 +346,10 @@
       el.style.height = height + "px";
       el.style.left = (x + width/2) + "px";
       el.style.top = (y + height/2) + "px";
-      // Use ground color and a clip-path computed to match the Matter.js trapezoid vertices:
-      // Matter.Bodies.trapezoid creates a shape whose top-left vertex is offset by:
-      // offset = width * (1 - slope) / 2
-      // Converting that to a percentage (with the DOM element centered) gives:
-      let leftInset = ((1 - slope) / 2) * 100;
-      el.style.clipPath = `polygon(${leftInset}% 0%, 100% 0%, 100% 100%, 0% 100%)`;
+      // Use ground color and a clip-path computed from the slope:
       el.style.backgroundColor = "#0d0c29";
+      const topClipPercent = slope * 50; // (slope/2)*100
+      el.style.clipPath = `polygon(0% 100%, 100% 100%, ${100 - topClipPercent}% 0%, ${topClipPercent}% 0%)`;
       game.appendChild(el);
       boulder.domElement = el;
       platforms.push(boulder);
@@ -760,7 +757,7 @@
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
       const maxWhipDistance = 20;
-      const attackHand = attackDir.x < 0 ? playerChar.leftHand.position : playerChar.rightHand.position;
+      const attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand;
       const whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
       const tangent = { x: attackDir.y, y: -attackDir.x };
       const swingTime = 300, steps = 15;
