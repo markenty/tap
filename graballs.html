@@ -251,9 +251,12 @@
     /* --- New TV & Coin Styles --- */
     .tv {
       position: absolute;
-      background: #444;
-      border: 2px solid #999;
-      border-radius: 4px;
+  width: 150px;
+  height: 100px;
+  background: #444;
+  border: 2px solid #999;
+  /* Define an irregular polygon to simulate a rock */
+  clip-path: polygon(20% 0%, 80% 0%, 100% 30%, 90% 100%, 10% 100%, 0% 30%);
     }
     .coin {
       position: absolute;
