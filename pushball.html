@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Goals and Scoring</title>
+  <title>Platformer with Goals, Scoring & Grab-Throw Shooting</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -498,6 +498,10 @@
       char.rightFoot = rightFoot;
       char.leftUpperLeg = leftUpperLeg; 
       char.leftFoot = leftFoot;
+
+      // New property to hold a grabbed object.
+      char.heldObject = null;
+
       return char;
     }
     const playerChar = createCharacter(100, 100);
@@ -548,6 +552,69 @@
     // Spawn an enemy for testing
     createEnemy(500, 100);
 
+    // --- New: Player Shoot/Grab-Throw Function ---
+    function playerShoot() {
+      // If already holding an object, throw it.
+      if (playerChar.heldObject) {
+        let obj = playerChar.heldObject;
+        // Determine throw direction from joystick or arrow keys.
+        let dx = 0, dy = 0;
+        const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
+        if (aimMag > 0.1) {
+          dx = joystickAim.x;
+          dy = joystickAim.y;
+        } else {
+          if (keys["ArrowUp"])    dy = -1;
+          if (keys["ArrowDown"])  dy =  1;
+          if (keys["ArrowLeft"])  dx = -1;
+          if (keys["ArrowRight"]) dx =  1;
+          if (dx === 0 && dy === 0) dx = 1;
+          let mag = Math.hypot(dx, dy);
+          dx /= mag; dy /= mag;
+        }
+        // Throw the object with high speed.
+        const throwSpeed = 30;
+        Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
+        // Optionally add some spin.
+        Body.setAngularVelocity(obj, 0.5);
+        // Restore its collision mask.
+        obj.collisionFilter.mask = 0xFFFFFFFF;
+        playerChar.heldObject = null;
+      } else {
+        // Try to grab a dynamic object from all Matter bodies.
+        const grabRange = 60; // pixels
+        let handPos = playerChar.rightHand.position;
+        let bodies = Composite.allBodies(world);
+        let candidate = null;
+        let candidateDist = Infinity;
+        for (let i = 0; i < bodies.length; i++) {
+          let body = bodies[i];
+          // Skip static bodies, player parts, bullets, and goal sensors.
+          if (body.isStatic) continue;
+          if (body.character) continue;
+          if (body.label === "bullet") continue;
+          if (body.label === "leftGoal" || body.label === "rightGoal") continue;
+          let dx = body.position.x - handPos.x;
+          let dy = body.position.y - handPos.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist < grabRange && dist < candidateDist) {
+            candidate = body;
+            candidateDist = dist;
+          }
+        }
+        if (candidate) {
+          playerChar.heldObject = candidate;
+          // Zero its velocity so it “sticks.”
+          Body.setVelocity(candidate, { x: 0, y: 0 });
+          // Disable collisions temporarily so it follows the player.
+          candidate.collisionFilter.mask = 0;
+        }
+      }
+    }
+
+    // --- Update: If the player is holding an object, keep it at the hand position ---
+    // (This code will be in the main game loop.)
+    
     // --- Knockback & Damage: Bullet & Melee Collision Updates ---
     const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
@@ -645,7 +712,7 @@
       }, 100);
     }
 
-    // High-Speed Enemy Collisions: If an enemy moving fast collides with a destructible object, extra damage is applied.
+    // High-Speed Enemy Collisions: Extra damage when an enemy moving fast collides with a destructible object.
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
         let enemyBody = null, other = null;
@@ -658,7 +725,7 @@
       });
     });
 
-    // --- New: Goal Scoring Logic ---
+    // --- New: Goal Scoring Logic with Enemy Respawn ---
     function updateScoreboard() {
       document.getElementById("leftScore").textContent = leftScore;
       document.getElementById("rightScore").textContent = rightScore;
@@ -670,34 +737,31 @@
       }
       enemies = enemies.filter(e => e.body !== enemyBody);
     }
-    // Listen for collisions between enemies and goal sensors
-    // Listen for collisions between enemies and goal sensors, and respawn enemy after scoring
-Events.on(engine, "collisionStart", function(event) {
-  event.pairs.forEach(pair => {
-    if (pair.bodyA.label === "leftGoal" && pair.bodyB.label === "enemy") {
-      leftScore++;
-      removeEnemy(pair.bodyB);
-      updateScoreboard();
-      // Respawn enemy after 2 seconds at a designated spawn point (e.g., 500, 100)
-      setTimeout(() => { createEnemy(500, 100); }, 2000);
-    } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
-      leftScore++;
-      removeEnemy(pair.bodyA);
-      updateScoreboard();
-      setTimeout(() => { createEnemy(500, 100); }, 2000);
-    } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
-      rightScore++;
-      removeEnemy(pair.bodyB);
-      updateScoreboard();
-      setTimeout(() => { createEnemy(500, 100); }, 2000);
-    } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
-      rightScore++;
-      removeEnemy(pair.bodyA);
-      updateScoreboard();
-      setTimeout(() => { createEnemy(500, 100); }, 2000);
-    }
-  });
-});
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        if (pair.bodyA.label === "leftGoal" && pair.bodyB.label === "enemy") {
+          leftScore++;
+          removeEnemy(pair.bodyB);
+          updateScoreboard();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
+          leftScore++;
+          removeEnemy(pair.bodyA);
+          updateScoreboard();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
+          rightScore++;
+          removeEnemy(pair.bodyB);
+          updateScoreboard();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
+          rightScore++;
+          removeEnemy(pair.bodyA);
+          updateScoreboard();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        }
+      });
+    });
 
     // Destructible Object Damage Handling
     function damageDestructible(obj, damage) {
@@ -864,6 +928,10 @@ Events.on(engine, "collisionStart", function(event) {
           enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
+      // If the player is holding an object, keep it at the player's right hand.
+      if (playerChar.heldObject) {
+        Body.setPosition(playerChar.heldObject, playerChar.rightHand.position);
+      }
       // Player movement
       if (keys["ArrowLeft"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 }); }
       if (keys["ArrowRight"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: 0.01, y: 0 }); }
