@@ -178,26 +178,15 @@
       opacity: 0;
     }
     /* New Destructible Object Styling */
-    /* Boulder – for platforms */
+    /* Boulder – now a random trapezoidal polygon, heavy and ground–colored */
     .boulder {
       position: absolute;
-      background: #777; /* grayish stone color */
-      border: 2px solid #555;
-      border-radius: 50%;
+      /* background and clip-path are set inline on creation */
     }
-    /* Stalactite & Stalagmite – for walls */
+    /* Stalactite & Stalagmite – conical (triangle) shapes */
     .stalactite, .stalagmite {
       position: absolute;
-      background: #0d0c29; /* match ground color */
-      border: 2px solid #000;
-    }
-    .stalactite {
-      border-bottom-left-radius: 20px;
-      border-bottom-right-radius: 20px;
-    }
-    .stalagmite {
-      border-top-left-radius: 20px;
-      border-top-right-radius: 20px;
+      /* background and clip-path are set inline on creation */
     }
     /* Rock chunks – fragments after breaking */
     .rock-chunk {
@@ -308,7 +297,6 @@
 
     // Level dimensions
     const levelWidth = 3000;
-    // Use visualViewport.height if available (accounts for dynamic address bar)
     function getViewportHeight() {
       return window.visualViewport ? window.visualViewport.height : window.innerHeight;
     }
@@ -321,7 +309,6 @@
     // Create ground element
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
-    // Align ground visual with physics ground's top edge.
     groundEl.style.top = (playAreaHeight - 20) + "px";
     groundEl.style.width = levelWidth + "px";
     groundEl.style.height = groundExtraHeight + "px";
@@ -338,11 +325,16 @@
       domEntities.push(body);
     }
 
-    // Boulder & Stalactite/Stalagmite Creation Functions
-
-    // Boulder (formerly platform) – creates a circular boulder with correct hit box.
+    /* --- Boulders (formerly platforms) ---
+       Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
+       A random slope between 0.3 and 0.7 produces a random top width.
+       The DOM element is given a clip-path (computed from slope) and a ground color.
+    */
     function createPlatform(x, y, width, height) {
-      const boulder = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
+      const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
+      const options = { isStatic: true, label: "platform", density: 0.01 };
+      // Matter.Bodies.trapezoid creates a convex trapezoid with full bottom and a shrunken top.
+      const boulder = Bodies.trapezoid(x + width/2, y + height/2, width, height, slope, options);
       boulder.width = width;
       boulder.height = height;
       boulder.hp = 50;
@@ -353,40 +345,101 @@
       el.style.height = height + "px";
       el.style.left = (x + width/2) + "px";
       el.style.top = (y + height/2) + "px";
+      // Use the ground color for boulders
+      el.style.backgroundColor = "#0d0c29";
+      // The local vertices for a Matter trapezoid (by default) are:
+      // [ {x: -width/2, y: height/2},
+      //   {x: width/2, y: height/2},
+      //   {x: width/2 - slope*width/2, y: -height/2},
+      //   {x: -width/2 + slope*width/2, y: -height/2} ]
+      // Hence the top edge is shrunk by (slope*50)% on each side.
+      const topClipPercent = slope * 50; // since (slope/2)*100 = slope*50
+      el.style.clipPath = `polygon(0% 100%, 100% 100%, ${100 - topClipPercent}% 0%, ${topClipPercent}% 0%)`;
       game.appendChild(el);
       boulder.domElement = el;
       platforms.push(boulder);
     }
-    // Wall – now rendered as stalactite (if near the top) or stalagmite (if near the bottom)
+
+    /* --- Conical Walls (stalactites/stalagmites) ---
+       For a stalactite (if y < playAreaHeight/2) a custom triangle is created whose
+       base (wide end) is attached to the ceiling. For a stalagmite (y ≥ playAreaHeight/2)
+       the base is flush with the ground.
+       The triangles are built via Bodies.fromVertices using custom vertex arrays.
+       The DOM element uses a clip-path to mimic a cone.
+    */
     function createWall(x, y, width, height) {
-      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
-      wall.width = width;
-      wall.height = height;
-      wall.hp = 100;
-      World.add(world, wall);
-      const el = document.createElement("div");
-      if (y < playAreaHeight/2) { el.className = "stalactite"; }
-      else { el.className = "stalagmite"; }
-      el.style.width = width + "px";
-      el.style.height = height + "px";
-      el.style.left = (x + width/2) + "px";
-      el.style.top = (y + height/2) + "px";
+      let body, el;
+      if (y < playAreaHeight/2) {
+        // Stalactite: triangle with base at top and tip pointing downward.
+        // Define vertices in local coordinates:
+        // Base: from (-width/2, 0) to (width/2, 0)
+        // Tip: (0, height)
+        const vertices = [
+          { x: -width/2, y: 0 },
+          { x: width/2, y: 0 },
+          { x: 0, y: height }
+        ];
+        // The centroid of this triangle is at (0, height/3). To have the base flush with the ceiling (y=0),
+        // position the body so that its center is at (x + width/2, height/3).
+        body = Bodies.fromVertices(x + width/2, height/3, [vertices], { isStatic: true, label: "wall" }, true);
+        body.width = width;
+        body.height = height;
+        body.hp = 100;
+        World.add(world, body);
+        el = document.createElement("div");
+        el.className = "stalactite";
+        el.style.width = width + "px";
+        el.style.height = height + "px";
+        el.style.left = (x + width/2) + "px";
+        el.style.top = (height/3) + "px";
+        el.style.backgroundColor = "#0d0c29";
+        // For a stalactite, use a clip-path with the tip at the bottom:
+        el.style.clipPath = "polygon(50% 100%, 0% 0%, 100% 0%)";
+      } else {
+        // Stalagmite: triangle with base at bottom and tip pointing upward.
+        // Define vertices in local coordinates:
+        // Base: from (-width/2, 0) to (width/2, 0)
+        // Tip: (0, -height)
+        const vertices = [
+          { x: -width/2, y: 0 },
+          { x: width/2, y: 0 },
+          { x: 0, y: -height }
+        ];
+        // The centroid of this triangle is at (0, -height/3). To have the base flush with the ground,
+        // position the body so that its center is at (x + width/2, playAreaHeight - height/3).
+        body = Bodies.fromVertices(x + width/2, playAreaHeight - height/3, [vertices], { isStatic: true, label: "wall" }, true);
+        body.width = width;
+        body.height = height;
+        body.hp = 100;
+        World.add(world, body);
+        el = document.createElement("div");
+        el.className = "stalagmite";
+        el.style.width = width + "px";
+        el.style.height = height + "px";
+        el.style.left = (x + width/2) + "px";
+        el.style.top = (playAreaHeight - height/3) + "px";
+        el.style.backgroundColor = "#0d0c29";
+        // For a stalagmite, use a clip-path with the tip at the top:
+        el.style.clipPath = "polygon(50% 0%, 0% 100%, 100% 100%)";
+      }
       game.appendChild(el);
-      wall.domElement = el;
-      walls.push(wall);
+      body.domElement = el;
+      walls.push(body);
     }
 
-    // Reduced spawn counts: Only 2 boulders and 1 wall.
+    // Spawn a few objects for testing
     for (let i = 0; i < 2; i++) {
       const width = Math.floor(Math.random() * 101) + 150;
       const x = Math.random() * (levelWidth - width);
+      // y is chosen arbitrarily; the boulder will be positioned as given.
       const y = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(x, y, width, 20);
     }
     for (let i = 0; i < 1; i++) {
       const x = Math.random() * (levelWidth - 20);
-      const y = 100;
-      createWall(x, y, 20, 200);
+      // For testing stalactite vs stalagmite, you can change y.
+      // Here y < playAreaHeight/2 creates a stalactite.
+      createWall(x, 100, 20, 200);
     }
 
     // Static Boundaries & Safety Floor
@@ -1197,16 +1250,11 @@
     abButtons.querySelector(".C").addEventListener("touchstart", (e) => { e.preventDefault(); meleeAttack(); });
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
   
-    // When the page loads, scroll to the bottom
     window.addEventListener("load", () => {
       window.scrollTo(0, document.body.scrollHeight);
     });
-
-    // Optionally, if new content is added or if you need to “lock” the scroll,
-    // you can listen for scroll events and force the window back down:
     window.addEventListener("scroll", () => {
       const maxScroll = document.body.scrollHeight - window.innerHeight;
-      // If the user scrolls up even a little, force the window back to the bottom
       if (window.scrollY < maxScroll) {
         window.scrollTo(0, maxScroll);
       }
