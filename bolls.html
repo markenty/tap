@@ -997,30 +997,69 @@
         }
       }
     }
-    function spawnCoins(x, y) {
-      for (let i = 0; i < 3; i++) {
-        let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
-        coin.value = 1;
-        World.add(world, coin);
-        const el = document.createElement("div");
-        el.className = "coin";
-        el.textContent = "$";
-        el.style.width = "20px";
-        el.style.height = "20px";
-        el.style.lineHeight = "20px";
-        el.style.fontSize = "14px";
-        el.style.textAlign = "center";
-        el.style.borderRadius = "50%";
-        el.style.background = "gold";
-        el.style.color = "black";
-        game.appendChild(el);
-        coin.domElement = el;
-        coins.push(coin);
-        let angle = Math.random() * 2 * Math.PI;
-        let speed = Math.random() * 5 + 2;
-        Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
-      }
-    }
+    // Create a TV (destructible object) instead of a platform
+function createTV(x, y, width, height) {
+  const options = { isStatic: true, label: "tv", density: 0.01 };
+  const tv = Bodies.rectangle(x + width / 2, y + height / 2, width, height, options);
+  tv.width = width;
+  tv.height = height;
+  tv.hp = 30; // Set TV HP (adjust as needed)
+  World.add(world, tv);
+  const el = document.createElement("div");
+  el.className = "tv";
+  el.style.width = width + "px";
+  el.style.height = height + "px";
+  el.style.left = (x + width / 2) + "px";
+  el.style.top = (y + height / 2) + "px";
+  game.appendChild(el);
+  tv.domElement = el;
+  // (Optional) Add tv to your tvs array if used in your logic:
+  tvs.push(tv);
+  return tv;
+}
+
+// When a TV is destroyed, remove it and spawn coins at its location.
+function breakTV(tv) {
+  World.remove(world, tv);
+  if (tv.domElement && tv.domElement.parentNode) {
+    tv.domElement.parentNode.removeChild(tv.domElement);
+  }
+  // Remove from your tvs array if needed.
+  const idx = tvs.indexOf(tv);
+  if (idx !== -1) {
+    tvs.splice(idx, 1);
+  }
+  // Spawn coins at the TV's position.
+  spawnCoins(tv.position.x, tv.position.y);
+}
+
+// Spawn coins as dynamic bodies with a bright glow effect.
+function spawnCoins(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
+    coin.value = 1;
+    World.add(world, coin);
+    const el = document.createElement("div");
+    el.className = "coin";
+    el.textContent = "$";
+    el.style.width = "20px";
+    el.style.height = "20px";
+    el.style.lineHeight = "20px";
+    el.style.fontSize = "14px";
+    el.style.textAlign = "center";
+    el.style.borderRadius = "50%";
+    // Bright glow effect via box-shadow:
+    el.style.boxShadow = "0 0 20px 10px rgba(255,255,200,0.9)";
+    el.style.background = "gold";
+    el.style.color = "black";
+    game.appendChild(el);
+    coin.domElement = el;
+    coins.push(coin);
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = Math.random() * 5 + 2;
+    Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
+  }
+}
 
     // --- Particle Burst Effect ---
     function particleBurst(x, y, color) {
