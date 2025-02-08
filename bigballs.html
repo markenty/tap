@@ -1150,6 +1150,25 @@
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
     abButtons.querySelector(".C").addEventListener("touchstart", (e) => { e.preventDefault(); meleeAttack(); });
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
+  
+  
+  
+  
+  // When the page loads, scroll to the bottom
+window.addEventListener("load", () => {
+  window.scrollTo(0, document.body.scrollHeight);
+});
+
+// Optionally, if new content is added or if you need to “lock” the scroll,
+// you can listen for scroll events and force the window back down:
+window.addEventListener("scroll", () => {
+  const maxScroll = document.body.scrollHeight - window.innerHeight;
+  // If the user scrolls up even a little, force the window back to the bottom
+  if (window.scrollY < maxScroll) {
+    window.scrollTo(0, maxScroll);
+  }
+});
+  
   </script>
 </body>
 </html>
