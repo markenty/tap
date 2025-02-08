@@ -570,7 +570,7 @@
         obj.collisionFilter.mask = 0xFFFFFFFF;
         playerChar.heldObject = null;
       } else {
-        // Grab from the hand corresponding to the player's facing direction.
+        // Grab from the hand corresponding to playerFacing.
         const grabRange = 60;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         let bodies = Composite.allBodies(world);
@@ -593,7 +593,7 @@
         if (candidate) {
           playerChar.heldObject = candidate;
           Body.setVelocity(candidate, { x: 0, y: 0 });
-          candidate.collisionFilter.mask = 0; // temporarily disable collisions
+          candidate.collisionFilter.mask = 0;
         }
       }
     }
@@ -604,6 +604,12 @@
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         Body.setPosition(playerChar.heldObject, handPos);
       }
+    }
+
+    // --- Update playerFacing based on input ---
+    function updatePlayerFacing() {
+      if (keys["ArrowLeft"]) { playerFacing = "left"; }
+      else if (keys["ArrowRight"]) { playerFacing = "right"; }
     }
 
     // --- Knockback & Damage: Bullet & Melee Collision Updates ---
@@ -924,7 +930,7 @@
           enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
-      // If the player is holding an object, snap it to the hand corresponding to playerFacing.
+      // If holding an object, snap it to the hand corresponding to playerFacing.
       if (playerChar.heldObject) {
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         Body.setPosition(playerChar.heldObject, handPos);
@@ -978,7 +984,6 @@
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
-      updateHeldObject();
       updateCamera();
       requestAnimationFrame(update);
     }
