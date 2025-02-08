@@ -221,13 +221,7 @@
       /* Using a polygon clip-path to give a splintered, irregular appearance */
       clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
     }
-    /* Head eyes */
-    .head .eye {
-      position: absolute;
-      width: 2px;
-      height: 2px;
-      background: red;
-      box-shadow: 0 0 5px red;
+    .head{
       /* Mask properties */
   mask-image: url('overlay.gif'); /* Your mask image */
   mask-size: cover;
@@ -236,7 +230,16 @@
   -webkit-mask-image: url('overlay.gif');
   -webkit-mask-size: cover;
   -webkit-mask-repeat: no-repeat;
+    
     }
+    /* Head eyes */
+    .head .eye {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: red;
+      box-shadow: 0 0 5px red;
+      }
     .head .eye.left { left: 30%; top: 30%; }
     .head .eye.right { right: 30%; top: 30%; }
     /* Enemy styling */
