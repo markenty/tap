@@ -827,7 +827,20 @@ let tvs = [];
         });
       }, 100);
     }
+let coinCount = 0; // Global counter for collected coins
 
+function collectCoin(coin) {
+  coinCount++;
+  // Remove coin from world and from the coins array if you're tracking them
+  World.remove(world, coin);
+  coins = coins.filter(c => c !== coin);
+  // Remove its DOM element
+  if (coin.domElement && coin.domElement.parentNode) {
+    coin.domElement.parentNode.removeChild(coin.domElement);
+  }
+  // Optionally update the UI or scoreboard with the new coinCount
+  console.log("Coin collected! Total:", coinCount);
+}
     // High-Speed Enemy Collisions: Extra damage when an enemy moving fast collides with a destructible object.
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
@@ -849,6 +862,18 @@ Events.on(engine, "collisionStart", function(event) {
     // Check the reverse: bodyB is a TV and bodyA belongs to the player.
     else if (pair.bodyB.label === "tv" && pair.bodyA.character) {
       breakTV(pair.bodyB);
+    }
+  });
+});
+    Events.on(engine, "collisionStart", function(event) {
+  event.pairs.forEach(pair => {
+    // Check if bodyA is a coin and bodyB belongs to the player.
+    if (pair.bodyA.label === "coin" && pair.bodyB.character) {
+      collectCoin(pair.bodyA);
+    }
+    // Also check if bodyB is a coin and bodyA belongs to the player.
+    else if (pair.bodyB.label === "coin" && pair.bodyA.character) {
+      collectCoin(pair.bodyB);
     }
   });
 });
