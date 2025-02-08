@@ -1049,7 +1049,7 @@
       }
       if (Math.abs(joystickAim.x) > 0.1) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: joystickAim.x * 0.005, y: 0 }); }
       if (keys["KeyB"] || keys["Space"]) {
-        const jumpStrength = 22;
+        const jumpStrength = 11;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
         if (aimMag > 0.1) { Body.setVelocity(playerChar.torso, { x: joystickAim.x * jumpStrength, y: joystickAim.y * jumpStrength }); }
         else { Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength }); }
