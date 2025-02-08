@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Platformer with Goals, Scoring & Dual-Hand Grab-Throw</title>
+  <title>Platformer with Goals, Scoring & Grab-Throw Shooting</title>
   <style>
     /* Reset & Full-Screen Setup */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -371,14 +371,17 @@
     // --- New: Create Goal Sensors & Scoreboard ---
     const goalWidth = 20;
     const goalHeight = 200;
+    // Place left goal near left side and right goal near right side
     const leftGoal = Bodies.rectangle(50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
     const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
     World.add(world, [leftGoal, rightGoal]);
+    // Create DOM elements for goals
     function createGoalDom(goalBody, cls) {
       const el = document.createElement("div");
       el.className = "goal " + cls;
       el.style.width = goalWidth + "px";
       el.style.height = goalHeight + "px";
+      // Center the goal element on the body's position
       el.style.left = goalBody.position.x + "px";
       el.style.top = goalBody.position.y + "px";
       game.appendChild(el);
@@ -416,7 +419,7 @@
 
     // --- Character Factory (Player) ---
     function createCharacter(x, y) {
-      const char = { hp: 100, alive: true, spawn: { x, y }, heldObject: null, heldHand: null };
+      const char = { hp: 100, alive: true, spawn: { x, y } };
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.11, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
@@ -496,6 +499,9 @@
       char.leftUpperLeg = leftUpperLeg; 
       char.leftFoot = leftFoot;
 
+      // New property to hold a grabbed object.
+      char.heldObject = null;
+
       return char;
     }
     const playerChar = createCharacter(100, 100);
@@ -505,8 +511,8 @@
       let enemy = {
         hp: 50,
         alive: true,
-        state: "patrol",
-        direction: Math.random() < 0.5 ? -1 : 1
+        state: "patrol",                         // initial state: patrol
+        direction: Math.random() < 0.5 ? -1 : 1    // initial patrol direction
       };
       enemy.body = Bodies.circle(x, y, 20, { friction: 0.5, frictionAir: 0.05, restitution: 0.1, label: "enemy" });
       createDomElement(enemy.body, "enemy", 40, 40);
@@ -517,9 +523,14 @@
         const dy = playerChar.torso.position.y - enemy.body.position.y;
         const horizontalDistance = Math.abs(dx);
         const verticalDistance = Math.abs(dy);
-        const chaseThreshold = 400;
-        const verticalThreshold = 50;
-        enemy.state = (horizontalDistance < chaseThreshold && verticalDistance < verticalThreshold) ? "chase" : "patrol";
+        const chaseThreshold = 400;  // pixels
+        const verticalThreshold = 50;  // pixels
+        
+        if (horizontalDistance < chaseThreshold && verticalDistance < verticalThreshold) {
+          enemy.state = "chase";
+        } else {
+          enemy.state = "patrol";
+        }
         
         if (enemy.state === "chase") {
           const chaseForce = 0.001;
@@ -528,7 +539,7 @@
           if (dy < -20 && Math.abs(enemy.body.velocity.y) < 1) {
             Body.setVelocity(enemy.body, { x: enemy.body.velocity.x, y: -10 });
           }
-        } else {
+        } else if (enemy.state === "patrol") {
           const patrolForce = 0.0005;
           Body.applyForce(enemy.body, enemy.body.position, { x: enemy.direction * patrolForce, y: 0 });
           if (enemy.body.position.x < 50) { enemy.direction = 1; }
@@ -541,12 +552,11 @@
     // Spawn an enemy for testing
     createEnemy(500, 100);
 
-    // --- New: Player Grab-Throw Function (works on both hands) ---
+    // --- New: Player Shoot/Grab-Throw Function ---
     function playerShoot() {
       // If already holding an object, throw it.
       if (playerChar.heldObject) {
         let obj = playerChar.heldObject;
-        let handPos = (playerChar.heldHand === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         // Determine throw direction from joystick or arrow keys.
         let dx = 0, dy = 0;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
@@ -562,57 +572,54 @@
           let mag = Math.hypot(dx, dy);
           dx /= mag; dy /= mag;
         }
+        // Throw the object with high speed.
         const throwSpeed = 30;
         Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
+        // Optionally add some spin.
         Body.setAngularVelocity(obj, 0.5);
+        // Restore its collision mask.
         obj.collisionFilter.mask = 0xFFFFFFFF;
         playerChar.heldObject = null;
-        playerChar.heldHand = null;
       } else {
-        // Not holding anything; try to grab from both hands.
-        const grabRange = 60;
-        const leftHandPos = playerChar.leftHand.position;
-        const rightHandPos = playerChar.rightHand.position;
+        // Try to grab a dynamic object from all Matter bodies.
+        const grabRange = 60; // pixels
+        let handPos = playerChar.rightHand.position;
+        let bodies = Composite.allBodies(world);
         let candidate = null;
         let candidateDist = Infinity;
-        let handUsed = null;
-        let bodies = Composite.allBodies(world);
         for (let i = 0; i < bodies.length; i++) {
           let body = bodies[i];
+          // Skip static bodies, player parts, bullets, and goal sensors.
           if (body.isStatic) continue;
           if (body.character) continue;
           if (body.label === "bullet") continue;
           if (body.label === "leftGoal" || body.label === "rightGoal") continue;
-          let dLeft = Math.hypot(body.position.x - leftHandPos.x, body.position.y - leftHandPos.y);
-          let dRight = Math.hypot(body.position.x - rightHandPos.x, body.position.y - rightHandPos.y);
-          let d = Math.min(dLeft, dRight);
-          if (d < grabRange && d < candidateDist) {
+          let dx = body.position.x - handPos.x;
+          let dy = body.position.y - handPos.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist < grabRange && dist < candidateDist) {
             candidate = body;
-            candidateDist = d;
-            handUsed = (dLeft < dRight) ? "left" : "right";
+            candidateDist = dist;
           }
         }
         if (candidate) {
           playerChar.heldObject = candidate;
-          playerChar.heldHand = handUsed;
+          // Zero its velocity so it “sticks.”
           Body.setVelocity(candidate, { x: 0, y: 0 });
-          candidate.collisionFilter.mask = 0; // temporarily disable collisions
+          // Disable collisions temporarily so it follows the player.
+          candidate.collisionFilter.mask = 0;
         }
       }
     }
 
-    // --- Update: Snap held object to the correct hand ---
-    function updateHeldObject() {
-      if (playerChar.heldObject) {
-        let handPos = (playerChar.heldHand === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
-        Body.setPosition(playerChar.heldObject, handPos);
-      }
-    }
-
+    // --- Update: If the player is holding an object, keep it at the hand position ---
+    // (This code will be in the main game loop.)
+    
     // --- Knockback & Damage: Bullet & Melee Collision Updates ---
     const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
+        // --- Bullet Collision Handling ---
         let bullet = null, target = null;
         if (pair.bodyA.label === "bullet") { bullet = pair.bodyA; target = pair.bodyB; }
         else if (pair.bodyB.label === "bullet") { bullet = pair.bodyB; target = pair.bodyA; }
@@ -921,10 +928,9 @@
           enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
-      // Update held object (if any) to snap exactly to the corresponding hand
+      // If the player is holding an object, keep it at the player's right hand.
       if (playerChar.heldObject) {
-        let handPos = (playerChar.heldHand === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
-        Body.setPosition(playerChar.heldObject, handPos);
+        Body.setPosition(playerChar.heldObject, playerChar.rightHand.position);
       }
       // Player movement
       if (keys["ArrowLeft"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 }); }
