@@ -1039,7 +1039,12 @@ function createTV(x, y, width, height) {
   tvs.push(tv);
   return tv;
 }
-
+  // Generate TVs.
+    for (let i = 0; i < 3800; i++) {
+      const tvX = Math.random() * (levelWidth - 40);
+      const tvY = 100 + Math.random() * 200;
+      createTV(tvX, tvY, 40, 60);
+    }
 // When a TV is destroyed, remove it and spawn coins at its location.
 function breakTV(tv) {
   World.remove(world, tv);
