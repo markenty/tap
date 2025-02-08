@@ -72,6 +72,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      /* Height is set dynamically via JavaScript */
     }
     /* D-Pad */
     #dpad {
@@ -136,7 +137,6 @@
       font-size: 0;
     }
     #ab-buttons button:active { background: #777; }
-    
     /* In-Game Entity Styling */
     .entity {
       position: absolute;
@@ -166,7 +166,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      box-shadow: 0 0 14px rgba(255,255,255,0.2);
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
       position: absolute;
     }
     .bullet {
@@ -177,21 +177,25 @@
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
     }
-    /* Boulders (old platforms) – not used if TVs are replacing them */
+    /* New Destructible Object Styling */
+    /* Boulder – a heavy, trapezoidal polygon using ground color */
     .boulder {
       position: absolute;
       left:50%;
-      /* styling set inline on creation */
+      /* backgroundColor and clip-path set inline on creation */
     }
-    /* Walls (stalactite/stalagmite) */
+    /* Stalactite & Stalagmite – conical (triangle) shapes */
     .stalactite, .stalagmite {
       position: absolute;
+      /* backgroundColor and clip-path set inline on creation */
     }
+    /* Rock chunks – broken pieces styled to be ground colored and irregular */
     .rock-chunk {
       position: absolute;
       background: #0d0c29;
       border: 1px solid #0d0c29;
       border-radius: 8px;
+      /* Using a polygon clip-path to give a splintered, irregular appearance */
       clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
     }
     /* Head eyes */
@@ -243,25 +247,6 @@
     .goalTextAnimation {
       animation: goalTextAnimationKeyframes 1s ease;
     }
-    
-    /* --- New TV & Coin Styles --- */
-    .tv {
-      position: absolute;
-      background: #444;
-      border: 2px solid #999;
-      border-radius: 4px;
-    }
-    .coin {
-      position: absolute;
-      background: gold;
-      color: black;
-      border-radius: 50%;
-      font-size: 14px;
-      line-height: 20px;
-      text-align: center;
-      /* Bright glow effect */
-      box-shadow: 0 0 20px 10px rgba(255,255,200,0.9);
-    }
   </style>
 </head>
 <body>
@@ -294,21 +279,25 @@
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    /**********************
-     * INITIAL SETUP
-     **********************/
+    // Matter.js Modules
     const { Engine, World, Bodies, Body, Constraint, Events, Composites, Composite } = Matter;
+
+    // Global Variables & Setup
     const game = document.getElementById("game");
     let engine = Engine.create();
     engine.world.gravity.y = 3.2;
     const world = engine.world;
-    
-    // Global arrays and variables
-    let domEntities = [], tvs = [], walls = [], coins = [], bullets = [], enemies = [];
-    let leftScore = 0, rightScore = 0, coinCount = 0;
+
+    // Global arrays for entities
+    let domEntities = [], platforms = [], walls = [], coins = [], bullets = [], enemies = [];
+    let leftScore = 0, rightScore = 0;
+
+    // Global joystick aim vector
     let joystickAim = { x: 0, y: 0 };
+
+    // Global variable to track player facing ("left" or "right")
     let playerFacing = "right";
-    
+
     // Level dimensions
     const levelWidth = 3000;
     function getViewportHeight() {
@@ -319,7 +308,7 @@
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
-    
+
     // Create ground element
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
@@ -327,7 +316,7 @@
     groundEl.style.width = levelWidth + "px";
     groundEl.style.height = groundExtraHeight + "px";
     game.appendChild(groundEl);
-    
+
     // Helper: create DOM element for a Matter body
     function createDomElement(body, cls, w, h) {
       const el = document.createElement("div");
@@ -338,13 +327,14 @@
       body.domElement = el;
       domEntities.push(body);
     }
-    
-    /**********************
-     * OBJECT CREATION
-     **********************/
-    // Old platforms creation (if needed) remains here:
+
+    /* --- Boulders (formerly platforms) ---
+       Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
+       A random slope between 0.3 and 0.7 produces a random top width.
+       The DOM element is styled with the ground color and a clip-path.
+    */
     function createPlatform(x, y, width, height) {
-      const slope = Math.random() * 0.4 + 0.3;
+      const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
       const options = { isStatic: true, label: "platform", density: 0.01 };
       const boulder = Bodies.trapezoid(x + width/2, y + height/2, width, height, slope, options);
       boulder.width = width;
@@ -357,39 +347,24 @@
       el.style.height = height + "px";
       el.style.left = (x + width/2) + "px";
       el.style.top = (y + height/2) + "px";
+      // Use ground color and a clip-path computed from the slope:
       el.style.backgroundColor = "#0d0c29";
-      const topClipPercent = slope * 50;
+      const topClipPercent = slope * 50; // (slope/2)*100
       el.style.clipPath = `polygon(0% 100%, 100% 100%, ${100 - topClipPercent}% 0%, ${topClipPercent}% 0%)`;
       game.appendChild(el);
       boulder.domElement = el;
-      // For testing you may comment out this call if you want only TVs.
       platforms.push(boulder);
     }
-    
-    // New TV creation
-    function createTV(x, y, width, height) {
-      const options = { isStatic: true, label: "tv", density: 0.01 };
-      const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, options);
-      tv.width = width;
-      tv.height = height;
-      tv.hp = 30;
-      World.add(world, tv);
-      const el = document.createElement("div");
-      el.className = "tv";
-      el.style.width = width + "px";
-      el.style.height = height + "px";
-      el.style.left = (x + width/2) + "px";
-      el.style.top = (y + height/2) + "px";
-      game.appendChild(el);
-      tv.domElement = el;
-      tvs.push(tv);
-      return tv;
-    }
-    
-    // Walls (stalactite/stalagmite)
+
+    /* --- Conical Walls (stalactites/stalagmites) ---
+       Depending on y, if in upper half a stalactite is built (base flush with ceiling)
+       and if in lower half a stalagmite is built (base flush with ground).
+       The DOM elements are styled with the ground color and a triangle clip-path.
+    */
     function createWall(x, y, width, height) {
       let body, el;
       if (y < playAreaHeight/2) {
+        // Stalactite: base at top, tip downward.
         const vertices = [
           { x: -width/2, y: 0 },
           { x: width/2, y: 0 },
@@ -409,6 +384,7 @@
         el.style.backgroundColor = "#0d0c29";
         el.style.clipPath = "polygon(50% 100%, 0% 0%, 100% 0%)";
       } else {
+        // Stalagmite: base at bottom, tip upward.
         const vertices = [
           { x: -width/2, y: 0 },
           { x: width/2, y: 0 },
@@ -433,24 +409,23 @@
       walls.push(body);
       return body;
     }
-    
-    // Testing: Create a couple of platforms and a TV.
+
+    // Spawn a few objects for testing
+    // Make boulders wider: random width from 200 to 300
     for (let i = 0; i < 2; i++) {
       const width = Math.floor(Math.random() * 101) + 200;
       const x = Math.random() * (levelWidth - width);
       const y = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(x, y, width, 20);
     }
-    // Create one TV for testing:
-    createTV(200, 300, 150, 60);
-    
+    // Create a wall with a wider width (40px instead of 20) for testing stalactite
     for (let i = 0; i < 1; i++) {
       const width = 40;
       const x = Math.random() * (levelWidth - width);
       createWall(x, 100, width, 200);
     }
-    
-    // Static boundaries & safety floor
+
+    // Static Boundaries & Safety Floor
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightBoundary = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
@@ -458,9 +433,10 @@
     const safetyFloorY = playAreaHeight + 50;
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, { isStatic: true, label: "safetyFloor" });
     World.add(world, safetyFloor);
-    
-    // Create goal sensors
-    const goalWidth = 20, goalHeight = 200;
+
+    // --- Create Goal Sensors & Scoreboard ---
+    const goalWidth = 20;
+    const goalHeight = 200;
     const leftGoal = Bodies.rectangle(50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
     const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
     World.add(world, [leftGoal, rightGoal]);
@@ -476,10 +452,8 @@
     }
     createGoalDom(leftGoal, "left");
     createGoalDom(rightGoal, "right");
-    
-    /**********************
-     * TENTACLE HELPERS
-     **********************/
+
+    // --- Tentacle Helpers ---
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
       const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
         return Bodies.circle(x, y, segmentRadius, { collisionFilter: { group: -1 }, frictionAir: 0.1 });
@@ -505,16 +479,14 @@
       Composite.add(world, [tentacle, constraint]);
       return tentacle;
     }
-    
-    /**********************
-     * CHARACTER FACTORY (PLAYER)
-     **********************/
+
+    // --- Character Factory (Player) ---
     function createCharacter(x, y) {
       const char = { hp: 100, alive: true, spawn: { x, y }, heldObject: null };
       const size = 20;
       const torsoOptions = { friction: 6.0, frictionAir: 0.11, restitution: 0 };
       const defaultOptions = { friction: 0.5, frictionAir: 0.01, restitution: 0 };
-    
+
       const hpContainer = document.createElement("div");
       hpContainer.className = "hp-bar-container";
       const hpBar = document.createElement("div");
@@ -523,7 +495,7 @@
       game.appendChild(hpContainer);
       char.hpContainer = hpContainer;
       char.hpBar = hpBar;
-    
+
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
@@ -538,30 +510,30 @@
         }
         return body;
       }
-    
-      const head = Bodies.circle(x, y - 40, size/2, defaultOptions);
+
+      const head = Bodies.circle(x, y - 40, size / 2, defaultOptions);
       addPart(head, "player-part head", size, size);
       const torso = Bodies.circle(x, y - 20, size, torsoOptions);
-      addPart(torso, "player-part torso", size*2, size*2);
-      const rightUpperArm = Bodies.circle(x + 30, y - 20, size/2, defaultOptions);
+      addPart(torso, "player-part torso", size * 2, size * 2);
+      const rightUpperArm = Bodies.circle(x + 30, y - 20, size / 2, defaultOptions);
       addPart(rightUpperArm, "player-part arm", size, size);
-      const rightHand = Bodies.circle(x + 30, y, size/2, defaultOptions);
+      const rightHand = Bodies.circle(x + 30, y, size / 2, defaultOptions);
       addPart(rightHand, "player-part hand", size, size);
-      const leftUpperArm = Bodies.circle(x - 30, y - 20, size/2, defaultOptions);
+      const leftUpperArm = Bodies.circle(x - 30, y - 20, size / 2, defaultOptions);
       addPart(leftUpperArm, "player-part arm", size, size);
-      const leftHand = Bodies.circle(x - 30, y, size/2, defaultOptions);
+      const leftHand = Bodies.circle(x - 30, y, size / 2, defaultOptions);
       addPart(leftHand, "player-part hand", size, size);
-      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size/2, defaultOptions);
+      const rightUpperLeg = Bodies.circle(x + 10, y + 10, size / 2, defaultOptions);
       addPart(rightUpperLeg, "player-part leg", size, size);
-      const rightFoot = Bodies.circle(x + 10, y + 30, size/2, defaultOptions);
+      const rightFoot = Bodies.circle(x + 10, y + 30, size / 2, defaultOptions);
       addPart(rightFoot, "player-part foot", size, size);
-      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size/2, defaultOptions);
+      const leftUpperLeg = Bodies.circle(x - 10, y + 10, size / 2, defaultOptions);
       addPart(leftUpperLeg, "player-part leg", size, size);
-      const leftFoot = Bodies.circle(x - 10, y + 30, size/2, defaultOptions);
+      const leftFoot = Bodies.circle(x - 10, y + 30, size / 2, defaultOptions);
       addPart(leftFoot, "player-part foot", size, size);
-    
+
       World.add(world, [head, torso, rightUpperArm, rightHand, leftUpperArm, leftHand, rightUpperLeg, rightFoot, leftUpperLeg, leftFoot]);
-    
+
       function link(a, b, offA, offB) {
         const con = Constraint.create({
           bodyA: a, pointA: offA, bodyB: b, pointB: offB,
@@ -578,21 +550,23 @@
       link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
       link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-    
-      char.head = head;
+
+      char.head = head; 
       char.torso = torso;
-      char.rightUpperArm = rightUpperArm; char.rightHand = rightHand;
-      char.leftUpperArm = leftUpperArm; char.leftHand = leftHand;
-      char.rightUpperLeg = rightUpperLeg; char.rightFoot = rightFoot;
-      char.leftUpperLeg = leftUpperLeg; char.leftFoot = leftFoot;
-    
+      char.rightUpperArm = rightUpperArm; 
+      char.rightHand = rightHand;
+      char.leftUpperArm = leftUpperArm; 
+      char.leftHand = leftHand;
+      char.rightUpperLeg = rightUpperLeg; 
+      char.rightFoot = rightFoot;
+      char.leftUpperLeg = leftUpperLeg; 
+      char.leftFoot = leftFoot;
+
       return char;
     }
     const playerChar = createCharacter(100, 100);
-    
-    /**********************
-     * ENEMY & BULLET LOGIC
-     **********************/
+
+    // --- Enhanced Enemy Implementation with Platformer AI & Knockback ---
     function createEnemy(x, y) {
       let enemy = {
         hp: 50,
@@ -603,7 +577,7 @@
       enemy.body = Bodies.circle(x, y, 20, { friction: 0.5, frictionAir: 0.05, restitution: 0.1, label: "enemy" });
       createDomElement(enemy.body, "enemy", 40, 40);
       World.add(world, enemy.body);
-    
+
       enemy.update = function() {
         const dx = playerChar.torso.position.x - enemy.body.position.x;
         const dy = playerChar.torso.position.y - enemy.body.position.y;
@@ -612,6 +586,7 @@
         const chaseThreshold = 400;
         const verticalThreshold = 50;
         enemy.state = (horizontalDistance < chaseThreshold && verticalDistance < verticalThreshold) ? "chase" : "patrol";
+        
         if (enemy.state === "chase") {
           const chaseForce = 0.001;
           const forceDirection = dx > 0 ? 1 : -1;
@@ -622,8 +597,8 @@
         } else {
           const patrolForce = 0.0005;
           Body.applyForce(enemy.body, enemy.body.position, { x: enemy.direction * patrolForce, y: 0 });
-          if (enemy.body.position.x < 50) enemy.direction = 1;
-          else if (enemy.body.position.x > levelWidth - 50) enemy.direction = -1;
+          if (enemy.body.position.x < 50) { enemy.direction = 1; }
+          else if (enemy.body.position.x > levelWidth - 50) { enemy.direction = -1; }
         }
       };
       enemies.push(enemy);
@@ -631,19 +606,21 @@
     }
     // Spawn an enemy for testing
     createEnemy(500, 100);
-    
-    // --- Player Grab-Throw Function ---
+
+    // --- Player Grab-Throw Function (Using Facing Direction) ---
     function playerShoot() {
       if (playerChar.heldObject) {
         let obj = playerChar.heldObject;
         let dx = 0, dy = 0;
         const aimMag = Math.hypot(joystickAim.x, joystickAim.y);
-        if (aimMag > 0.1) { dx = joystickAim.x; dy = joystickAim.y; }
-        else {
+        if (aimMag > 0.1) {
+          dx = joystickAim.x;
+          dy = joystickAim.y;
+        } else {
           if (keys["ArrowUp"])    dy = -1;
-          if (keys["ArrowDown"])  dy = 1;
+          if (keys["ArrowDown"])  dy =  1;
           if (keys["ArrowLeft"])  dx = -1;
-          if (keys["ArrowRight"]) dx = 1;
+          if (keys["ArrowRight"]) dx =  1;
           if (dx === 0 && dy === 0) dx = (playerFacing === "left") ? -1 : 1;
           let mag = Math.hypot(dx, dy);
           dx /= mag; dy /= mag;
@@ -657,14 +634,21 @@
         const grabRange = 80;
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         let bodies = Composite.allBodies(world);
-        let candidate = null, candidateDist = Infinity;
+        let candidate = null;
+        let candidateDist = Infinity;
         for (let i = 0; i < bodies.length; i++) {
           let body = bodies[i];
-          if (body.isStatic || body.character || body.label === "bullet" || body.label === "leftGoal" || body.label === "rightGoal")
-            continue;
-          let dx = body.position.x - handPos.x, dy = body.position.y - handPos.y;
+          if (body.isStatic) continue;
+          if (body.character) continue;
+          if (body.label === "bullet") continue;
+          if (body.label === "leftGoal" || body.label === "rightGoal") continue;
+          let dx = body.position.x - handPos.x;
+          let dy = body.position.y - handPos.y;
           let dist = Math.hypot(dx, dy);
-          if (dist < grabRange && dist < candidateDist) { candidate = body; candidateDist = dist; }
+          if (dist < grabRange && dist < candidateDist) {
+            candidate = body;
+            candidateDist = dist;
+          }
         }
         if (candidate) {
           playerChar.heldObject = candidate;
@@ -673,19 +657,22 @@
         }
       }
     }
-    
+
+    // --- Update: Snap held object to the hand based on playerFacing ---
     function updateHeldObject() {
       if (playerChar.heldObject) {
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         Body.setPosition(playerChar.heldObject, handPos);
       }
     }
-    
+
+    // --- Update playerFacing based on input ---
     function updatePlayerFacing() {
-      if (keys["ArrowLeft"]) playerFacing = "left";
-      else if (keys["ArrowRight"]) playerFacing = "right";
+      if (keys["ArrowLeft"]) { playerFacing = "left"; }
+      else if (keys["ArrowRight"]) { playerFacing = "right"; }
     }
-    
+
+    // --- Goal Effects: Screen Flash, Shake & "GOAL!" Text Animation ---
     function triggerGoalEffect() {
       let flash = document.getElementById("flashOverlay");
       if (!flash) {
@@ -703,12 +690,12 @@
       flash.classList.remove("flash");
       void flash.offsetWidth;
       flash.classList.add("flash");
-    
+
       let screenEl = document.getElementById("screen");
       screenEl.classList.remove("shake");
       void screenEl.offsetWidth;
       screenEl.classList.add("shake");
-    
+
       let goalText = document.createElement("div");
       goalText.id = "goalText";
       goalText.innerText = "GOAL!";
@@ -724,12 +711,10 @@
       goalText.style.pointerEvents = "none";
       game.appendChild(goalText);
       goalText.classList.add("goalTextAnimation");
-      setTimeout(() => { if (goalText.parentNode) goalText.parentNode.removeChild(goalText); }, 1000);
+      setTimeout(() => { if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); } }, 1000);
     }
-    
-    /**********************
-     * COLLISION & DAMAGE HANDLERS
-     **********************/
+
+    // --- Knockback & Damage: Bullet & Melee Collision Updates ---
     const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
@@ -737,8 +722,7 @@
         if (pair.bodyA.label === "bullet") { bullet = pair.bodyA; target = pair.bodyB; }
         else if (pair.bodyB.label === "bullet") { bullet = pair.bodyB; target = pair.bodyA; }
         if (!bullet || !target) return;
-        // Include tv in the destructible list.
-        const destructibleLabels = ["tv", "platform", "wall", "wallChunk", "enemy"];
+        const destructibleLabels = ["platform", "wall", "wallChunk", "enemy"];
         if (destructibleLabels.includes(target.label)) {
           damageDestructible(target, bulletDamage);
           if (target.label === "enemy") {
@@ -753,11 +737,10 @@
           damageDestructible(target, bulletDamage);
         }
         World.remove(world, bullet);
-        if (bullet.domElement && bullet.domElement.parentNode)
-          bullet.domElement.parentNode.removeChild(bullet.domElement);
+        if (bullet.domElement && bullet.domElement.parentNode) { bullet.domElement.parentNode.removeChild(bullet.domElement); }
       });
     });
-    
+
     function meleeAttack() {
       let inputDir = { x: 0, y: 0 };
       if (keys["ArrowLeft"]) inputDir.x -= 1;
@@ -798,8 +781,7 @@
       setTimeout(() => {
         const attackPos = attackHand.position;
         const meleeRange = 60, damageAmount = 30;
-        // Damage platforms, walls, and TVs (TVs are stored separately)
-        [platforms, tvs, walls].forEach(arr => {
+        [platforms, walls].forEach(arr => {
           arr.forEach(obj => {
             const dx = attackPos.x - obj.position.x;
             const dy = attackPos.y - obj.position.y;
@@ -823,7 +805,7 @@
         });
       }, 100);
     }
-    
+
     // High-Speed Enemy Collisions: Extra damage when an enemy moving fast collides with a destructible object.
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
@@ -836,16 +818,17 @@
         }
       });
     });
-    
-    // --- Goal Scoring Logic with Enemy Respawn ---
+
+    // --- Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
     function updateScoreboard() {
       document.getElementById("leftScore").textContent = leftScore;
       document.getElementById("rightScore").textContent = rightScore;
     }
     function removeEnemy(enemyBody) {
       World.remove(world, enemyBody);
-      if (enemyBody.domElement && enemyBody.domElement.parentNode)
+      if (enemyBody.domElement && enemyBody.domElement.parentNode) {
         enemyBody.domElement.parentNode.removeChild(enemyBody.domElement);
+      }
       enemies = enemies.filter(e => e.body !== enemyBody);
     }
     Events.on(engine, "collisionStart", function(event) {
@@ -877,7 +860,8 @@
         }
       });
     });
-    
+
+    // --- Screen Flash, Shake & GOAL! Text Effect ---
     function triggerGoalEffect() {
       let flash = document.getElementById("flashOverlay");
       if (!flash) {
@@ -895,12 +879,12 @@
       flash.classList.remove("flash");
       void flash.offsetWidth;
       flash.classList.add("flash");
-    
+
       let screenEl = document.getElementById("screen");
       screenEl.classList.remove("shake");
       void screenEl.offsetWidth;
       screenEl.classList.add("shake");
-    
+
       let goalText = document.createElement("div");
       goalText.id = "goalText";
       goalText.innerText = "GOAL!";
@@ -916,13 +900,13 @@
       goalText.style.pointerEvents = "none";
       game.appendChild(goalText);
       goalText.classList.add("goalTextAnimation");
-      setTimeout(() => { if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); } }, 1000);
+      setTimeout(() => {
+        if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); }
+      }, 1000);
     }
-    
-    /**********************
-     * DESTRUCTIBLE OBJECT HANDLING
-     **********************/
-    // Modified damageDestructible to handle TVs
+
+    // --- Destructible Object Handling ---
+    // Modified breakWall: for walls marked as stalagmite, break into more jagged shards.
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
@@ -931,26 +915,31 @@
         particleBurst(obj.position.x, obj.position.y, "red");
         if (obj.label === "wall") { breakWall(obj); }
         else if (obj.label === "platform") { breakBoulder(obj); }
-        else if (obj.label === "tv") { breakTV(obj); }
         else {
           World.remove(world, obj);
-          if (obj.domElement && obj.domElement.parentNode)
+          if (obj.domElement && obj.domElement.parentNode) {
             obj.domElement.parentNode.removeChild(obj.domElement);
-          if (obj.label === "enemy") {
+          }
+          if (obj.label === "platform") {
+            let idx = platforms.indexOf(obj);
+            if (idx !== -1) platforms.splice(idx, 1);
+          } else if (obj.label === "enemy") {
             let idx = enemies.findIndex(e => e.body === obj);
             if (idx !== -1) enemies.splice(idx, 1);
           }
         }
       }
     }
-    
     function breakWall(wall) {
       World.remove(world, wall);
-      if (wall.domElement && wall.domElement.parentNode)
+      if (wall.domElement && wall.domElement.parentNode) {
         wall.domElement.parentNode.removeChild(wall.domElement);
+      }
       let idx = walls.indexOf(wall);
       if (idx !== -1) walls.splice(idx, 1);
+      // Check if this wall is a stalagmite based on its DOM class.
       const isStalagmite = wall.domElement.classList.contains("stalagmite");
+      // Use a finer grid for stalagmites to create more, smaller shards.
       const cols = isStalagmite ? 3 : 2;
       const rows = isStalagmite ? 3 : 2;
       const chunkWidth = wall.width / cols;
@@ -968,6 +957,7 @@
           el.style.height = chunkHeight + "px";
           el.style.left = cx + "px";
           el.style.top = cy + "px";
+          // If this wall is a stalagmite, adjust the shard styling to look jagged.
           if (isStalagmite) {
             el.style.borderRadius = "0";
             el.style.clipPath = "polygon(0% 20%, 30% 0%, 70% 10%, 100% 20%, 80% 100%, 50% 80%, 20% 100%)";
@@ -978,11 +968,11 @@
         }
       }
     }
-    
     function breakBoulder(boulder) {
       World.remove(world, boulder);
-      if (boulder.domElement && boulder.domElement.parentNode)
+      if (boulder.domElement && boulder.domElement.parentNode) {
         boulder.domElement.parentNode.removeChild(boulder.domElement);
+      }
       let idx = platforms.indexOf(boulder);
       if (idx !== -1) platforms.splice(idx, 1);
       const cols = 3, rows = 3;
@@ -1007,43 +997,71 @@
         }
       }
     }
-    
-    function breakTV(tv) {
-      World.remove(world, tv);
-      if (tv.domElement && tv.domElement.parentNode)
-        tv.domElement.parentNode.removeChild(tv.domElement);
-      const idx = tvs.indexOf(tv);
-      if (idx !== -1) tvs.splice(idx, 1);
-      // Spawn coins at the TV's location.
-      spawnCoins(tv.position.x, tv.position.y);
-    }
-    
-    function spawnCoins(x, y) {
-      for (let i = 0; i < 3; i++) {
-        const coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
-        coin.value = 1;
-        World.add(world, coin);
-        const el = document.createElement("div");
-        el.className = "coin";
-        el.textContent = "$";
-        el.style.width = "20px";
-        el.style.height = "20px";
-        el.style.lineHeight = "20px";
-        el.style.fontSize = "14px";
-        el.style.textAlign = "center";
-        el.style.borderRadius = "50%";
-        el.style.boxShadow = "0 0 20px 10px rgba(255,255,200,0.9)";
-        el.style.background = "gold";
-        el.style.color = "black";
-        game.appendChild(el);
-        coin.domElement = el;
-        coins.push(coin);
-        const angle = Math.random() * 2 * Math.PI;
-        const speed = Math.random() * 5 + 2;
-        Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
-      }
-    }
-    
+    // Create a TV (destructible object) instead of a platform
+function createTV(x, y, width, height) {
+  const options = { isStatic: true, label: "tv", density: 0.01 };
+  const tv = Bodies.rectangle(x + width / 2, y + height / 2, width, height, options);
+  tv.width = width;
+  tv.height = height;
+  tv.hp = 30; // Set TV HP (adjust as needed)
+  World.add(world, tv);
+  const el = document.createElement("div");
+  el.className = "tv";
+  el.style.width = width + "px";
+  el.style.height = height + "px";
+  el.style.left = (x + width / 2) + "px";
+  el.style.top = (y + height / 2) + "px";
+  game.appendChild(el);
+  tv.domElement = el;
+  // (Optional) Add tv to your tvs array if used in your logic:
+  tvs.push(tv);
+  return tv;
+}
+
+// When a TV is destroyed, remove it and spawn coins at its location.
+function breakTV(tv) {
+  World.remove(world, tv);
+  if (tv.domElement && tv.domElement.parentNode) {
+    tv.domElement.parentNode.removeChild(tv.domElement);
+  }
+  // Remove from your tvs array if needed.
+  const idx = tvs.indexOf(tv);
+  if (idx !== -1) {
+    tvs.splice(idx, 1);
+  }
+  // Spawn coins at the TV's position.
+  spawnCoins(tv.position.x, tv.position.y);
+}
+
+// Spawn coins as dynamic bodies with a bright glow effect.
+function spawnCoins(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
+    coin.value = 1;
+    World.add(world, coin);
+    const el = document.createElement("div");
+    el.className = "coin";
+    el.textContent = "$";
+    el.style.width = "20px";
+    el.style.height = "20px";
+    el.style.lineHeight = "20px";
+    el.style.fontSize = "14px";
+    el.style.textAlign = "center";
+    el.style.borderRadius = "50%";
+    // Bright glow effect via box-shadow:
+    el.style.boxShadow = "0 0 20px 10px rgba(255,255,200,0.9)";
+    el.style.background = "gold";
+    el.style.color = "black";
+    game.appendChild(el);
+    coin.domElement = el;
+    coins.push(coin);
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = Math.random() * 5 + 2;
+    Body.setVelocity(coin, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
+  }
+}
+
+    // --- Particle Burst Effect ---
     function particleBurst(x, y, color) {
       const numParticles = 20;
       for (let i = 0; i < numParticles; i++) {
@@ -1074,29 +1092,13 @@
         setTimeout(() => { if (particle.parentNode) particle.parentNode.removeChild(particle); }, 1200);
       }
     }
-    
-    /**********************
-     * COIN COLLECTION
-     **********************/
-    Events.on(engine, "collisionStart", function(event) {
-      event.pairs.forEach(pair => {
-        if ((pair.bodyA.label === "coin" && pair.bodyB.character) ||
-            (pair.bodyB.label === "coin" && pair.bodyA.character)) {
-          let coinBody = (pair.bodyA.label === "coin") ? pair.bodyA : pair.bodyB;
-          World.remove(world, coinBody);
-          if (coinBody.domElement && coinBody.domElement.parentNode)
-            coinBody.domElement.parentNode.removeChild(coinBody.domElement);
-          let idx = coins.indexOf(coinBody);
-          if (idx !== -1) coins.splice(idx, 1);
-          coinCount++;
-          console.log("Coins collected: " + coinCount);
-        }
-      });
-    });
-    
-    /**********************
-     * CAMERA & DIMENSION HANDLING
-     **********************/
+
+    // --- Input Handling ---
+    let keys = {};
+    window.addEventListener("keydown", (e) => { keys[e.code] = true; });
+    window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+    // --- Camera Follow with Deadzone ---
     let cameraX = 0, cameraY = 0;
     function updateCamera() {
       const screenWidth = window.innerWidth;
@@ -1105,27 +1107,26 @@
       const deadzoneY = screenHeight * 0.25;
       let playerScreenX = playerChar.torso.position.x - cameraX;
       let playerScreenY = playerChar.torso.position.y - cameraY;
-      if (playerScreenX < deadzoneX)
-        cameraX = playerChar.torso.position.x - deadzoneX;
-      else if (playerScreenX > screenWidth - deadzoneX)
-        cameraX = playerChar.torso.position.x - (screenWidth - deadzoneX);
-      if (playerScreenY < deadzoneY)
-        cameraY = playerChar.torso.position.y - deadzoneY;
-      else if (playerScreenY > screenHeight - deadzoneY)
-        cameraY = playerChar.torso.position.y - (screenHeight - deadzoneY);
+      if (playerScreenX < deadzoneX) { cameraX = playerChar.torso.position.x - deadzoneX; }
+      else if (playerScreenX > screenWidth - deadzoneX) { cameraX = playerChar.torso.position.x - (screenWidth - deadzoneX); }
+      if (playerScreenY < deadzoneY) { cameraY = playerChar.torso.position.y - deadzoneY; }
+      else if (playerScreenY > screenHeight - deadzoneY) { cameraY = playerChar.torso.position.y - (screenHeight - deadzoneY); }
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth));
       cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight));
       game.style.transformOrigin = "top left";
       game.style.transform = `translate(-${cameraX}px, -${cameraY}px)`;
       document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
-    
+
+    // --- Auto Size Controls: Adjust #controls height based on ground position ---
     function updateControlsSize() {
       const groundRect = groundEl.getBoundingClientRect();
       const availableSpace = window.innerHeight - groundRect.bottom;
       const controls = document.getElementById("controls");
       controls.style.height = availableSpace + "px";
     }
+
+    // --- Update Game Dimensions: Recalculate game height and ground position ---
     function updateGameDimensions() {
       gameHeight = getViewportHeight();
       playAreaHeight = getViewportHeight() - 100;
@@ -1138,15 +1139,13 @@
     });
     updateGameDimensions();
     updateControlsSize();
-    
-    /**********************
-     * MAIN GAME LOOP
-     **********************/
+
+    // --- Main Game Loop ---
     let walkCycle = 0, lastTime = Date.now();
     function update() {
       Engine.update(engine, 1000/60);
       updatePlayerFacing();
-      // Update positions for all DOM-bound bodies
+      // Update DOM positions for physics bodies
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
@@ -1168,7 +1167,12 @@
           enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
-      if (playerChar.heldObject) updateHeldObject();
+      // If holding an object, snap it to the hand based on playerFacing.
+      if (playerChar.heldObject) {
+        let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
+        Body.setPosition(playerChar.heldObject, handPos);
+      }
+      // Player movement
       if (keys["ArrowLeft"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 }); }
       if (keys["ArrowRight"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: 0.01, y: 0 }); }
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
@@ -1181,7 +1185,7 @@
         if (aimMag > 0.1) { Body.setVelocity(playerChar.torso, { x: joystickAim.x * jumpStrength, y: joystickAim.y * jumpStrength }); }
         else { Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength }); }
       }
-      // Keep head relative to torso
+      // Keep head positioned relative to torso
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       (function clampWithinBounds(character) {
@@ -1221,10 +1225,8 @@
       requestAnimationFrame(update);
     }
     update();
-    
-    /**********************
-     * JOYSTICK & TOUCH INPUT
-     **********************/
+
+    // --- Joystick Functionality ---
     (function() {
       const joystick = document.getElementById("joystick");
       let startX, startY;
@@ -1262,10 +1264,8 @@
       joystick.addEventListener("touchend", (e) => { dragging = false; snapBack(); e.preventDefault(); });
       joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
-    
-    /**********************
-     * TOUCH & BUTTON MAPPINGS
-     **********************/
+
+    // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
     dpad.querySelector(".up").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
@@ -1275,20 +1275,21 @@
     dpad.querySelector(".left").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowLeft"] = false; });
     dpad.querySelector(".right").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
     dpad.querySelector(".right").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
-    
     const abButtons = document.getElementById("ab-buttons");
     abButtons.querySelector(".A").addEventListener("touchstart", (e) => { e.preventDefault(); playerShoot(); });
     abButtons.querySelector(".B").addEventListener("touchstart", (e) => { e.preventDefault(); keys["Space"] = true; });
     abButtons.querySelector(".B").addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
     abButtons.querySelector(".C").addEventListener("touchstart", (e) => { e.preventDefault(); meleeAttack(); });
     abButtons.querySelector(".C").addEventListener("mousedown", (e) => { e.preventDefault(); meleeAttack(); });
-    
+  
     window.addEventListener("load", () => {
       window.scrollTo(0, document.body.scrollHeight);
     });
     window.addEventListener("scroll", () => {
       const maxScroll = document.body.scrollHeight - window.innerHeight;
-      if (window.scrollY < maxScroll) window.scrollTo(0, maxScroll);
+      if (window.scrollY < maxScroll) {
+        window.scrollTo(0, maxScroll);
+      }
     });
   </script>
 </body>
