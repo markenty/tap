@@ -181,16 +181,15 @@
 .player-part::after {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;  /* adjust if needed */
-  height: 20px; /* adjust if needed */
+  top: 0;         /* Start at the top edge */
+  left: 0;        /* Start at the left edge */
+  width: 100%;    /* Cover the entire width */
+  height: 100%;   /* Cover the entire height */
   background: url('overlay.gif') center/cover no-repeat;
   pointer-events: none;
   z-index: 10;
-  /* Center the overlay and apply inverse rotation */
-  animation: spinReverse 2s linear infinite;
   transform-origin: center;
+  animation: spinReverse 2s linear infinite;
 }
 
 
