@@ -210,6 +210,33 @@
       background: rgba(0, 0, 255, 0.3);
       border: 2px dashed #00f;
     }
+    /* New Flash Overlay and Shake styles */
+    @keyframes flashAnimation {
+      0% { background-color: rgba(255,255,255,0.8); }
+      100% { background-color: rgba(255,255,255,0); }
+    }
+    .flash {
+      animation: flashAnimation 0.5s ease-out;
+    }
+    @keyframes shakeAnimation {
+      0% { transform: translate(0px, 0px); }
+      20% { transform: translate(-5px, 5px); }
+      40% { transform: translate(-5px, -5px); }
+      60% { transform: translate(5px, 5px); }
+      80% { transform: translate(5px, -5px); }
+      100% { transform: translate(0px, 0px); }
+    }
+    .shake {
+      animation: shakeAnimation 0.5s ease;
+    }
+    @keyframes goalTextAnimationKeyframes {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(5deg); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+    }
+    .goalTextAnimation {
+      animation: goalTextAnimationKeyframes 1s ease;
+    }
   </style>
 </head>
 <body>
@@ -239,6 +266,7 @@
     </div>
   </div>
 
+  <!-- Additional overlay for flash (created dynamically) -->
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
@@ -272,6 +300,7 @@
     // Create ground element
     const groundEl = document.createElement("div");
     groundEl.id = "ground";
+    // Adjust the top position so the visual ground aligns with the physics ground's top edge.
     groundEl.style.top = (playAreaHeight - 20) + "px";
     groundEl.style.width = levelWidth + "px";
     groundEl.style.height = groundExtraHeight + "px";
@@ -305,7 +334,7 @@
       platform.domElement = el;
       platforms.push(platform);
     }
-    // Remove TVs loop entirely.
+    // No TVs loop.
     function createWall(x, y, width, height) {
       const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
@@ -323,7 +352,7 @@
       walls.push(wall);
     }
 
-    // Reduced spawn counts for testing: Only 2 platforms, and 1 wall.
+    // Reduced spawn counts: Only 2 platforms and 1 wall.
     for (let i = 0; i < 2; i++) {
       const width = Math.floor(Math.random() * 101) + 150;
       const x = Math.random() * (levelWidth - width);
@@ -585,6 +614,54 @@
       else if (keys["ArrowRight"]) { playerFacing = "right"; }
     }
 
+    // --- Goal Effects: Screen Flash, Shake & "GOAL!" Text Animation ---
+    function triggerGoalEffect() {
+      // Create or reuse a flash overlay
+      let flash = document.getElementById("flashOverlay");
+      if (!flash) {
+        flash = document.createElement("div");
+        flash.id = "flashOverlay";
+        flash.style.position = "absolute";
+        flash.style.top = 0;
+        flash.style.left = 0;
+        flash.style.width = "100%";
+        flash.style.height = "100%";
+        flash.style.zIndex = 50;
+        flash.style.pointerEvents = "none";
+        game.appendChild(flash);
+      }
+      flash.classList.remove("flash");
+      void flash.offsetWidth; // trigger reflow
+      flash.classList.add("flash");
+
+      // Apply screen shake to the #screen element
+      let screenEl = document.getElementById("screen");
+      screenEl.classList.remove("shake");
+      void screenEl.offsetWidth;
+      screenEl.classList.add("shake");
+
+      // Create and display goal text
+      let goalText = document.createElement("div");
+      goalText.id = "goalText";
+      goalText.innerText = "GOAL!";
+      goalText.style.position = "absolute";
+      goalText.style.top = "50%";
+      goalText.style.left = "50%";
+      goalText.style.transform = "translate(-50%, -50%)";
+      goalText.style.fontSize = "72px";
+      goalText.style.fontWeight = "bold";
+      goalText.style.fontFamily = '"Impact", "Arial Black", sans-serif';
+      goalText.style.color = "white";
+      goalText.style.zIndex = 60;
+      goalText.style.pointerEvents = "none";
+      game.appendChild(goalText);
+      goalText.classList.add("goalTextAnimation");
+      // Remove the goal text after 1 second.
+      setTimeout(() => {
+        if (goalText.parentNode) goalText.parentNode.removeChild(goalText);
+      }, 1000);
+    }
+
     // --- Knockback & Damage: Bullet & Melee Collision Updates ---
     const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
@@ -594,7 +671,7 @@
         else if (pair.bodyB.label === "bullet") { bullet = pair.bodyB; target = pair.bodyA; }
         if (!bullet || !target) return;
         if (target.character && target.character === bullet.owner) return;
-        const destructibleLabels = ["platform", "tv", "wall", "wallChunk", "enemy"];
+        const destructibleLabels = ["platform", "wall", "wallChunk", "enemy"];
         if (destructibleLabels.includes(target.label)) {
           damageDestructible(target, bulletDamage);
           if (target.label === "enemy") {
@@ -607,9 +684,6 @@
           }
         } else if (target.character && target.character !== bullet.owner) {
           damageDestructible(target, bulletDamage);
-        } else if (target.label === "coin") {
-          World.remove(world, target);
-          if (target.domElement && target.domElement.parentNode) { target.domElement.parentNode.removeChild(target.domElement); }
         }
         World.remove(world, bullet);
         if (bullet.domElement && bullet.domElement.parentNode) { bullet.domElement.parentNode.removeChild(bullet.domElement); }
@@ -656,7 +730,7 @@
       setTimeout(() => {
         const attackPos = attackHand.position;
         const meleeRange = 60, damageAmount = 30;
-        [platforms, tvs, walls].forEach(arr => {
+        [platforms, walls].forEach(arr => {
           arr.forEach(obj => {
             const dx = attackPos.x - obj.position.x;
             const dy = attackPos.y - obj.position.y;
@@ -687,14 +761,14 @@
         let enemyBody = null, other = null;
         if (pair.bodyA.label === "enemy") { enemyBody = pair.bodyA; other = pair.bodyB; }
         else if (pair.bodyB.label === "enemy") { enemyBody = pair.bodyB; other = pair.bodyA; }
-        if (enemyBody && other && ["platform", "tv", "wall", "wallChunk"].includes(other.label)) {
+        if (enemyBody && other && ["platform", "wall", "wallChunk"].includes(other.label)) {
           const speed = Math.hypot(enemyBody.velocity.x, enemyBody.velocity.y);
           if (speed > 10) { damageDestructible(other, 20); }
         }
       });
     });
 
-    // --- New: Goal Scoring Logic with Enemy Respawn ---
+    // --- New: Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
     function updateScoreboard() {
       document.getElementById("leftScore").textContent = leftScore;
       document.getElementById("rightScore").textContent = rightScore;
@@ -712,27 +786,78 @@
           leftScore++;
           removeEnemy(pair.bodyB);
           updateScoreboard();
+          triggerGoalEffect();
           setTimeout(() => { createEnemy(500, 100); }, 2000);
         } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
           leftScore++;
           removeEnemy(pair.bodyA);
           updateScoreboard();
+          triggerGoalEffect();
           setTimeout(() => { createEnemy(500, 100); }, 2000);
         } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
           rightScore++;
           removeEnemy(pair.bodyB);
           updateScoreboard();
+          triggerGoalEffect();
           setTimeout(() => { createEnemy(500, 100); }, 2000);
         } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
           rightScore++;
           removeEnemy(pair.bodyA);
           updateScoreboard();
+          triggerGoalEffect();
           setTimeout(() => { createEnemy(500, 100); }, 2000);
         }
       });
     });
 
-    // Destructible Object Damage Handling
+    // --- New: Screen Flash, Shake & GOAL! Text Effect ---
+    function triggerGoalEffect() {
+      // Flash overlay
+      let flash = document.getElementById("flashOverlay");
+      if (!flash) {
+        flash = document.createElement("div");
+        flash.id = "flashOverlay";
+        flash.style.position = "absolute";
+        flash.style.top = "0";
+        flash.style.left = "0";
+        flash.style.width = "100%";
+        flash.style.height = "100%";
+        flash.style.zIndex = "50";
+        flash.style.pointerEvents = "none";
+        game.appendChild(flash);
+      }
+      flash.classList.remove("flash");
+      void flash.offsetWidth;
+      flash.classList.add("flash");
+
+      // Screen shake on the screen container
+      let screenEl = document.getElementById("screen");
+      screenEl.classList.remove("shake");
+      void screenEl.offsetWidth;
+      screenEl.classList.add("shake");
+
+      // GOAL text overlay
+      let goalText = document.createElement("div");
+      goalText.id = "goalText";
+      goalText.innerText = "GOAL!";
+      goalText.style.position = "absolute";
+      goalText.style.top = "50%";
+      goalText.style.left = "50%";
+      goalText.style.transform = "translate(-50%, -50%)";
+      goalText.style.fontSize = "72px";
+      goalText.style.fontWeight = "bold";
+      goalText.style.fontFamily = '"Impact", "Arial Black", sans-serif';
+      goalText.style.color = "white";
+      goalText.style.zIndex = "60";
+      goalText.style.pointerEvents = "none";
+      game.appendChild(goalText);
+      goalText.classList.add("goalTextAnimation");
+      setTimeout(() => {
+        if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); }
+      }, 1000);
+    }
+
+    // --- Knockback & Damage: Destructible Object Handling ---
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
@@ -748,11 +873,6 @@
           if (obj.label === "platform") {
             let idx = platforms.indexOf(obj);
             if (idx !== -1) platforms.splice(idx, 1);
-          } else if (obj.label === "tv") {
-            // Should not be present.
-            let idx = tvs.indexOf(obj);
-            if (idx !== -1) tvs.splice(idx, 1);
-            spawnCoins(obj.position.x, obj.position.y);
           } else if (obj.label === "enemy") {
             let idx = enemies.findIndex(e => e.body === obj);
             if (idx !== -1) enemies.splice(idx, 1);
@@ -958,7 +1078,6 @@
         character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar);
-      updateHeldObject();
       updateCamera();
       requestAnimationFrame(update);
     }
