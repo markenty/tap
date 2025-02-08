@@ -332,10 +332,13 @@
        Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
        A random slope between 0.3 and 0.7 produces a random top width.
        The DOM element is styled with the ground color and a clip-path.
+       <br><br>
+       **Modification:** The platform is now created with isStatic: false (and restitution: 0)
+       so that it falls under gravity. A later collision with the ground sets it static.
     */
     function createPlatform(x, y, width, height) {
       const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
-      const options = { isStatic: true, label: "platform", density: 0.01 };
+      const options = { isStatic: false, label: "platform", density: 0.01, restitution: 0 };
       const boulder = Bodies.trapezoid(x + width/2, y + height/2, width, height, slope, options);
       boulder.width = width;
       boulder.height = height;
@@ -426,7 +429,7 @@
     }
 
     // Static Boundaries & Safety Floor
-    const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
+    const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true, label: "ground" });
     const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightBoundary = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     World.add(world, [groundBody, leftBoundary, rightBoundary]);
@@ -906,7 +909,6 @@
     }
 
     // --- Destructible Object Handling ---
-    // Modified breakWall: for walls marked as stalagmite, break into more jagged shards.
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
@@ -1053,6 +1055,20 @@
         setTimeout(() => { if (particle.parentNode) particle.parentNode.removeChild(particle); }, 1200);
       }
     }
+
+    // --- Ensure Platforms Fall to Ground Level ---
+    // When a dynamic platform collides with the ground, freeze it and snap its position.
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        if ((pair.bodyA.label === "platform" && pair.bodyB.label === "ground") ||
+            (pair.bodyB.label === "platform" && pair.bodyA.label === "ground")) {
+          const platform = pair.bodyA.label === "platform" ? pair.bodyA : pair.bodyB;
+          Body.setStatic(platform, true);
+          // Adjust position so the bottom of the platform aligns with the top of the ground.
+          platform.position.y = playAreaHeight - 20 - platform.height/2;
+        }
+      });
+    });
 
     // --- Input Handling ---
     let keys = {};
