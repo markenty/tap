@@ -247,6 +247,26 @@
     .goalTextAnimation {
       animation: goalTextAnimationKeyframes 1s ease;
     }
+
+    /* --- New TV & Coin Styles --- */
+    .tv {
+      position: absolute;
+      background: #444;
+      border: 2px solid #999;
+      border-radius: 4px;
+    }
+    .coin {
+      position: absolute;
+      background: gold;
+      color: black;
+      border-radius: 50%;
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+      /* Bright glow effect */
+      box-shadow: 0 0 20px 10px rgba(255,255,200,0.9);
+    }
+  
   </style>
 </head>
 <body>
@@ -606,6 +626,9 @@
     }
     // Spawn an enemy for testing
     createEnemy(500, 100);
+
+    // For example, create one TV for testing:
+createTV(200, 300, 150, 60);
 
     // --- Player Grab-Throw Function (Using Facing Direction) ---
     function playerShoot() {
