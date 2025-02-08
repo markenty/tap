@@ -638,59 +638,81 @@ createEnemy(500, 100);
 
     // Melee Attack (Whip Physics)
     function meleeAttack() {
-      let inputDir = { x: 0, y: 0 };
-      if (keys["ArrowLeft"]) inputDir.x -= 1;
-      if (keys["ArrowRight"]) inputDir.x += 1;
-      if (keys["ArrowUp"]) inputDir.y -= 1;
-      if (keys["ArrowDown"]) inputDir.y += 1;
-      if (inputDir.x === 0 && inputDir.y === 0 && Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
-        inputDir.x = joystickAim.x;
-        inputDir.y = joystickAim.y;
-      }
-      let attackDir = { x: 0, y: 0 };
-      if (inputDir.x || inputDir.y) {
-        const mag = Math.hypot(inputDir.x, inputDir.y);
-        attackDir.x = inputDir.x / mag;
-        attackDir.y = inputDir.y / mag;
-      } else {
-        const onGround = playerChar.torso.position.y >= playAreaHeight - 5;
-        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
-      }
-      const maxWhipDistance = 20;
-      const attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand;
-      const whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
-      const tangent = { x: attackDir.y, y: -attackDir.x };
-      const swingTime = 300, steps = 15;
-      const stepTime = swingTime / steps;
-      let step = 0;
-      const interval = setInterval(() => {
-        const currentDistance = Math.hypot(attackHand.position.x - whipOrigin.x, attackHand.position.y - whipOrigin.y);
-        if (currentDistance < maxWhipDistance) {
-          const amplitude = Math.sin(Math.PI * step / steps);
-          const forceOut = 0.05, forceTangent = 0.05;
-          Body.applyForce(attackHand, attackHand.position, {
-            x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
-            y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+  let inputDir = { x: 0, y: 0 };
+  if (keys["ArrowLeft"]) inputDir.x -= 1;
+  if (keys["ArrowRight"]) inputDir.x += 1;
+  if (keys["ArrowUp"]) inputDir.y -= 1;
+  if (keys["ArrowDown"]) inputDir.y += 1;
+  if (inputDir.x === 0 && inputDir.y === 0 && Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
+    inputDir.x = joystickAim.x;
+    inputDir.y = joystickAim.y;
+  }
+  let attackDir = { x: 0, y: 0 };
+  if (inputDir.x || inputDir.y) {
+    const mag = Math.hypot(inputDir.x, inputDir.y);
+    attackDir.x = inputDir.x / mag;
+    attackDir.y = inputDir.y / mag;
+  } else {
+    const onGround = playerChar.torso.position.y >= playAreaHeight - 5;
+    attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
+  }
+  const maxWhipDistance = 20;
+  const attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand;
+  const whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
+  const tangent = { x: attackDir.y, y: -attackDir.x };
+  const swingTime = 300, steps = 15;
+  const stepTime = swingTime / steps;
+  let step = 0;
+  const interval = setInterval(() => {
+    const currentDistance = Math.hypot(attackHand.position.x - whipOrigin.x, attackHand.position.y - whipOrigin.y);
+    if (currentDistance < maxWhipDistance) {
+      const amplitude = Math.sin(Math.PI * step / steps);
+      const forceOut = 0.05, forceTangent = 0.05;
+      Body.applyForce(attackHand, attackHand.position, {
+        x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+        y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+      });
+    }
+    step++;
+    if (step >= steps) clearInterval(interval);
+  }, stepTime);
+  
+  // After the melee swing, apply damage and knockback to all valid targets.
+  setTimeout(() => {
+    const attackPos = attackHand.position;
+    const meleeRange = 60, damageAmount = 30;
+    
+    // Existing destructible objects
+    [platforms, tvs, walls].forEach(arr => {
+      arr.forEach(obj => {
+        const dx = attackPos.x - obj.position.x;
+        const dy = attackPos.y - obj.position.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist <= meleeRange) {
+          damageDestructible(obj, damageAmount);
+        }
+      });
+    });
+    
+    // Now check against enemies
+    enemies.forEach(enemy => {
+      const dx = attackPos.x - enemy.body.position.x;
+      const dy = attackPos.y - enemy.body.position.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= meleeRange) {
+        damageDestructible(enemy.body, damageAmount);
+        if (dist > 0) {
+          const knockbackForce = 0.05;
+          // Apply knockback away from the attack position.
+          Body.applyForce(enemy.body, enemy.body.position, { 
+            x: (enemy.body.position.x - attackPos.x) / dist * knockbackForce, 
+            y: (enemy.body.position.y - attackPos.y) / dist * knockbackForce 
           });
         }
-        step++;
-        if (step >= steps) clearInterval(interval);
-      }, stepTime);
-      setTimeout(() => {
-        const attackPos = attackHand.position;
-        const meleeRange = 60, damageAmount = 30;
-        [platforms, tvs, walls].forEach(arr => {
-          arr.forEach(obj => {
-            const dx = attackPos.x - obj.position.x;
-            const dy = attackPos.y - obj.position.y;
-            if (Math.hypot(dx, dy) <= meleeRange) {
-              damageDestructible(obj, damageAmount);
-            }
-          });
-        });
-      }, 100);
-    }
-
+      }
+    });
+  }, 100);
+}
     // Bullet Functions
     function shootBullet(x, y, tx, ty, owner) {
       const bullet = Bodies.circle(x, y, 5, { friction: 0, frictionAir: 0.01, label: "bullet" });
@@ -745,35 +767,62 @@ createEnemy(500, 100);
     // Collision Handling for Bullets
     const bulletDamage = 30;
     Events.on(engine, "collisionStart", function(event) {
-      event.pairs.forEach(pair => {
-        let bullet = null, target = null;
-        if (pair.bodyA.label === "bullet") {
-          bullet = pair.bodyA;
-          target = pair.bodyB;
-        } else if (pair.bodyB.label === "bullet") {
-          bullet = pair.bodyB;
-          target = pair.bodyA;
-        }
-        if (!bullet || !target) return;
-        if (target.character && target.character === bullet.owner) return;
-        const destructibleLabels = ["platform", "tv", "wall", "wallChunk", "enemy"];
-        if (destructibleLabels.includes(target.label)) {
-          damageDestructible(target, bulletDamage);
-        } else if (target.character && target.character !== bullet.owner) {
-          damageDestructible(target, bulletDamage);
-        } else if (target.label === "coin") {
-          World.remove(world, target);
-          if (target.domElement && target.domElement.parentNode) {
-            target.domElement.parentNode.removeChild(target.domElement);
-          }
-        }
-        World.remove(world, bullet);
-        if (bullet.domElement && bullet.domElement.parentNode) {
-          bullet.domElement.parentNode.removeChild(bullet.domElement);
-        }
-      });
-    });
-
+  event.pairs.forEach(pair => {
+    let bullet = null, target = null;
+    if (pair.bodyA.label === "bullet") {
+      bullet = pair.bodyA;
+      target = pair.bodyB;
+    } else if (pair.bodyB.label === "bullet") {
+      bullet = pair.bodyB;
+      target = pair.bodyA;
+    }
+    if (!bullet || !target) return;
+    if (target.character && target.character === bullet.owner) return;
+    const destructibleLabels = ["platform", "tv", "wall", "wallChunk", "enemy"];
+    if (destructibleLabels.includes(target.label)) {
+      damageDestructible(target, bulletDamage);
+      
+      // --- Knockback effect for enemy ---
+      if (target.label === "enemy") {
+        let dx = target.position.x - bullet.position.x;
+        let dy = target.position.y - bullet.position.y;
+        let mag = Math.hypot(dx, dy);
+        if (mag > 0) { dx /= mag; dy /= mag; }
+        const knockbackForce = 0.05; // adjust as needed
+        Body.applyForce(target, target.position, { x: dx * knockbackForce, y: dy * knockbackForce });
+      }
+    } else if (target.character && target.character !== bullet.owner) {
+      damageDestructible(target, bulletDamage);
+    } else if (target.label === "coin") {
+      World.remove(world, target);
+      if (target.domElement && target.domElement.parentNode) {
+        target.domElement.parentNode.removeChild(target.domElement);
+      }
+    }
+    World.remove(world, bullet);
+    if (bullet.domElement && bullet.domElement.parentNode) {
+      bullet.domElement.parentNode.removeChild(bullet.domElement);
+    }
+  });
+});
+    Events.on(engine, "collisionStart", function(event) {
+  event.pairs.forEach(pair => {
+    let enemyBody = null, other = null;
+    if (pair.bodyA.label === "enemy") {
+      enemyBody = pair.bodyA;
+      other = pair.bodyB;
+    } else if (pair.bodyB.label === "enemy") {
+      enemyBody = pair.bodyB;
+      other = pair.bodyA;
+    }
+    if (enemyBody && other && (["platform", "tv", "wall", "wallChunk"].includes(other.label))) {
+      const speed = Math.hypot(enemyBody.velocity.x, enemyBody.velocity.y);
+      if (speed > 10) { // threshold for "flying" enemy
+        damageDestructible(other, 20);
+      }
+    }
+  });
+});
     // Destructible World Collisions (High-Speed Contact Damage)
     const destructionSpeedThreshold = 20;
     function isPlayerPart(body) {
