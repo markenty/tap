@@ -671,27 +671,33 @@
       enemies = enemies.filter(e => e.body !== enemyBody);
     }
     // Listen for collisions between enemies and goal sensors
-    Events.on(engine, "collisionStart", function(event) {
-      event.pairs.forEach(pair => {
-        if (pair.bodyA.label === "leftGoal" && pair.bodyB.label === "enemy") {
-          leftScore++;
-          removeEnemy(pair.bodyB);
-          updateScoreboard();
-        } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
-          leftScore++;
-          removeEnemy(pair.bodyA);
-          updateScoreboard();
-        } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
-          rightScore++;
-          removeEnemy(pair.bodyB);
-          updateScoreboard();
-        } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
-          rightScore++;
-          removeEnemy(pair.bodyA);
-          updateScoreboard();
-        }
-      });
-    });
+    // Listen for collisions between enemies and goal sensors, and respawn enemy after scoring
+Events.on(engine, "collisionStart", function(event) {
+  event.pairs.forEach(pair => {
+    if (pair.bodyA.label === "leftGoal" && pair.bodyB.label === "enemy") {
+      leftScore++;
+      removeEnemy(pair.bodyB);
+      updateScoreboard();
+      // Respawn enemy after 2 seconds at a designated spawn point (e.g., 500, 100)
+      setTimeout(() => { createEnemy(500, 100); }, 2000);
+    } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
+      leftScore++;
+      removeEnemy(pair.bodyA);
+      updateScoreboard();
+      setTimeout(() => { createEnemy(500, 100); }, 2000);
+    } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
+      rightScore++;
+      removeEnemy(pair.bodyB);
+      updateScoreboard();
+      setTimeout(() => { createEnemy(500, 100); }, 2000);
+    } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
+      rightScore++;
+      removeEnemy(pair.bodyA);
+      updateScoreboard();
+      setTimeout(() => { createEnemy(500, 100); }, 2000);
+    }
+  });
+});
 
     // Destructible Object Damage Handling
     function damageDestructible(obj, damage) {
