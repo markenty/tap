@@ -2,7 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- The viewport-fit=cover tells supported browsers to use the full display area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <title>Platformer with Goals, Scoring & Dual-Hand Grab-Throw Shooting</title>
   <style>
     /* Reset & Full-Screen Setup */
@@ -293,8 +294,12 @@
 
     // Level dimensions
     const levelWidth = 3000;
-    let gameHeight = window.innerHeight;
-    let playAreaHeight = window.innerHeight - 100;
+    // Use visualViewport.height if available (accounts for dynamic address bar)
+    function getViewportHeight() {
+      return window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    }
+    let gameHeight = getViewportHeight();
+    let playAreaHeight = getViewportHeight() - 100;
     const groundExtraHeight = 100;
     game.style.width = levelWidth + "px";
     game.style.height = gameHeight + "px";
@@ -321,7 +326,7 @@
 
     // Platform & Wall Creation Functions
     function createPlatform(x, y, width, height) {
-      const platform = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "platform" });
+      const platform = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "platform" });
       platform.width = width;
       platform.height = height;
       platform.hp = 50;
@@ -330,14 +335,14 @@
       el.className = "platform";
       el.style.width = width + "px";
       el.style.height = height + "px";
-      el.style.left = (x + width / 2) + "px";
-      el.style.top = (y + height / 2) + "px";
+      el.style.left = (x + width/2) + "px";
+      el.style.top = (y + height/2) + "px";
       game.appendChild(el);
       platform.domElement = el;
       platforms.push(platform);
     }
     function createWall(x, y, width, height) {
-      const wall = Bodies.rectangle(x + width / 2, y + height / 2, width, height, { isStatic: true, label: "wall" });
+      const wall = Bodies.rectangle(x + width/2, y + height/2, width, height, { isStatic: true, label: "wall" });
       wall.width = width;
       wall.height = height;
       wall.hp = 100;
@@ -346,8 +351,8 @@
       el.className = "platform";
       el.style.width = width + "px";
       el.style.height = height + "px";
-      el.style.left = (x + width / 2) + "px";
-      el.style.top = (y + height / 2) + "px";
+      el.style.left = (x + width/2) + "px";
+      el.style.top = (y + height/2) + "px";
       game.appendChild(el);
       wall.domElement = el;
       walls.push(wall);
@@ -375,11 +380,11 @@
     const safetyFloor = Bodies.rectangle(levelWidth / 2, safetyFloorY, levelWidth, 40, { isStatic: true, label: "safetyFloor" });
     World.add(world, safetyFloor);
 
-    // --- New: Create Goal Sensors & Scoreboard ---
+    // --- Create Goal Sensors & Scoreboard ---
     const goalWidth = 20;
     const goalHeight = 200;
-    const leftGoal = Bodies.rectangle(50, playAreaHeight / 2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
-    const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight / 2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
+    const leftGoal = Bodies.rectangle(50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
+    const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
     World.add(world, [leftGoal, rightGoal]);
     function createGoalDom(goalBody, cls) {
       const el = document.createElement("div");
@@ -441,7 +446,7 @@
         createDomElement(body, cls, w, h);
         body.character = char;
         if (cls.indexOf("head") !== -1) {
-          attachTentacleToBody(body, { x: 0, y: size / 2 }, 5, 10, 2);
+          attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
           const eyeLeft = document.createElement("div");
           eyeLeft.className = "eye left";
           const eyeRight = document.createElement("div");
@@ -482,14 +487,14 @@
         });
         World.add(world, con);
       }
-      link(head, torso, { x: 0, y: size / 2 }, { x: 0, y: -size });
+      link(head, torso, { x: 0, y: size/2 }, { x: 0, y: -size });
       link(torso, rightUpperArm, { x: size, y: 0 }, { x: 0, y: 0 });
       link(rightUpperArm, rightHand, { x: 0, y: 0 }, { x: 0, y: -20 });
       link(torso, leftUpperArm, { x: -size, y: 0 }, { x: 0, y: 0 });
       link(leftUpperArm, leftHand, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size / 2 });
+      link(torso, rightUpperLeg, { x: 10, y: size }, { x: 0, y: -size/2 });
       link(rightUpperLeg, rightFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
-      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size / 2 });
+      link(torso, leftUpperLeg, { x: -10, y: size }, { x: 0, y: -size/2 });
       link(leftUpperLeg, leftFoot, { x: 0, y: 0 }, { x: 0, y: -20 });
 
       char.head = head; 
@@ -548,7 +553,7 @@
     // Spawn an enemy for testing
     createEnemy(500, 100);
 
-    // --- New: Player Grab-Throw Function (Using Facing Direction) ---
+    // --- Player Grab-Throw Function (Using Facing Direction) ---
     function playerShoot() {
       if (playerChar.heldObject) {
         let obj = playerChar.heldObject;
@@ -653,7 +658,7 @@
       game.appendChild(goalText);
       goalText.classList.add("goalTextAnimation");
       setTimeout(() => {
-        if (goalText.parentNode) goalText.parentNode.removeChild(goalText);
+        if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); }
       }, 1000);
     }
 
@@ -762,7 +767,7 @@
       });
     });
 
-    // --- New: Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
+    // --- Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
     function updateScoreboard() {
       document.getElementById("leftScore").textContent = leftScore;
       document.getElementById("rightScore").textContent = rightScore;
@@ -804,7 +809,7 @@
       });
     });
 
-    // --- New: Screen Flash, Shake & GOAL! Text Effect ---
+    // --- Screen Flash, Shake & GOAL! Text Effect ---
     function triggerGoalEffect() {
       let flash = document.getElementById("flashOverlay");
       if (!flash) {
@@ -848,7 +853,7 @@
       }, 1000);
     }
 
-    // --- Knockback & Damage: Destructible Object Handling ---
+    // --- Destructible Object Handling ---
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
@@ -883,10 +888,10 @@
       const chunkHeight = wall.height / rows;
       for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
-          const cx = wall.position.x - wall.width / 2 + chunkWidth / 2 + j * chunkWidth;
-          const cy = wall.position.y - wall.height / 2 + chunkHeight / 2 + i * chunkHeight;
+          const cx = wall.position.x - wall.width/2 + chunkWidth/2 + j * chunkWidth;
+          const cy = wall.position.y - wall.height/2 + chunkHeight/2 + i * chunkHeight;
           let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "wallChunk" });
-          Body.setVelocity(chunk, { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 });
+          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
           World.add(world, chunk);
           const el = document.createElement("div");
           el.className = "platform";
@@ -925,7 +930,7 @@
       }
     }
 
-    // Particle Burst Effect
+    // --- Particle Burst Effect ---
     function particleBurst(x, y, color) {
       const numParticles = 20;
       for (let i = 0; i < numParticles; i++) {
@@ -957,18 +962,12 @@
       }
     }
 
-    // Input Handling
+    // --- Input Handling ---
     let keys = {};
     window.addEventListener("keydown", (e) => { keys[e.code] = true; });
     window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // --- Update playerFacing based on input ---
-    function updatePlayerFacing() {
-      if (keys["ArrowLeft"]) { playerFacing = "left"; }
-      else if (keys["ArrowRight"]) { playerFacing = "right"; }
-    }
-
-    // Camera Follow with Deadzone
+    // --- Camera Follow with Deadzone ---
     let cameraX = 0, cameraY = 0;
     function updateCamera() {
       const screenWidth = window.innerWidth;
@@ -998,8 +997,8 @@
 
     // --- Update Game Dimensions: Recalculate game height and ground position ---
     function updateGameDimensions() {
-      gameHeight = window.innerHeight;
-      playAreaHeight = window.innerHeight - 100;
+      gameHeight = getViewportHeight();
+      playAreaHeight = getViewportHeight() - 100;
       game.style.height = gameHeight + "px";
       groundEl.style.top = (playAreaHeight - 20) + "px";
     }
@@ -1010,10 +1009,10 @@
     updateGameDimensions();
     updateControlsSize();
 
-    // Main Game Loop
+    // --- Main Game Loop ---
     let walkCycle = 0, lastTime = Date.now();
     function update() {
-      Engine.update(engine, 1000 / 60);
+      Engine.update(engine, 1000/60);
       updatePlayerFacing();
       // Update DOM positions for physics bodies
       domEntities.forEach(body => {
@@ -1096,7 +1095,7 @@
     }
     update();
 
-    // Joystick Functionality
+    // --- Joystick Functionality ---
     (function() {
       const joystick = document.getElementById("joystick");
       let startX, startY;
@@ -1135,7 +1134,7 @@
       joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
 
-    // Touch & Button Mappings
+    // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
     dpad.querySelector(".up").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
