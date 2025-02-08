@@ -72,6 +72,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      /* Height is set dynamically via JavaScript */
     }
     /* D-Pad */
     #dpad {
@@ -181,24 +182,21 @@
     .boulder {
       position: absolute;
       left:50%;
+      /* backgroundColor and clip-path set inline on creation */
     }
     /* Stalactite & Stalagmite – conical (triangle) shapes */
     .stalactite, .stalagmite {
       position: absolute;
+      /* backgroundColor and clip-path set inline on creation */
     }
-    /* Rock chunks – for stalagmites breaking into shards */
+    /* Rock chunks – broken pieces styled to be ground colored and irregular */
     .rock-chunk {
       position: absolute;
       background: #0d0c29;
       border: 1px solid #0d0c29;
       border-radius: 8px;
+      /* Using a polygon clip-path to give a splintered, irregular appearance */
       clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
-    }
-    /* Particles from crumbling stalactites */
-    .stalactite-particle {
-      position: absolute;
-      background: #0d0c29;
-      pointer-events: none;
     }
     /* Head eyes */
     .head .eye {
@@ -332,11 +330,14 @@
 
     /* --- Boulders (formerly platforms) ---
        Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
+       A random slope between 0.3 and 0.7 produces a random top width.
+       The DOM element is styled with the ground color and a clip-path.
+       <br><br>
        **Modification:** The platform is now created with isStatic: false (and restitution: 0)
-       so that it falls under gravity.
+       so that it falls under gravity. A later collision with the ground will set it to static.
     */
     function createPlatform(x, y, width, height) {
-      const slope = Math.random() * 0.4 + 0.3;
+      const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
       const options = { isStatic: false, label: "platform", density: 0.01, restitution: 0 };
       const boulder = Bodies.trapezoid(x + width/2, y + height/2, width, height, slope, options);
       boulder.width = width;
@@ -349,8 +350,9 @@
       el.style.height = height + "px";
       el.style.left = (x + width/2) + "px";
       el.style.top = (y + height/2) + "px";
+      // Use ground color and a clip-path computed from the slope:
       el.style.backgroundColor = "#0d0c29";
-      const topClipPercent = slope * 50;
+      const topClipPercent = slope * 50; // (slope/2)*100
       el.style.clipPath = `polygon(0% 100%, 100% 100%, ${100 - topClipPercent}% 0%, ${topClipPercent}% 0%)`;
       game.appendChild(el);
       boulder.domElement = el;
@@ -358,7 +360,9 @@
     }
 
     /* --- Conical Walls (stalactites/stalagmites) ---
-       Depending on y, if in upper half a stalactite is built (ceiling) and if in lower half a stalagmite.
+       Depending on y, if in upper half a stalactite is built (base flush with ceiling)
+       and if in lower half a stalagmite is built (base flush with ground).
+       The DOM elements are styled with the ground color and a triangle clip-path.
     */
     function createWall(x, y, width, height) {
       let body, el;
@@ -409,13 +413,15 @@
       return body;
     }
 
-    // Spawn testing objects
+    // Spawn a few objects for testing
+    // Make boulders wider: random width from 200 to 300
     for (let i = 0; i < 2; i++) {
       const width = Math.floor(Math.random() * 101) + 200;
       const x = Math.random() * (levelWidth - width);
       const y = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(x, y, width, 20);
     }
+    // Create a wall with a wider width (40px instead of 20) for testing stalactite
     for (let i = 0; i < 1; i++) {
       const width = 40;
       const x = Math.random() * (levelWidth - width);
@@ -601,6 +607,7 @@
       enemies.push(enemy);
       return enemy;
     }
+    // Spawn an enemy for testing
     createEnemy(500, 100);
 
     // --- Player Grab-Throw Function (Using Facing Direction) ---
@@ -710,7 +717,114 @@
       setTimeout(() => { if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); } }, 1000);
     }
 
+    // --- Knockback & Damage: Bullet & Melee Collision Updates ---
+    const bulletDamage = 30;
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        let bullet = null, target = null;
+        if (pair.bodyA.label === "bullet") { bullet = pair.bodyA; target = pair.bodyB; }
+        else if (pair.bodyB.label === "bullet") { bullet = pair.bodyB; target = pair.bodyA; }
+        if (!bullet || !target) return;
+        const destructibleLabels = ["platform", "wall", "wallChunk", "enemy"];
+        if (destructibleLabels.includes(target.label)) {
+          damageDestructible(target, bulletDamage);
+          if (target.label === "enemy") {
+            let dx = target.position.x - bullet.position.x;
+            let dy = target.position.y - bullet.position.y;
+            let mag = Math.hypot(dx, dy);
+            if (mag > 0) { dx /= mag; dy /= mag; }
+            const knockbackForce = 0.05;
+            Body.applyForce(target, target.position, { x: dx * knockbackForce, y: dy * knockbackForce });
+          }
+        } else if (target.character && target.character !== bullet.owner) {
+          damageDestructible(target, bulletDamage);
+        }
+        World.remove(world, bullet);
+        if (bullet.domElement && bullet.domElement.parentNode) { bullet.domElement.parentNode.removeChild(bullet.domElement); }
+      });
+    });
+
+    function meleeAttack() {
+      let inputDir = { x: 0, y: 0 };
+      if (keys["ArrowLeft"]) inputDir.x -= 1;
+      if (keys["ArrowRight"]) inputDir.x += 1;
+      if (keys["ArrowUp"]) inputDir.y -= 1;
+      if (keys["ArrowDown"]) inputDir.y += 1;
+      if (inputDir.x === 0 && inputDir.y === 0 && Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
+        inputDir.x = joystickAim.x; inputDir.y = joystickAim.y;
+      }
+      let attackDir = { x: 0, y: 0 };
+      if (inputDir.x || inputDir.y) {
+        const mag = Math.hypot(inputDir.x, inputDir.y);
+        attackDir.x = inputDir.x / mag; attackDir.y = inputDir.y / mag;
+      } else {
+        const onGround = playerChar.torso.position.y >= playAreaHeight - 5;
+        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
+      }
+      const maxWhipDistance = 20;
+      const attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand;
+      const whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
+      const tangent = { x: attackDir.y, y: -attackDir.x };
+      const swingTime = 300, steps = 15;
+      const stepTime = swingTime / steps;
+      let step = 0;
+      const interval = setInterval(() => {
+        const currentDistance = Math.hypot(attackHand.position.x - whipOrigin.x, attackHand.position.y - whipOrigin.y);
+        if (currentDistance < maxWhipDistance) {
+          const amplitude = Math.sin(Math.PI * step / steps);
+          const forceOut = 0.05, forceTangent = 0.05;
+          Body.applyForce(attackHand, attackHand.position, {
+            x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+            y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+          });
+        }
+        step++;
+        if (step >= steps) clearInterval(interval);
+      }, stepTime);
+      setTimeout(() => {
+        const attackPos = attackHand.position;
+        const meleeRange = 60, damageAmount = 30;
+        [platforms, walls].forEach(arr => {
+          arr.forEach(obj => {
+            const dx = attackPos.x - obj.position.x;
+            const dy = attackPos.y - obj.position.y;
+            if (Math.hypot(dx, dy) <= meleeRange) { damageDestructible(obj, damageAmount); }
+          });
+        });
+        enemies.forEach(enemy => {
+          const dx = attackPos.x - enemy.body.position.x;
+          const dy = attackPos.y - enemy.body.position.y;
+          if (Math.hypot(dx, dy) <= meleeRange) {
+            damageDestructible(enemy.body, damageAmount);
+            const knockbackForce = 0.05;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+              Body.applyForce(enemy.body, enemy.body.position, { 
+                x: (enemy.body.position.x - attackPos.x) / dist * knockbackForce, 
+                y: (enemy.body.position.y - attackPos.y) / dist * knockbackForce 
+              });
+            }
+          }
+        });
+      }, 100);
+    }
+
+    // High-Speed Enemy Collisions: Extra damage when an enemy moving fast collides with a destructible object.
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        let enemyBody = null, other = null;
+        if (pair.bodyA.label === "enemy") { enemyBody = pair.bodyA; other = pair.bodyB; }
+        else if (pair.bodyB.label === "enemy") { enemyBody = pair.bodyB; other = pair.bodyA; }
+        if (enemyBody && other && ["platform", "wall", "wallChunk"].includes(other.label)) {
+          const speed = Math.hypot(enemyBody.velocity.x, enemyBody.velocity.y);
+          if (speed > 10) { damageDestructible(other, 20); }
+        }
+      });
+    });
+
     // --- Ground Collision Handling for Platforms ---
+    // When a dynamic platform collides with the ground, we set it to static,
+    // reset its velocity, and adjust its position so that its bottom aligns with the top of the ground.
     Events.on(engine, "collisionStart", function(event) {
       event.pairs.forEach(pair => {
         if ((pair.bodyA.label === "platform" && pair.bodyB.label === "ground") ||
@@ -720,39 +834,96 @@
           Body.setVelocity(platform, { x: 0, y: 0 });
           Body.setPosition(platform, { 
             x: platform.position.x, 
-            y: playAreaHeight - 20 - platform.height/2 
+            y: playAreaHeight - 20 - platform.height / 2 
           });
         }
       });
     });
 
-    // --- New Crumble Function for Ceiling (Stalactite) Walls ---
-    function crumbleStalactite(stalactite) {
-      // Remove the stalactite body and DOM element
-      World.remove(world, stalactite);
-      if (stalactite.domElement && stalactite.domElement.parentNode) {
-        stalactite.domElement.parentNode.removeChild(stalactite.domElement);
+    // --- Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
+    function updateScoreboard() {
+      document.getElementById("leftScore").textContent = leftScore;
+      document.getElementById("rightScore").textContent = rightScore;
+    }
+    function removeEnemy(enemyBody) {
+      World.remove(world, enemyBody);
+      if (enemyBody.domElement && enemyBody.domElement.parentNode) {
+        enemyBody.domElement.parentNode.removeChild(enemyBody.domElement);
       }
-      // Spawn many tiny Matter.js particles (1-4px diameter)
-      const numParticles = 50;
-      for (let i = 0; i < numParticles; i++) {
-        const size = Math.random() * 3 + 1; // diameter between 1 and 4 px
-        // Create a small circular Matter body; use size/2 as radius
-        const particle = Bodies.circle(
-          stalactite.position.x + (Math.random() - 0.5) * stalactite.width,
-          stalactite.position.y + (Math.random() - 0.5) * stalactite.height,
-          size / 2,
-          { frictionAir: 0.05, restitution: 0.3, label: "stalactiteParticle" }
-        );
-        World.add(world, particle);
-        // Create a corresponding DOM element for the particle
-        createDomElement(particle, "stalactite-particle", size, size);
-        // Apply an initial force with a downward bias
-        Body.applyForce(particle, particle.position, {
-          x: (Math.random() - 0.5) * 0.02,
-          y: Math.random() * 0.02 + 0.01
-        });
+      enemies = enemies.filter(e => e.body !== enemyBody);
+    }
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        if (pair.bodyA.label === "leftGoal" && pair.bodyB.label === "enemy") {
+          leftScore++;
+          removeEnemy(pair.bodyB);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
+          leftScore++;
+          removeEnemy(pair.bodyA);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
+          rightScore++;
+          removeEnemy(pair.bodyB);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
+          rightScore++;
+          removeEnemy(pair.bodyA);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        }
+      });
+    });
+
+    // --- Screen Flash, Shake & GOAL! Text Effect ---
+    function triggerGoalEffect() {
+      let flash = document.getElementById("flashOverlay");
+      if (!flash) {
+        flash = document.createElement("div");
+        flash.id = "flashOverlay";
+        flash.style.position = "absolute";
+        flash.style.top = "0";
+        flash.style.left = "0";
+        flash.style.width = "100%";
+        flash.style.height = "100%";
+        flash.style.zIndex = "50";
+        flash.style.pointerEvents = "none";
+        game.appendChild(flash);
       }
+      flash.classList.remove("flash");
+      void flash.offsetWidth;
+      flash.classList.add("flash");
+
+      let screenEl = document.getElementById("screen");
+      screenEl.classList.remove("shake");
+      void screenEl.offsetWidth;
+      screenEl.classList.add("shake");
+
+      let goalText = document.createElement("div");
+      goalText.id = "goalText";
+      goalText.innerText = "GOAL!";
+      goalText.style.position = "absolute";
+      goalText.style.top = "50%";
+      goalText.style.left = "50%";
+      goalText.style.transform = "translate(-50%, -50%)";
+      goalText.style.fontSize = "72px";
+      goalText.style.fontWeight = "bold";
+      goalText.style.fontFamily = '"Impact", "Arial Black", sans-serif';
+      goalText.style.color = "white";
+      goalText.style.zIndex = "60";
+      goalText.style.pointerEvents = "none";
+      game.appendChild(goalText);
+      goalText.classList.add("goalTextAnimation");
+      setTimeout(() => {
+        if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); }
+      }, 1000);
     }
 
     // --- Destructible Object Handling ---
@@ -780,19 +951,17 @@
       }
     }
     function breakWall(wall) {
-      // If the wall is a stalactite, crumble it into tiny particles.
-      if (wall.domElement.classList.contains("stalactite")) {
-        crumbleStalactite(wall);
-        return;
-      }
-      // Otherwise, break the wall into larger grid shards (for stalagmites)
       World.remove(world, wall);
       if (wall.domElement && wall.domElement.parentNode) {
         wall.domElement.parentNode.removeChild(wall.domElement);
       }
       let idx = walls.indexOf(wall);
       if (idx !== -1) walls.splice(idx, 1);
-      const cols = 2, rows = 2;
+      // Check if this wall is a stalagmite based on its DOM class.
+      const isStalagmite = wall.domElement.classList.contains("stalagmite");
+      // Use a finer grid for stalagmites to create more, smaller shards.
+      const cols = isStalagmite ? 3 : 2;
+      const rows = isStalagmite ? 3 : 2;
       const chunkWidth = wall.width / cols;
       const chunkHeight = wall.height / rows;
       for (let i = 0; i < rows; i++) {
@@ -808,6 +977,11 @@
           el.style.height = chunkHeight + "px";
           el.style.left = cx + "px";
           el.style.top = cy + "px";
+          // If this wall is a stalagmite, adjust the shard styling to look jagged.
+          if (isStalagmite) {
+            el.style.borderRadius = "0";
+            el.style.clipPath = "polygon(0% 20%, 30% 0%, 70% 10%, 100% 20%, 80% 100%, 50% 80%, 20% 100%)";
+          }
           game.appendChild(el);
           chunk.domElement = el;
           domEntities.push(chunk);
@@ -952,6 +1126,7 @@
     function update() {
       Engine.update(engine, 1000/60);
       updatePlayerFacing();
+      // Update DOM positions for physics bodies
       domEntities.forEach(body => {
         if (body.domElement) {
           body.domElement.style.left = body.position.x + "px";
@@ -973,10 +1148,12 @@
           enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
+      // If holding an object, snap it to the hand based on playerFacing.
       if (playerChar.heldObject) {
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         Body.setPosition(playerChar.heldObject, handPos);
       }
+      // Player movement
       if (keys["ArrowLeft"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 }); }
       if (keys["ArrowRight"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: 0.01, y: 0 }); }
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
@@ -989,6 +1166,7 @@
         if (aimMag > 0.1) { Body.setVelocity(playerChar.torso, { x: joystickAim.x * jumpStrength, y: joystickAim.y * jumpStrength }); }
         else { Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength }); }
       }
+      // Keep head positioned relative to torso
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       (function clampWithinBounds(character) {
