@@ -140,7 +140,7 @@
     /* In-Game Entity Styling */
     .entity {
       position: absolute;
-      transform: translate(-50%, -50%);
+      transform-origin: center center;
       pointer-events: none;
       transition: transform 0.5s ease, opacity 0.5s ease;
     }
@@ -194,7 +194,6 @@
       background: #0d0c29;
       border: 1px solid #0d0c29;
       border-radius: 8px;
-      /* Using a polygon clip-path to give a splintered, irregular appearance */
       clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
     }
     /* Head eyes */
@@ -329,8 +328,6 @@
 
     /* --- Boulders (formerly platforms) ---
        Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
-       A random slope between 0.3 and 0.7 produces a random top width.
-       The DOM element is styled with the ground color and a clip-path.
     */
     function createPlatform(x, y, width, height) {
       const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
@@ -346,9 +343,8 @@
       el.style.height = height + "px";
       el.style.left = (x + width/2) + "px";
       el.style.top = (y + height/2) + "px";
-      // Use ground color and a clip-path computed from the slope:
       el.style.backgroundColor = "#0d0c29";
-      const topClipPercent = slope * 50; // (slope/2)*100
+      const topClipPercent = slope * 50;
       el.style.clipPath = `polygon(0% 100%, 100% 100%, ${100 - topClipPercent}% 0%, ${topClipPercent}% 0%)`;
       game.appendChild(el);
       boulder.domElement = el;
@@ -356,14 +352,11 @@
     }
 
     /* --- Conical Walls (stalactites/stalagmites) ---
-       Depending on y, if in upper half a stalactite is built (base flush with ceiling)
-       and if in lower half a stalagmite is built (base flush with ground).
-       The DOM elements are styled with the ground color and a triangle clip-path.
+       Build a stalactite (if y is in the upper half) or stalagmite (if in lower half).
     */
     function createWall(x, y, width, height) {
       let body, el;
       if (y < playAreaHeight/2) {
-        // Stalactite: base at top, tip downward.
         const vertices = [
           { x: -width/2, y: 0 },
           { x: width/2, y: 0 },
@@ -383,7 +376,6 @@
         el.style.backgroundColor = "#0d0c29";
         el.style.clipPath = "polygon(50% 100%, 0% 0%, 100% 0%)";
       } else {
-        // Stalagmite: base at bottom, tip upward.
         const vertices = [
           { x: -width/2, y: 0 },
           { x: width/2, y: 0 },
@@ -408,15 +400,13 @@
       walls.push(body);
     }
 
-    // Spawn a few objects for testing
-    // Make boulders wider: random width from 200 to 300
+    // Spawn objects for testing.
     for (let i = 0; i < 2; i++) {
-      const width = Math.floor(Math.random() * 101) + 200;
+      const width = Math.floor(Math.random() * 101) + 200; // 200 to 300px wide
       const x = Math.random() * (levelWidth - width);
       const y = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(x, y, width, 20);
     }
-    // Create a wall with a wider width (40px instead of 20) for testing stalactite
     for (let i = 0; i < 1; i++) {
       const width = 40;
       const x = Math.random() * (levelWidth - width);
@@ -1094,12 +1084,14 @@
     function update() {
       Engine.update(engine, 1000/60);
       updatePlayerFacing();
-      // Update DOM positions for physics bodies
+      // Position DOM elements using the center of the body's bounding box
       domEntities.forEach(body => {
         if (body.domElement) {
-          body.domElement.style.left = body.position.x + "px";
-          body.domElement.style.top = body.position.y + "px";
-          body.domElement.style.transform = "translate(-50%, -50%) rotate(" + body.angle + "rad)";
+          const centerX = (body.bounds.min.x + body.bounds.max.x) / 2;
+          const centerY = (body.bounds.min.y + body.bounds.max.y) / 2;
+          body.domElement.style.left = centerX + "px";
+          body.domElement.style.top = centerY + "px";
+          body.domElement.style.transform = "rotate(" + body.angle + "rad)";
         }
       });
       coins.forEach(coin => {
@@ -1113,15 +1105,13 @@
         if (enemy.body.domElement) {
           enemy.body.domElement.style.left = enemy.body.position.x + "px";
           enemy.body.domElement.style.top = enemy.body.position.y + "px";
-          enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
+          enemy.body.domElement.style.transform = "rotate(" + enemy.body.angle + "rad)";
         }
       });
-      // If holding an object, snap it to the hand based on playerFacing.
       if (playerChar.heldObject) {
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         Body.setPosition(playerChar.heldObject, handPos);
       }
-      // Player movement
       if (keys["ArrowLeft"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: -0.01, y: 0 }); }
       if (keys["ArrowRight"]) { Body.applyForce(playerChar.torso, playerChar.torso.position, { x: 0.01, y: 0 }); }
       if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
@@ -1134,7 +1124,6 @@
         if (aimMag > 0.1) { Body.setVelocity(playerChar.torso, { x: joystickAim.x * jumpStrength, y: joystickAim.y * jumpStrength }); }
         else { Body.setVelocity(playerChar.torso, { x: playerChar.torso.velocity.x, y: -jumpStrength }); }
       }
-      // Keep head positioned relative to torso
       Body.setPosition(playerChar.head, { x: playerChar.torso.position.x, y: playerChar.torso.position.y - 40 });
       Body.setVelocity(playerChar.head, playerChar.torso.velocity);
       (function clampWithinBounds(character) {
