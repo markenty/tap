@@ -840,7 +840,18 @@ let tvs = [];
         }
       });
     });
-
+Events.on(engine, "collisionStart", function(event) {
+  event.pairs.forEach(pair => {
+    // Check if bodyA is a TV and bodyB belongs to the player.
+    if (pair.bodyA.label === "tv" && pair.bodyB.character) {
+      breakTV(pair.bodyA);
+    }
+    // Check the reverse: bodyB is a TV and bodyA belongs to the player.
+    else if (pair.bodyB.label === "tv" && pair.bodyA.character) {
+      breakTV(pair.bodyB);
+    }
+  });
+});
     // --- Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
     function updateScoreboard() {
       document.getElementById("leftScore").textContent = leftScore;
