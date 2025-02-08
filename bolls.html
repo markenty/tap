@@ -177,13 +177,25 @@
       transform: translate(-50%, -50%) scale(2);
       opacity: 0;
     }
-    /* Wall styling (stalactite/stalagmite) & rock chunks remain unchanged */
-    .stalactite, .stalagmite { position: absolute; }
+    /* New Destructible Object Styling */
+    /* Boulder – a heavy, trapezoidal polygon using ground color */
+    .boulder {
+      position: absolute;
+      left:50%;
+      /* backgroundColor and clip-path set inline on creation */
+    }
+    /* Stalactite & Stalagmite – conical (triangle) shapes */
+    .stalactite, .stalagmite {
+      position: absolute;
+      /* backgroundColor and clip-path set inline on creation */
+    }
+    /* Rock chunks – broken pieces styled to be ground colored and irregular */
     .rock-chunk {
       position: absolute;
       background: #0d0c29;
       border: 1px solid #0d0c29;
       border-radius: 8px;
+      /* Using a polygon clip-path to give a splintered, irregular appearance */
       clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
     }
     /* Head eyes */
@@ -235,23 +247,6 @@
     .goalTextAnimation {
       animation: goalTextAnimationKeyframes 1s ease;
     }
-    /* --- Added TV Styling --- */
-    .tv {
-      position: absolute;
-      background: #444;
-      border: 2px solid #999;
-      border-radius: 4px;
-    }
-    /* --- Added Coin Styling --- */
-    .coin {
-      position: absolute;
-      background: gold;
-      color: black;
-      border-radius: 50%;
-      font-size: 14px;
-      line-height: 20px;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
@@ -294,7 +289,7 @@
     const world = engine.world;
 
     // Global arrays for entities
-    let domEntities = [], tvs = [], walls = [], coins = [], bullets = [], enemies = [];
+    let domEntities = [], platforms = [], walls = [], coins = [], bullets = [], enemies = [];
     let leftScore = 0, rightScore = 0;
 
     // Global joystick aim vector
@@ -333,30 +328,38 @@
       domEntities.push(body);
     }
 
-    /* --- TVs (replacing boulders/platforms) ---
-       Create a heavy, breakable TV using a rectangle.
-       TVs have a fixed HP and are styled with a TV aesthetic.
+    /* --- Boulders (formerly platforms) ---
+       Create a heavy, breakable trapezoidal body using Bodies.trapezoid.
+       A random slope between 0.3 and 0.7 produces a random top width.
+       The DOM element is styled with the ground color and a clip-path.
     */
-    function createTV(x, y, width, height) {
-      const options = { isStatic: true, label: "tv", density: 0.01 };
-      const tv = Bodies.rectangle(x + width/2, y + height/2, width, height, options);
-      tv.width = width;
-      tv.height = height;
-      tv.hp = 30;
-      World.add(world, tv);
+    function createPlatform(x, y, width, height) {
+      const slope = Math.random() * 0.4 + 0.3; // between 0.3 and 0.7
+      const options = { isStatic: true, label: "platform", density: 0.01 };
+      const boulder = Bodies.trapezoid(x + width/2, y + height/2, width, height, slope, options);
+      boulder.width = width;
+      boulder.height = height;
+      boulder.hp = 50;
+      World.add(world, boulder);
       const el = document.createElement("div");
-      el.className = "tv";
+      el.className = "boulder";
       el.style.width = width + "px";
       el.style.height = height + "px";
       el.style.left = (x + width/2) + "px";
       el.style.top = (y + height/2) + "px";
+      // Use ground color and a clip-path computed from the slope:
+      el.style.backgroundColor = "#0d0c29";
+      const topClipPercent = slope * 50; // (slope/2)*100
+      el.style.clipPath = `polygon(0% 100%, 100% 100%, ${100 - topClipPercent}% 0%, ${topClipPercent}% 0%)`;
       game.appendChild(el);
-      tv.domElement = el;
-      tvs.push(tv);
+      boulder.domElement = el;
+      platforms.push(boulder);
     }
 
     /* --- Conical Walls (stalactites/stalagmites) ---
-       Depending on y, create a stalactite or stalagmite.
+       Depending on y, if in upper half a stalactite is built (base flush with ceiling)
+       and if in lower half a stalagmite is built (base flush with ground).
+       The DOM elements are styled with the ground color and a triangle clip-path.
     */
     function createWall(x, y, width, height) {
       let body, el;
@@ -407,14 +410,15 @@
       return body;
     }
 
-    // Spawn a few TVs for testing (replacing the original platform/boulder spawning)
+    // Spawn a few objects for testing
+    // Make boulders wider: random width from 200 to 300
     for (let i = 0; i < 2; i++) {
       const width = Math.floor(Math.random() * 101) + 200;
       const x = Math.random() * (levelWidth - width);
       const y = 300 + Math.random() * (playAreaHeight - 350);
-      createTV(x, y, width, 60);
+      createPlatform(x, y, width, 20);
     }
-    // Create a wall for testing
+    // Create a wall with a wider width (40px instead of 20) for testing stalactite
     for (let i = 0; i < 1; i++) {
       const width = 40;
       const x = Math.random() * (levelWidth - width);
@@ -495,7 +499,6 @@
       function addPart(body, cls, w, h) {
         createDomElement(body, cls, w, h);
         body.character = char;
-        // If this is the head, attach tentacles and add eyes.
         if (cls.indexOf("head") !== -1) {
           attachTentacleToBody(body, { x: 0, y: size/2 }, 5, 10, 2);
           const eyeLeft = document.createElement("div");
@@ -719,8 +722,7 @@
         if (pair.bodyA.label === "bullet") { bullet = pair.bodyA; target = pair.bodyB; }
         else if (pair.bodyB.label === "bullet") { bullet = pair.bodyB; target = pair.bodyA; }
         if (!bullet || !target) return;
-        // Include "tv" in the destructible labels.
-        const destructibleLabels = ["tv", "wall", "wallChunk", "enemy"];
+        const destructibleLabels = ["platform", "wall", "wallChunk", "enemy"];
         if (destructibleLabels.includes(target.label)) {
           damageDestructible(target, bulletDamage);
           if (target.label === "enemy") {
@@ -739,7 +741,6 @@
       });
     });
 
-    // --- Melee Attack with Whip-Style Physics ---
     function meleeAttack() {
       let inputDir = { x: 0, y: 0 };
       if (keys["ArrowLeft"]) inputDir.x -= 1;
@@ -758,7 +759,6 @@
         attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
       }
       const maxWhipDistance = 20;
-      // Use the TV (or wall) group instead of platforms.
       const attackHand = attackDir.x < 0 ? playerChar.leftHand : playerChar.rightHand;
       const whipOrigin = attackDir.x < 0 ? playerChar.leftUpperArm.position : playerChar.rightUpperArm.position;
       const tangent = { x: attackDir.y, y: -attackDir.x };
@@ -781,8 +781,7 @@
       setTimeout(() => {
         const attackPos = attackHand.position;
         const meleeRange = 60, damageAmount = 30;
-        // Damage objects in both the tvs and walls arrays.
-        [tvs, walls].forEach(arr => {
+        [platforms, walls].forEach(arr => {
           arr.forEach(obj => {
             const dx = attackPos.x - obj.position.x;
             const dy = attackPos.y - obj.position.y;
@@ -807,30 +806,124 @@
       }, 100);
     }
 
+    // High-Speed Enemy Collisions: Extra damage when an enemy moving fast collides with a destructible object.
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        let enemyBody = null, other = null;
+        if (pair.bodyA.label === "enemy") { enemyBody = pair.bodyA; other = pair.bodyB; }
+        else if (pair.bodyB.label === "enemy") { enemyBody = pair.bodyB; other = pair.bodyA; }
+        if (enemyBody && other && ["platform", "wall", "wallChunk"].includes(other.label)) {
+          const speed = Math.hypot(enemyBody.velocity.x, enemyBody.velocity.y);
+          if (speed > 10) { damageDestructible(other, 20); }
+        }
+      });
+    });
+
+    // --- Goal Scoring Logic with Enemy Respawn & Triggering Goal Effects ---
+    function updateScoreboard() {
+      document.getElementById("leftScore").textContent = leftScore;
+      document.getElementById("rightScore").textContent = rightScore;
+    }
+    function removeEnemy(enemyBody) {
+      World.remove(world, enemyBody);
+      if (enemyBody.domElement && enemyBody.domElement.parentNode) {
+        enemyBody.domElement.parentNode.removeChild(enemyBody.domElement);
+      }
+      enemies = enemies.filter(e => e.body !== enemyBody);
+    }
+    Events.on(engine, "collisionStart", function(event) {
+      event.pairs.forEach(pair => {
+        if (pair.bodyA.label === "leftGoal" && pair.bodyB.label === "enemy") {
+          leftScore++;
+          removeEnemy(pair.bodyB);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
+          leftScore++;
+          removeEnemy(pair.bodyA);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
+          rightScore++;
+          removeEnemy(pair.bodyB);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
+          rightScore++;
+          removeEnemy(pair.bodyA);
+          updateScoreboard();
+          triggerGoalEffect();
+          setTimeout(() => { createEnemy(500, 100); }, 2000);
+        }
+      });
+    });
+
+    // --- Screen Flash, Shake & GOAL! Text Effect ---
+    function triggerGoalEffect() {
+      let flash = document.getElementById("flashOverlay");
+      if (!flash) {
+        flash = document.createElement("div");
+        flash.id = "flashOverlay";
+        flash.style.position = "absolute";
+        flash.style.top = "0";
+        flash.style.left = "0";
+        flash.style.width = "100%";
+        flash.style.height = "100%";
+        flash.style.zIndex = "50";
+        flash.style.pointerEvents = "none";
+        game.appendChild(flash);
+      }
+      flash.classList.remove("flash");
+      void flash.offsetWidth;
+      flash.classList.add("flash");
+
+      let screenEl = document.getElementById("screen");
+      screenEl.classList.remove("shake");
+      void screenEl.offsetWidth;
+      screenEl.classList.add("shake");
+
+      let goalText = document.createElement("div");
+      goalText.id = "goalText";
+      goalText.innerText = "GOAL!";
+      goalText.style.position = "absolute";
+      goalText.style.top = "50%";
+      goalText.style.left = "50%";
+      goalText.style.transform = "translate(-50%, -50%)";
+      goalText.style.fontSize = "72px";
+      goalText.style.fontWeight = "bold";
+      goalText.style.fontFamily = '"Impact", "Arial Black", sans-serif';
+      goalText.style.color = "white";
+      goalText.style.zIndex = "60";
+      goalText.style.pointerEvents = "none";
+      game.appendChild(goalText);
+      goalText.classList.add("goalTextAnimation");
+      setTimeout(() => {
+        if (goalText.parentNode) { goalText.parentNode.removeChild(goalText); }
+      }, 1000);
+    }
+
     // --- Destructible Object Handling ---
+    // Modified breakWall: for walls marked as stalagmite, break into more jagged shards.
     function damageDestructible(obj, damage) {
       if (typeof obj.hp !== "number") return;
       obj.hp -= damage;
       particleBurst(obj.position.x, obj.position.y, "orange");
       if (obj.hp <= 0) {
         particleBurst(obj.position.x, obj.position.y, "red");
-        if (obj.label === "wall") {
-          breakWall(obj);
-        } else if (obj.label === "tv") {
-          // When a TV is destroyed, remove it and spawn coins.
+        if (obj.label === "wall") { breakWall(obj); }
+        else if (obj.label === "platform") { breakBoulder(obj); }
+        else {
           World.remove(world, obj);
           if (obj.domElement && obj.domElement.parentNode) {
             obj.domElement.parentNode.removeChild(obj.domElement);
           }
-          let idx = tvs.indexOf(obj);
-          if (idx !== -1) tvs.splice(idx, 1);
-          spawnCoins(obj.position.x, obj.position.y);
-        } else {
-          World.remove(world, obj);
-          if (obj.domElement && obj.domElement.parentNode) {
-            obj.domElement.parentNode.removeChild(obj.domElement);
-          }
-          if (obj.label === "enemy") {
+          if (obj.label === "platform") {
+            let idx = platforms.indexOf(obj);
+            if (idx !== -1) platforms.splice(idx, 1);
+          } else if (obj.label === "enemy") {
             let idx = enemies.findIndex(e => e.body === obj);
             if (idx !== -1) enemies.splice(idx, 1);
           }
@@ -844,7 +937,9 @@
       }
       let idx = walls.indexOf(wall);
       if (idx !== -1) walls.splice(idx, 1);
+      // Check if this wall is a stalagmite based on its DOM class.
       const isStalagmite = wall.domElement.classList.contains("stalagmite");
+      // Use a finer grid for stalagmites to create more, smaller shards.
       const cols = isStalagmite ? 3 : 2;
       const rows = isStalagmite ? 3 : 2;
       const chunkWidth = wall.width / cols;
@@ -862,6 +957,7 @@
           el.style.height = chunkHeight + "px";
           el.style.left = cx + "px";
           el.style.top = cy + "px";
+          // If this wall is a stalagmite, adjust the shard styling to look jagged.
           if (isStalagmite) {
             el.style.borderRadius = "0";
             el.style.clipPath = "polygon(0% 20%, 30% 0%, 70% 10%, 100% 20%, 80% 100%, 50% 80%, 20% 100%)";
@@ -872,8 +968,35 @@
         }
       }
     }
-    // (breakBoulder function removed; TVs now replace platforms)
-
+    function breakBoulder(boulder) {
+      World.remove(world, boulder);
+      if (boulder.domElement && boulder.domElement.parentNode) {
+        boulder.domElement.parentNode.removeChild(boulder.domElement);
+      }
+      let idx = platforms.indexOf(boulder);
+      if (idx !== -1) platforms.splice(idx, 1);
+      const cols = 3, rows = 3;
+      const chunkWidth = boulder.width / cols;
+      const chunkHeight = boulder.height / rows;
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          const cx = boulder.position.x - boulder.width/2 + chunkWidth/2 + j * chunkWidth;
+          const cy = boulder.position.y - boulder.height/2 + chunkHeight/2 + i * chunkHeight;
+          let chunk = Bodies.rectangle(cx, cy, chunkWidth, chunkHeight, { isStatic: false, label: "boulderChunk" });
+          Body.setVelocity(chunk, { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 });
+          World.add(world, chunk);
+          const el = document.createElement("div");
+          el.className = "rock-chunk";
+          el.style.width = chunkWidth + "px";
+          el.style.height = chunkHeight + "px";
+          el.style.left = cx + "px";
+          el.style.top = cy + "px";
+          game.appendChild(el);
+          chunk.domElement = el;
+          domEntities.push(chunk);
+        }
+      }
+    }
     function spawnCoins(x, y) {
       for (let i = 0; i < 3; i++) {
         let coin = Bodies.circle(x, y, 10, { isStatic: false, label: "coin", restitution: 0.5 });
@@ -931,28 +1054,12 @@
       }
     }
 
-    // --- Coin Collection Event Listener ---
-    let coinCount = 0;
-    Events.on(engine, "collisionStart", function(event) {
-      event.pairs.forEach(pair => {
-        if ((pair.bodyA.label === "coin" && pair.bodyB.character) ||
-            (pair.bodyB.label === "coin" && pair.bodyA.character)) {
-          let coinBody = pair.bodyA.label === "coin" ? pair.bodyA : pair.bodyB;
-          World.remove(world, coinBody);
-          if (coinBody.domElement && coinBody.domElement.parentNode) {
-            coinBody.domElement.parentNode.removeChild(coinBody.domElement);
-          }
-          let idx = coins.indexOf(coinBody);
-          if (idx !== -1) coins.splice(idx, 1);
-          coinCount++;
-          console.log("Coins collected: " + coinCount);
-        }
-      });
-    });
+    // --- Input Handling ---
+    let keys = {};
+    window.addEventListener("keydown", (e) => { keys[e.code] = true; });
+    window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    // ------------------------------
-    // Camera Follow with Deadzone
-    // ------------------------------
+    // --- Camera Follow with Deadzone ---
     let cameraX = 0, cameraY = 0;
     function updateCamera() {
       const screenWidth = window.innerWidth;
@@ -972,13 +1079,15 @@
       document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
     }
 
-    // --- Auto Size Controls ---
+    // --- Auto Size Controls: Adjust #controls height based on ground position ---
     function updateControlsSize() {
       const groundRect = groundEl.getBoundingClientRect();
       const availableSpace = window.innerHeight - groundRect.bottom;
       const controls = document.getElementById("controls");
       controls.style.height = availableSpace + "px";
     }
+
+    // --- Update Game Dimensions: Recalculate game height and ground position ---
     function updateGameDimensions() {
       gameHeight = getViewportHeight();
       playAreaHeight = getViewportHeight() - 100;
@@ -992,9 +1101,7 @@
     updateGameDimensions();
     updateControlsSize();
 
-    // ------------------------------
-    // Main Game Loop
-    // ------------------------------
+    // --- Main Game Loop ---
     let walkCycle = 0, lastTime = Date.now();
     function update() {
       Engine.update(engine, 1000/60);
@@ -1021,7 +1128,7 @@
           enemy.body.domElement.style.transform = "translate(-50%, -50%) rotate(" + enemy.body.angle + "rad)";
         }
       });
-      // Snap held object to hand
+      // If holding an object, snap it to the hand based on playerFacing.
       if (playerChar.heldObject) {
         let handPos = (playerFacing === "left") ? playerChar.leftHand.position : playerChar.rightHand.position;
         Body.setPosition(playerChar.heldObject, handPos);
@@ -1080,9 +1187,7 @@
     }
     update();
 
-    // ------------------------------
-    // Joystick Functionality
-    // ------------------------------
+    // --- Joystick Functionality ---
     (function() {
       const joystick = document.getElementById("joystick");
       let startX, startY;
@@ -1121,9 +1226,7 @@
       joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
 
-    // ------------------------------
-    // Touch & Button Mappings
-    // ------------------------------
+    // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
     dpad.querySelector(".up").addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowUp"] = false; });
