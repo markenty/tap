@@ -337,7 +337,17 @@
       /* Bright glow effect */
       box-shadow: 0 0 20px 10px rgba(255,255,200,0.9);
     }
-  
+  .overlay-gif {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;  /* Adjust as needed */
+  height: 20px; /* Adjust as needed */
+  transform: translate(-50%, -50%);
+  background: url("overlay.gif') center/cover no-repeat;
+  pointer-events: none; /* Ensures interactions go to underlying elements if needed */
+  z-index: 2; /* Places overlay above the player */
+}
   </style>
 </head>
 <body>
@@ -366,7 +376,10 @@
       </div>
     </div>
   </div>
-
+<div class="player-container">
+  <div class="player-part"></div>
+  <div class="overlay-gif"></div>
+</div>
   <!-- Matter.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
