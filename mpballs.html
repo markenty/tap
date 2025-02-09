@@ -476,16 +476,18 @@
     const leftGoal = Bodies.rectangle(50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "leftGoal" });
     const rightGoal = Bodies.rectangle(levelWidth - 50, playAreaHeight/2, goalWidth, goalHeight, { isStatic: true, isSensor: true, label: "rightGoal" });
     World.add(world, [leftGoal, rightGoal]);
-    function createGoalDom(goalBody, cls) {
-      const el = document.createElement("div");
-      el.className = "goal " + cls;
-      el.style.width = goalWidth + "px";
-      el.style.height = goalHeight + "px";
-      el.style.left = goalBody.position.x + "px";
-      el.style.top = goalBody.position.y + "px";
-      game.appendChild(el);
-      goalBody.domElement = el;
-    }
+   function createGoalDom(goalBody, cls) {
+  const el = document.createElement("div");
+  el.className = "goal " + cls;
+  el.style.width = goalWidth + "px";
+  el.style.height = goalHeight + "px";
+  // Center the DOM element relative to the Matter body
+  el.style.left = (goalBody.position.x - goalWidth / 2) + "px";
+  el.style.top = (goalBody.position.y - goalHeight / 2) + "px";
+  game.appendChild(el);
+  goalBody.domElement = el;
+}
+
     createGoalDom(leftGoal, "left");
     createGoalDom(rightGoal, "right");
 // Create non-passable walls behind each goal
