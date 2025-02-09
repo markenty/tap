@@ -652,8 +652,12 @@ createWallDom(rightGoalWall, "right");
       return char;
     }
     // Create two players
-    let playerChar1 = createCharacter(100, 100);
-    let playerChar2 = createCharacter(300, 100);
+// Spawn player 1 near the left edge:
+let playerChar1 = createCharacter(100, playAreaHeight / 2);
+
+// Spawn player 2 near the right edge (opposite side):
+let playerChar2 = createCharacter(levelWidth - 100, playAreaHeight / 2);
+
 
     // --- Enhanced Enemy Implementation ---
     function createEnemy(x, y) {
