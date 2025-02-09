@@ -72,7 +72,6 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      /* Height is set dynamically via JavaScript */
     }
     /* D-Pad */
     #dpad {
@@ -169,16 +168,13 @@
       border-radius: 50%;
       box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
       position: absolute;
-      /* Mask properties */
-      mask-image: url('mask.png'); /* Your mask image */
+      mask-image: url('mask.png');
       mask-size: cover;
       mask-repeat: no-repeat;
-      /* For WebKit browsers */
       -webkit-mask-image: url('mask.png');
       -webkit-mask-size: cover;
       -webkit-mask-repeat: no-repeat;
     }
-    /* Pseudo-element for the non-rotating GIF overlay */
     .player-part::after {
       content: '';
       position: absolute;
@@ -192,21 +188,9 @@
       transform-origin: center;
       animation: spinReverse 2s linear infinite;
     }
-    .bullet {
-      background: #fff;
-      border-radius: 50%;
-    }
-    .bubble-burst {
-      transform: translate(-50%, -50%) scale(2);
-      opacity: 0;
-    }
-    /* New Destructible Object Styling */
-    .boulder {
-      position: absolute;
-    }
-    .stalactite, .stalagmite {
-      position: absolute;
-    }
+    .bullet { background: #fff; border-radius: 50%; }
+    .bubble-burst { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    .boulder, .stalactite, .stalagmite { position: absolute; }
     .rock-chunk {
       position: absolute;
       background: #0d0c29;
@@ -250,9 +234,7 @@
       0% { background-color: rgba(255,255,255,0.8); }
       100% { background-color: rgba(255,255,255,0); }
     }
-    .flash {
-      animation: flashAnimation 0.5s ease-out;
-    }
+    .flash { animation: flashAnimation 0.5s ease-out; }
     @keyframes shakeAnimation {
       0% { transform: translate(0px, 0px); }
       20% { transform: translate(-5px, 5px); }
@@ -261,17 +243,13 @@
       80% { transform: translate(5px, -5px); }
       100% { transform: translate(0px, 0px); }
     }
-    .shake {
-      animation: shakeAnimation 0.5s ease;
-    }
+    .shake { animation: shakeAnimation 0.5s ease; }
     @keyframes goalTextAnimationKeyframes {
       0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
       50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(5deg); }
       100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
     }
-    .goalTextAnimation {
-      animation: goalTextAnimationKeyframes 1s ease;
-    }
+    .goalTextAnimation { animation: goalTextAnimationKeyframes 1s ease; }
     .tv {
       position: absolute;
       width: 150px;
@@ -408,7 +386,7 @@
       domEntities.push(body);
     }
 
-    /* --- Boulders / Platforms --- */
+    /* --- Platforms / Boulders --- */
     function createPlatform(x, y, width, height) {
       const slope = Math.random() * 0.4 + 0.3;
       const options = { isStatic: true, label: "platform", density: 0.01 };
@@ -431,7 +409,7 @@
       platforms.push(boulder);
     }
 
-    /* --- Conical Walls --- */
+    /* --- Walls (Stalactites/Stalagmites) --- */
     function createWall(x, y, width, height) {
       let body, el;
       if (y < playAreaHeight/2) {
@@ -471,7 +449,7 @@
       return body;
     }
 
-    // Spawn testing objects
+    // Spawn some platforms and walls for testing
     for (let i = 0; i < 2; i++) {
       const width = Math.floor(Math.random() * 101) + 200;
       const x = Math.random() * (levelWidth - width);
@@ -484,7 +462,7 @@
       createWall(x, 100, width, 200);
     }
 
-    // Static boundaries & safety floor
+    // Static boundaries and safety floor
     const groundBody = Bodies.rectangle(levelWidth / 2, playAreaHeight, levelWidth, 40, { isStatic: true });
     const leftBoundary = Bodies.rectangle(0, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
     const rightBoundary = Bodies.rectangle(levelWidth, playAreaHeight / 2, 40, playAreaHeight, { isStatic: true });
@@ -624,8 +602,8 @@
       return char;
     }
     // Create two players
-    const playerChar1 = createCharacter(100, 100);
-    const playerChar2 = createCharacter(300, 100);
+    let playerChar1 = createCharacter(100, 100);
+    let playerChar2 = createCharacter(300, 100);
 
     // --- Enhanced Enemy Implementation ---
     function createEnemy(x, y) {
@@ -725,7 +703,7 @@
       }
     }
 
-    // --- Melee Attack Function (now damages destructibles, enemies, and the other player) ---
+    // --- Melee Attack Function (Damages destructibles, enemies, and other player) ---
     function meleeAttack(player, keys, joystickAim) {
       let inputDir = { x: 0, y: 0 };
       if (keys["ArrowLeft"]) inputDir.x -= 1;
@@ -790,7 +768,7 @@
             }
           }
         });
-        // Damage other players
+        // Damage other players (PvP)
         const players = [playerChar1, playerChar2];
         players.forEach(p => {
           if (p !== player) {
@@ -798,7 +776,6 @@
             const dy = attackPos.y - p.torso.position.y;
             if (Math.hypot(dx, dy) <= meleeRange) {
               p.hp -= damageAmount;
-              // (Optional: Update p.hpBar here)
               const knockbackForce = 0.05;
               const dist = Math.hypot(dx, dy);
               if (dist > 0) {
@@ -1143,18 +1120,26 @@
       }
     }
 
-    // --- Input Handling (Player One via Keyboard) ---
-    window.addEventListener("keydown", (e) => { keys1[e.code] = true; });
-    window.addEventListener("keyup", (e) => { keys1[e.code] = false; });
+    // --- Auto Respawn Helper ---
+    function respawnPlayer(player) {
+      // Remove all parts of the player from the world and DOM
+      const parts = [player.head, player.torso, player.rightUpperArm, player.rightHand, player.leftUpperArm, player.leftHand, player.rightUpperLeg, player.rightFoot, player.leftUpperLeg, player.leftFoot];
+      parts.forEach(part => {
+        World.remove(world, part);
+        if (part.domElement && part.domElement.parentNode) {
+          part.domElement.parentNode.removeChild(part.domElement);
+        }
+      });
+      if (player.hpContainer && player.hpContainer.parentNode) {
+        player.hpContainer.parentNode.removeChild(player.hpContainer);
+      }
+    }
 
     // --- Dynamic Camera with Zoom ---
-    // This updateCamera calculates a bounding box around playerChar1, playerChar2, and the first enemy (if any),
-    // then computes a scale factor so that the box fits the screen.
     let cameraX = 0, cameraY = 0;
     function updateCamera() {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      // Build an array of points: both players and one enemy (if exists)
       let points = [
         playerChar1.torso.position,
         playerChar2.torso.position
@@ -1169,7 +1154,6 @@
         if (p.x > maxX) maxX = p.x;
         if (p.y > maxY) maxY = p.y;
       });
-      // Add margin
       const margin = 100;
       minX -= margin; minY -= margin;
       maxX += margin; maxY += margin;
@@ -1177,11 +1161,10 @@
       const boxHeight = maxY - minY;
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
-      // Determine scale so that the bounding box fits the screen
       const scaleX = screenWidth / boxWidth;
       const scaleY = screenHeight / boxHeight;
       let scale = Math.min(scaleX, scaleY);
-      scale = Math.min(scale, 1); // do not zoom in more than original size
+      scale = Math.min(scale, 1);
       cameraX = centerX - screenWidth / (2 * scale);
       cameraY = centerY - screenHeight / (2 * scale);
       cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth / scale));
@@ -1388,12 +1371,22 @@
         character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
       })(playerChar2);
       
+      // --- Auto Respawn ---
+      if (playerChar1.hp <= 0) {
+        respawnPlayer(playerChar1);
+        playerChar1 = createCharacter(playerChar1.spawn.x, playerChar1.spawn.y);
+      }
+      if (playerChar2.hp <= 0) {
+        respawnPlayer(playerChar2);
+        playerChar2 = createCharacter(playerChar2.spawn.x, playerChar2.spawn.y);
+      }
+      
       updateCamera();
       requestAnimationFrame(update);
     }
     update();
 
-    // --- On-Screen Joystick (for Player One) ---
+    // --- On-Screen Joystick (Player One) ---
     (function() {
       const joystick = document.getElementById("joystick");
       let startX, startY;
@@ -1456,9 +1449,7 @@
     });
     const player = document.querySelector('.player-part');
     document.addEventListener('keyup', (e) => {
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        player.style.transform = "translate(-50%, -50%)";
-      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { player.style.transform = "translate(-50%, -50%)"; }
     });
   </script>
 </body>
