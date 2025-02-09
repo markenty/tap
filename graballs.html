@@ -536,7 +536,7 @@ let tvs = [];
     // Spawn a few objects for testing
     // Make boulders wider: random width from 200 to 300
     for (let i = 0; i < 2; i++) {
-      const width = Math.floor(Math.random() * 101) + 200;
+      const width = 200px;
       const x = Math.random() * (levelWidth - width);
       const y = 300 + Math.random() * (playAreaHeight - 350);
       createPlatform(x, y, width, 20);
