@@ -496,34 +496,38 @@
     createGoalDom(rightGoal, "right");
 // Create non-passable walls behind each goal
 const wallThickness = 20;
+const fullHeight = playAreaHeight; // Adjust this if you need the wall to span a different vertical range.
+const wallCenterY = fullHeight / 2;
+
+// Left goal wall: position it so its right edge is flush with the left goal.
 const leftGoalWall = Bodies.rectangle(
   leftGoal.position.x - (goalWidth / 2 + wallThickness / 2),
-  leftGoal.position.y,
+  wallCenterY,
   wallThickness,
-  goalHeight,
+  fullHeight,
   { isStatic: true, label: "leftGoalWall" }
 );
 World.add(world, leftGoalWall);
 
+// Right goal wall: position it so its left edge is flush with the right goal.
 const rightGoalWall = Bodies.rectangle(
   rightGoal.position.x + (goalWidth / 2 + wallThickness / 2),
-  rightGoal.position.y,
+  wallCenterY,
   wallThickness,
-  goalHeight,
+  fullHeight,
   { isStatic: true, label: "rightGoalWall" }
 );
 World.add(world, rightGoalWall);
 
-    function createWallDom(wallBody, cls) {
+function createWallDom(wallBody, cls) {
   const el = document.createElement("div");
   el.className = "goal-wall " + cls;
-  // Position the DOM element based on the Matter body
   el.style.width = wallThickness + "px";
-  el.style.height = goalHeight + "px";
+  el.style.height = fullHeight + "px";
+  // Center the DOM element: subtract half of its dimensions.
   el.style.left = (wallBody.position.x - wallThickness / 2) + "px";
-  el.style.top = (wallBody.position.y - goalHeight / 2) + "px";
-  // Optional styling for visibility
-  el.style.background = "#333";
+  el.style.top = (wallBody.position.y - fullHeight / 2) + "px";
+  el.style.background = "#333"; // Adjust color as needed.
   el.style.position = "absolute";
   el.style.zIndex = "15";
   game.appendChild(el);
@@ -532,7 +536,6 @@ World.add(world, rightGoalWall);
 
 createWallDom(leftGoalWall, "left");
 createWallDom(rightGoalWall, "right");
-
     // --- Tentacle Helpers ---
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
       const tentacle = Composites.stack(x, y, segments, 1, 0, 0, function(x, y) {
