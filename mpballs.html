@@ -754,6 +754,16 @@ createWallDom(rightGoalWall, "right");
     }
 
     // --- Melee Attack Function (Damages destructibles, enemies, and other player) ---
+    function isWithinCone(origin, direction, targetPos, range, angleThreshold) {
+  const vector = { x: targetPos.x - origin.x, y: targetPos.y - origin.y };
+  const distance = Math.hypot(vector.x, vector.y);
+  if (distance > range) return false;
+  const targetAngle = Math.atan2(vector.y, vector.x);
+  const attackAngle = Math.atan2(direction.y, direction.x);
+  let diff = Math.abs(targetAngle - attackAngle);
+  if (diff > Math.PI) diff = 2 * Math.PI - diff;
+  return diff <= angleThreshold;
+}
  function meleeAttack(player, keys, joystickAim) {
   let inputDir = { x: 0, y: 0 };
   if (keys["ArrowLeft"]) inputDir.x -= 1;
