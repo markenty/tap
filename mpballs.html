@@ -1572,8 +1572,8 @@ triggerScreenshake();   triggerDeathEffect();  setTimeout(() => {
 }
 if (playerChar2.hp <= 0 && !playerChar2.isDying) {
   playerChar2.isDying = true;
- triggerScreenshake();     triggerDeathEffect();  setTimeout(() => {
-    digitalPixelExplosion(playerChar2.torso.position.x, playerChar2.torso.position.y); 
+ setTimeout(() => {
+    digitalPixelExplosion(playerChar2.torso.position.x, playerChar2.torso.position.y); triggerScreenshake();     triggerDeathEffect();  
     respawnPlayer(playerChar2);
     playerChar2 = createCharacter(playerChar2.spawn.x, playerChar2.spawn.y);
   }, 1000);
