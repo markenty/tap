@@ -1532,7 +1532,35 @@ function updateGamepadInput() {
       joystick.addEventListener("touchend", (e) => { dragging = false; snapBack(); e.preventDefault(); });
       joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
+// Hide on-screen controls when a gamepad connects
+window.addEventListener("gamepadconnected", (e) => {
+  console.log("Gamepad connected:", e.gamepad);
+  const controls = document.getElementById("controls");
+  if (controls) {
+    controls.style.display = "none";
+  }
+});
 
+// Show on-screen controls when no gamepads are connected
+window.addEventListener("gamepaddisconnected", (e) => {
+  console.log("Gamepad disconnected:", e.gamepad);
+  // Check if any gamepad is still connected
+  const gamepads = navigator.getGamepads();
+  let connected = false;
+  for (let i = 0; i < gamepads.length; i++) {
+    if (gamepads[i]) {
+      connected = true;
+      break;
+    }
+  }
+  if (!connected) {
+    const controls = document.getElementById("controls");
+    if (controls) {
+      // "flex" matches the initial styling in your HTML/CSS.
+      controls.style.display = "flex";
+    }
+  }
+});
     // --- Touch & Button Mappings ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowUp"] = true; });
