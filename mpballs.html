@@ -655,26 +655,6 @@ createWallDom(rightGoalWall, "right");
     let playerChar1 = createCharacter(100, 100);
     let playerChar2 = createCharacter(300, 100);
 
-    
-    function addPlayerLabel(player, playerNumber) {
-  const label = document.createElement("div");
-  label.className = "player-label";
-  label.textContent = playerNumber;
-  label.style.position = "absolute";
-  label.style.top = "50%";
-  label.style.left = "50%";
-  label.style.transform = "translate(-50%, -50%)";
-  label.style.fontWeight = "bold";
-  label.style.fontSize = "16px";
-  label.style.color = "black";
-  player.torso.domElement.style.position = "relative"; // Ensure proper positioning
-  player.torso.domElement.appendChild(label);
-}
-
-addPlayerLabel(playerChar1, 1);
-addPlayerLabel(playerChar2, 2);
-
-    
     // --- Enhanced Enemy Implementation ---
     function createEnemy(x, y) {
       let enemy = {
