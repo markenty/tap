@@ -488,6 +488,44 @@
     }
     createGoalDom(leftGoal, "left");
     createGoalDom(rightGoal, "right");
+// Create non-passable walls behind each goal
+const wallThickness = 20;
+const leftGoalWall = Bodies.rectangle(
+  leftGoal.position.x - (goalWidth / 2 + wallThickness / 2),
+  leftGoal.position.y,
+  wallThickness,
+  goalHeight,
+  { isStatic: true, label: "leftGoalWall" }
+);
+World.add(world, leftGoalWall);
+
+const rightGoalWall = Bodies.rectangle(
+  rightGoal.position.x + (goalWidth / 2 + wallThickness / 2),
+  rightGoal.position.y,
+  wallThickness,
+  goalHeight,
+  { isStatic: true, label: "rightGoalWall" }
+);
+World.add(world, rightGoalWall);
+
+    function createWallDom(wallBody, cls) {
+  const el = document.createElement("div");
+  el.className = "goal-wall " + cls;
+  // Position the DOM element based on the Matter body
+  el.style.width = wallThickness + "px";
+  el.style.height = goalHeight + "px";
+  el.style.left = (wallBody.position.x - wallThickness / 2) + "px";
+  el.style.top = (wallBody.position.y - goalHeight / 2) + "px";
+  // Optional styling for visibility
+  el.style.background = "#333";
+  el.style.position = "absolute";
+  el.style.zIndex = "15";
+  game.appendChild(el);
+  wallBody.domElement = el;
+}
+
+createWallDom(leftGoalWall, "left");
+createWallDom(rightGoalWall, "right");
 
     // --- Tentacle Helpers ---
     function createTentacleComposite(x, y, segments, segmentLength, segmentRadius) {
