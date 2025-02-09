@@ -1360,16 +1360,28 @@
       }
       
       // Update HP bars
-      (function updateHpBar(character) {
-        if (!character.hpContainer) return;
-        character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
-        character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
-      })(playerChar1);
-      (function updateHpBar(character) {
-        if (!character.hpContainer) return;
-        character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
-        character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
-      })(playerChar2);
+   (function updateHpBar(character) {
+  if (!character.hpContainer) return;
+  // Position the HP bar container
+  character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
+  character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
+  // Update the inner HP bar's width based on current HP
+  const fullHP = 100; // adjust if your full HP is different
+  const containerWidth = 50; // width in pixels of the HP bar container
+  const hpPercentage = Math.max(0, character.hp) / fullHP;
+  character.hpBar.style.width = (hpPercentage * containerWidth) + "px";
+})(playerChar1);
+
+(function updateHpBar(character) {
+  if (!character.hpContainer) return;
+  character.hpContainer.style.left = (character.torso.position.x - 25) + "px";
+  character.hpContainer.style.top = (character.torso.position.y - 60) + "px";
+  const fullHP = 100;
+  const containerWidth = 50;
+  const hpPercentage = Math.max(0, character.hp) / fullHP;
+  character.hpBar.style.width = (hpPercentage * containerWidth) + "px";
+})(playerChar2);
+
       
       // --- Auto Respawn ---
       if (playerChar1.hp <= 0) {
