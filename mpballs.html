@@ -1564,8 +1564,8 @@ function triggerScreenshake() {
       // --- Auto Respawn with Death Animation ---
 if (playerChar1.hp <= 0 && !playerChar1.isDying) {
   playerChar1.isDying = true;
-triggerScreenshake();   triggerDeathEffect();  setTimeout(() => { 
-  digitalPixelExplosion(playerChar1.torso.position.x, playerChar1.torso.position.y);
+setTimeout(() => { 
+  digitalPixelExplosion(playerChar1.torso.position.x, playerChar1.torso.position.y);triggerScreenshake();   triggerDeathEffect();  
     respawnPlayer(playerChar1);
     playerChar1 = createCharacter(playerChar1.spawn.x, playerChar1.spawn.y);
   }, 1000);
