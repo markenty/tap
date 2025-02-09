@@ -1345,10 +1345,72 @@ function spawnSpark(x, y) {
     });
     updateGameDimensions();
     updateControlsSize();
+// --- Gamepad Support ---
+let lastGamepadButtonState = {};
 
+window.addEventListener("gamepadconnected", (e) => {
+  console.log("Gamepad connected:", e.gamepad);
+});
+
+window.addEventListener("gamepaddisconnected", (e) => {
+  console.log("Gamepad disconnected:", e.gamepad);
+  delete lastGamepadButtonState[e.gamepad.index];
+});
+
+function updateGamepadInput() {
+  const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+  const threshold = 0.2; // Deadzone threshold for axes
+  for (let i = 0; i < gamepads.length; i++) {
+    const gp = gamepads[i];
+    if (!gp) continue;
+
+    // Map left stick horizontal to movement keys.
+    if (gp.axes[0] < -threshold) {
+      keys["ArrowLeft"] = true;
+      keys["ArrowRight"] = false;
+    } else if (gp.axes[0] > threshold) {
+      keys["ArrowRight"] = true;
+      keys["ArrowLeft"] = false;
+    } else {
+      keys["ArrowLeft"] = false;
+      keys["ArrowRight"] = false;
+    }
+    
+    // Map jump: A button (index 0) triggers jump.
+    keys["Space"] = gp.buttons[0].pressed;
+    
+    // Map right stick to aim vector.
+    let rx = gp.axes[2], ry = gp.axes[3];
+    let rmag = Math.hypot(rx, ry);
+    if (rmag > threshold) {
+      // Normalize the right stick vector.
+      joystickAim.x = rx / rmag;
+      joystickAim.y = ry / rmag;
+    } else {
+      joystickAim.x = 0;
+      joystickAim.y = 0;
+    }
+    
+    // Button actions – trigger on button press transitions.
+    // Button 1 (B) for grab/throw shooting.
+    // Button 2 (X) for melee attack.
+    if (!lastGamepadButtonState[gp.index]) {
+      lastGamepadButtonState[gp.index] = new Array(gp.buttons.length).fill(false);
+    }
+    if (gp.buttons[1].pressed && !lastGamepadButtonState[gp.index][1]) {
+      playerShoot();
+    }
+    if (gp.buttons[2].pressed && !lastGamepadButtonState[gp.index][2]) {
+      meleeAttack();
+    }
+    // Update stored button state.
+    lastGamepadButtonState[gp.index] = gp.buttons.map(button => button.pressed);
+  }
+}
     // --- Main Game Loop ---
     let walkCycle = 0, lastTime = Date.now();
     function update() {
+        updateGamepadInput(); // Poll gamepad input each frame
       Engine.update(engine, 1000/60);
       updatePlayerFacing();
       // Update DOM positions for physics bodies
