@@ -702,7 +702,8 @@ createWallDom(rightGoalWall, "right");
       enemies.push(enemy);
       return enemy;
     }
-    createEnemy(500, 100);
+    createEnemy(levelWidth / 2, playAreaHeight / 2);
+
 
     // --- Player Grab-Throw Function ---
     function playerShoot(player, keys, joystickAim) {
@@ -977,7 +978,8 @@ const interval = setInterval(() => {
           removeEnemy(pair.bodyB);
           updateScoreboard();
           triggerGoalEffect();
-          setTimeout(() => { createEnemy(500, 100); }, 2000);
+          setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 2000);
+
         } else if (pair.bodyB.label === "leftGoal" && pair.bodyA.label === "enemy") {
           leftScore++;
           removeEnemy(pair.bodyA);
