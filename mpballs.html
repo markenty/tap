@@ -808,6 +808,7 @@ createWallDom(rightGoalWall, "right");
           const dy = attackPos.y - enemy.body.position.y;
           if (Math.hypot(dx, dy) <= meleeRange) {
             damageDestructible(enemy.body, damageAmount);
+            triggerScreenshake(); 
             const knockbackForce = 0.05;
             const dist = Math.hypot(dx, dy);
             if (dist > 0) {
@@ -825,6 +826,7 @@ createWallDom(rightGoalWall, "right");
             const dx = attackPos.x - p.torso.position.x;
             const dy = attackPos.y - p.torso.position.y;
             if (Math.hypot(dx, dy) <= meleeRange) {
+              triggerScreenshake(); 
               p.hp -= damageAmount;
               const knockbackForce = 0.05;
               const dist = Math.hypot(dx, dy);
