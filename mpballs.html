@@ -798,24 +798,29 @@ createWallDom(rightGoalWall, "right");
   const stepTime = swingTime / steps;
   let step = 0;
   const forceOut = 0.05, forceTangent = 0.05;
-  
-  const interval = setInterval(() => {
-    const currentDistance = Math.hypot(
-      attackHand.position.x - whipOrigin.x,
-      attackHand.position.y - whipOrigin.y
-    );
-    if (currentDistance < maxWhipDistance) {
-      const amplitude = Math.sin(Math.PI * step / steps);
-      const force = {
-        x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
-        y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
-      };
-      Body.applyForce(attackHand, attackHand.position, force);
-    }
-    step++;
-    if (step >= steps) clearInterval(interval);
-  }, stepTime);
-  
+const interval = setInterval(() => {
+  const currentDistance = Math.hypot(
+    attackHand.position.x - whipOrigin.x,
+    attackHand.position.y - whipOrigin.y
+  );
+  if (currentDistance < maxWhipDistance) {
+    const amplitude = Math.sin(Math.PI * step / steps);
+    const appliedForce = {
+      x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+      y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+    };
+    // Apply force to the attacking hand (for visual/melee swing effect)
+    Body.applyForce(attackHand, attackHand.position, appliedForce);
+    // Immediately counteract the force on the torso so stick inputs determine movement
+    Body.applyForce(player.torso, player.torso.position, { 
+      x: -appliedForce.x, 
+      y: -appliedForce.y 
+    });
+  }
+  step++;
+  if (step >= steps) clearInterval(interval);
+}, stepTime);
+
   // After a short delay, perform hit detection using your directional cone
   setTimeout(() => {
     const attackOrigin = attackHand.position;
