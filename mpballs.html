@@ -754,119 +754,92 @@ createWallDom(rightGoalWall, "right");
     }
 
     // --- Melee Attack Function (Damages destructibles, enemies, and other player) ---
-  // Helper function: checks if targetPos lies within a cone originating at 'origin'
-// in the given 'direction' (normalized), with the specified maximum 'range' and 'angleThreshold' (in radians)
-function isWithinCone(origin, direction, targetPos, range, angleThreshold) {
-  const vector = { x: targetPos.x - origin.x, y: targetPos.y - origin.y };
-  const distance = Math.hypot(vector.x, vector.y);
-  if (distance > range) return false;
-  const targetAngle = Math.atan2(vector.y, vector.x);
-  const attackAngle = Math.atan2(direction.y, direction.x);
-  let diff = Math.abs(targetAngle - attackAngle);
-  if (diff > Math.PI) diff = 2 * Math.PI - diff;
-  return diff <= angleThreshold;
-}
-
-function meleeAttack(player, keys, joystickAim) {
-  let inputDir = { x: 0, y: 0 };
-  if (keys["ArrowLeft"]) inputDir.x -= 1;
-  if (keys["ArrowRight"]) inputDir.x += 1;
-  if (keys["ArrowUp"]) inputDir.y -= 1;
-  if (keys["ArrowDown"]) inputDir.y += 1;
-  if (inputDir.x === 0 && inputDir.y === 0 && Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
-    inputDir.x = joystickAim.x; 
-    inputDir.y = joystickAim.y;
-  }
-  let attackDir = { x: 0, y: 0 };
-  if (inputDir.x || inputDir.y) {
-    const mag = Math.hypot(inputDir.x, inputDir.y);
-    attackDir.x = inputDir.x / mag; 
-    attackDir.y = inputDir.y / mag;
-  } else {
-    const onGround = player.torso.position.y >= playAreaHeight - 5;
-    attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
-  }
-
-  const maxWhipDistance = 20;
-  const attackHand = attackDir.x < 0 ? player.leftHand : player.rightHand;
-  const whipOrigin = attackDir.x < 0 ? player.leftUpperArm.position : player.rightUpperArm.position;
-  const tangent = { x: attackDir.y, y: -attackDir.x };
-  const swingTime = 300, steps = 15;
-  const stepTime = swingTime / steps;
-  let step = 0;
-  const interval = setInterval(() => {
-    const currentDistance = Math.hypot(
-      attackHand.position.x - whipOrigin.x,
-      attackHand.position.y - whipOrigin.y
-    );
-    if (currentDistance < maxWhipDistance) {
-      const amplitude = Math.sin(Math.PI * step / steps);
-      const forceOut = 0.05, forceTangent = 0.05;
-      Body.applyForce(attackHand, attackHand.position, {
-        x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
-        y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
-      });
+    function meleeAttack(player, keys, joystickAim) {
+      let inputDir = { x: 0, y: 0 };
+      if (keys["ArrowLeft"]) inputDir.x -= 1;
+      if (keys["ArrowRight"]) inputDir.x += 1;
+      if (keys["ArrowUp"]) inputDir.y -= 1;
+      if (keys["ArrowDown"]) inputDir.y += 1;
+      if (inputDir.x === 0 && inputDir.y === 0 && Math.hypot(joystickAim.x, joystickAim.y) > 0.1) {
+        inputDir.x = joystickAim.x; inputDir.y = joystickAim.y;
+      }
+      let attackDir = { x: 0, y: 0 };
+      if (inputDir.x || inputDir.y) {
+        const mag = Math.hypot(inputDir.x, inputDir.y);
+        attackDir.x = inputDir.x / mag; attackDir.y = inputDir.y / mag;
+      } else {
+        const onGround = player.torso.position.y >= playAreaHeight - 5;
+        attackDir = onGround ? { x: 0, y: -1 } : { x: 0, y: 1 };
+      }
+      const maxWhipDistance = 20;
+      const attackHand = attackDir.x < 0 ? player.leftHand : player.rightHand;
+      const whipOrigin = attackDir.x < 0 ? player.leftUpperArm.position : player.rightUpperArm.position;
+      const tangent = { x: attackDir.y, y: -attackDir.x };
+      const swingTime = 300, steps = 15;
+      const stepTime = swingTime / steps;
+      let step = 0;
+      const interval = setInterval(() => {
+        const currentDistance = Math.hypot(attackHand.position.x - whipOrigin.x, attackHand.position.y - whipOrigin.y);
+        if (currentDistance < maxWhipDistance) {
+          const amplitude = Math.sin(Math.PI * step / steps);
+          const forceOut = 0.05, forceTangent = 0.05;
+          Body.applyForce(attackHand, attackHand.position, {
+            x: (attackDir.x * forceOut + tangent.x * forceTangent) * amplitude,
+            y: (attackDir.y * forceOut + tangent.y * forceTangent) * amplitude
+          });
+        }
+        step++;
+        if (step >= steps) clearInterval(interval);
+      }, stepTime);
+      setTimeout(() => {
+        const attackPos = attackHand.position;
+        const meleeRange = 60, damageAmount = 30;
+        // Damage destructible objects
+        [platforms, walls].forEach(arr => {
+          
+          arr.forEach(obj => {
+            const dx = attackPos.x - obj.position.x;
+            const dy = attackPos.y - obj.position.y;
+            if (Math.hypot(dx, dy) <= meleeRange) { damageDestructible(obj, damageAmount); triggerScreenshake();   }
+          });
+        });
+        // Damage enemies
+        enemies.forEach(enemy => {
+          const dx = attackPos.x - enemy.body.position.x;
+          const dy = attackPos.y - enemy.body.position.y;
+          if (Math.hypot(dx, dy) <= meleeRange) {triggerScreenshake();               damageDestructible(enemy.body, damageAmount);
+            const knockbackForce = 0.05;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+              Body.applyForce(enemy.body, enemy.body.position, { 
+                x: (enemy.body.position.x - attackPos.x) / dist * knockbackForce, 
+                y: (enemy.body.position.y - attackPos.y) / dist * knockbackForce 
+              });
+            }
+          }
+        });
+        // Damage other players (PvP)
+        const players = [playerChar1, playerChar2];
+        players.forEach(p => {
+          if (p !== player) {
+            const dx = attackPos.x - p.torso.position.x;
+            const dy = attackPos.y - p.torso.position.y;
+            if (Math.hypot(dx, dy) <= meleeRange) {
+              triggerScreenshake();   
+              p.hp -= damageAmount;
+              const knockbackForce = 0.15;
+              const dist = Math.hypot(dx, dy);
+              if (dist > 0) {
+                Body.applyForce(p.torso, p.torso.position, { 
+                  x: (p.torso.position.x - attackPos.x) / dist * knockbackForce, 
+                  y: (p.torso.position.y - attackPos.y) / dist * knockbackForce 
+                });
+              }
+            }
+          }
+        });
+      }, 100);
     }
-    step++;
-    if (step >= steps) clearInterval(interval);
-  }, stepTime);
-
-  // After the swing, check for hits using a directional cone
-  setTimeout(() => {
-    const attackOrigin = attackHand.position; // origin for the cone
-    const meleeRange = 60; // maximum distance for melee hit
-    const damageAmount = 30;
-    const angleThreshold = Math.PI / 6; // 30° cone on either side
-
-    // Damage destructible objects (platforms and walls)
-    [platforms, walls].forEach(arr => {
-      arr.forEach(obj => {
-        if (isWithinCone(attackOrigin, attackDir, obj.position, meleeRange, angleThreshold)) {
-          damageDestructible(obj, damageAmount);
-          triggerScreenshake();
-        }
-      });
-    });
-
-    // Damage enemies
-    enemies.forEach(enemy => {
-      if (isWithinCone(attackOrigin, attackDir, enemy.body.position, meleeRange, angleThreshold)) {
-        triggerScreenshake();
-        damageDestructible(enemy.body, damageAmount);
-        const knockbackForce = 0.05;
-        const dx = enemy.body.position.x - attackOrigin.x;
-        const dy = enemy.body.position.y - attackOrigin.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 0) {
-          Body.applyForce(enemy.body, enemy.body.position, {
-            x: (dx / dist) * knockbackForce,
-            y: (dy / dist) * knockbackForce
-          });
-        }
-      }
-    });
-
-    // Damage other players (PvP)
-    const players = [playerChar1, playerChar2];
-    players.forEach(p => {
-      if (p !== player && isWithinCone(attackOrigin, attackDir, p.torso.position, meleeRange, angleThreshold)) {
-        triggerScreenshake();
-        p.hp -= damageAmount;
-        const knockbackForce = 0.15;
-        const dx = p.torso.position.x - attackOrigin.x;
-        const dy = p.torso.position.y - attackOrigin.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 0) {
-          Body.applyForce(p.torso, p.torso.position, {
-            x: (dx / dist) * knockbackForce,
-            y: (dy / dist) * knockbackForce
-          });
-        }
-      }
-    });
-  }, 100);
-}
-
 
     // --- Digital Pixel Explosion Animation ---
     function digitalPixelExplosion(x, y) {
