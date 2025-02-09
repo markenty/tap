@@ -796,18 +796,18 @@ createWallDom(rightGoalWall, "right");
         const meleeRange = 60, damageAmount = 30;
         // Damage destructible objects
         [platforms, walls].forEach(arr => {
+          
           arr.forEach(obj => {
             const dx = attackPos.x - obj.position.x;
             const dy = attackPos.y - obj.position.y;
-            if (Math.hypot(dx, dy) <= meleeRange) { damageDestructible(obj, damageAmount); }
+            if (Math.hypot(dx, dy) <= meleeRange) { damageDestructible(obj, damageAmount); triggerScreenshake();   }
           });
         });
         // Damage enemies
         enemies.forEach(enemy => {
           const dx = attackPos.x - enemy.body.position.x;
           const dy = attackPos.y - enemy.body.position.y;
-          if (Math.hypot(dx, dy) <= meleeRange) {
-            damageDestructible(enemy.body, damageAmount);
+          if (Math.hypot(dx, dy) <= meleeRange) {triggerScreenshake();               damageDestructible(enemy.body, damageAmount);
             const knockbackForce = 0.05;
             const dist = Math.hypot(dx, dy);
             if (dist > 0) {
@@ -825,6 +825,7 @@ createWallDom(rightGoalWall, "right");
             const dx = attackPos.x - p.torso.position.x;
             const dy = attackPos.y - p.torso.position.y;
             if (Math.hypot(dx, dy) <= meleeRange) {
+              triggerScreenshake();   
               p.hp -= damageAmount;
               const knockbackForce = 0.05;
               const dist = Math.hypot(dx, dy);
@@ -842,7 +843,7 @@ createWallDom(rightGoalWall, "right");
 
     // --- Digital Pixel Explosion Animation ---
     function digitalPixelExplosion(x, y) {
-      const numPixels = 50;
+      triggerScreenshake();         const numPixels = 50;
       for (let i = 0; i < numPixels; i++) {
         const pixel = document.createElement("div");
         pixel.style.position = "absolute";
