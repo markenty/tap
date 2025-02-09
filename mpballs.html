@@ -827,7 +827,7 @@ createWallDom(rightGoalWall, "right");
             if (Math.hypot(dx, dy) <= meleeRange) {
               triggerScreenshake();   
               p.hp -= damageAmount;
-              const knockbackForce = 0.05;
+              const knockbackForce = 0.15;
               const dist = Math.hypot(dx, dy);
               if (dist > 0) {
                 Body.applyForce(p.torso, p.torso.position, { 
