@@ -1497,6 +1497,15 @@ function spawnSpark(x, y) {
         window.scrollTo(0, maxScroll);
       }
     });
+    const player = document.querySelector('.player-part');
+
+document.addEventListener('keyup', (e) => {
+  // Reset if left/right keys are released.
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    // Reset to default centering (and keep any rotation from the animation if needed).
+    player.style.transform = "translate(-50%, -50%)";
+  }
+});
   </script>
 </body>
 </html>
