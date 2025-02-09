@@ -1441,52 +1441,36 @@
         const hpPercentage = Math.max(0, character.hp) / fullHP;
         character.hpBar.style.width = (hpPercentage * containerWidth) + "px";
       })(playerChar2);
-      
-      // --- Auto Respawn with Death Animation ---
-if (playerChar1.hp <= 0 && !playerChar1.isDying) {
-  playerChar1.isDying = true;
-  triggerDeathEffect();
-  digitalPixelExplosion(playerChar1.torso.position.x, playerChar1.torso.position.y);
-  setTimeout(() => {
-    respawnPlayer(playerChar1);
-    playerChar1 = createCharacter(playerChar1.spawn.x, playerChar1.spawn.y);
-  }, 1000);
-}
-if (playerChar2.hp <= 0 && !playerChar2.isDying) {
-  playerChar2.isDying = true;
-  triggerDeathEffect();
-  digitalPixelExplosion(playerChar2.torso.position.x, playerChar2.torso.position.y);
-  setTimeout(() => {
-    respawnPlayer(playerChar2);
-    playerChar2 = createCharacter(playerChar2.spawn.x, playerChar2.spawn.y);
-  }, 1000);
-}
-
-      updateCamera();
-      requestAnimationFrame(update);
-    }
-    update();
-function triggerDeathEffect() {
-  // Create or reuse an overlay for the red flash
-  let deathOverlay = document.getElementById("deathOverlay");
-  if (!deathOverlay) {
-    deathOverlay = document.createElement("div");
-    deathOverlay.id = "deathOverlay";
-    deathOverlay.style.position = "absolute";
-    deathOverlay.style.top = "0";
-    deathOverlay.style.left = "0";
-    deathOverlay.style.width = "100%";
-    deathOverlay.style.height = "100%";
-    deathOverlay.style.zIndex = "50";
-    deathOverlay.style.pointerEvents = "none";
-    game.appendChild(deathOverlay);
+      function triggerDeathEffect() {
+  // Remove any existing death overlay
+  let existingOverlay = document.getElementById("deathOverlay");
+  if (existingOverlay) {
+    existingOverlay.parentNode.removeChild(existingOverlay);
   }
-  // Set a red flash that fades out quickly
+  // Create a new overlay for the red flash
+  const deathOverlay = document.createElement("div");
+  deathOverlay.id = "deathOverlay";
+  deathOverlay.style.position = "absolute";
+  deathOverlay.style.top = "0";
+  deathOverlay.style.left = "0";
+  deathOverlay.style.width = "100%";
+  deathOverlay.style.height = "100%";
+  deathOverlay.style.zIndex = "50";
+  deathOverlay.style.pointerEvents = "none";
+  // Set the overlay to start with a red flash
   deathOverlay.style.backgroundColor = "rgba(255, 0, 0, 0.8)";
   deathOverlay.style.transition = "background-color 0.5s ease-out";
+  game.appendChild(deathOverlay);
+  // After 50ms, fade the flash out
   setTimeout(() => {
     deathOverlay.style.backgroundColor = "rgba(255, 0, 0, 0)";
   }, 50);
+  // Remove the overlay after the transition is done (600ms later)
+  setTimeout(() => {
+    if (deathOverlay.parentNode) {
+      deathOverlay.parentNode.removeChild(deathOverlay);
+    }
+  }, 600);
 
   // Create and display a "KO" text element
   const koText = document.createElement("div");
@@ -1519,6 +1503,31 @@ function triggerDeathEffect() {
     if (koText.parentNode) { koText.parentNode.removeChild(koText); }
   }, 1000);
 }
+      // --- Auto Respawn with Death Animation ---
+if (playerChar1.hp <= 0 && !playerChar1.isDying) {
+  playerChar1.isDying = true;
+  triggerDeathEffect();
+  digitalPixelExplosion(playerChar1.torso.position.x, playerChar1.torso.position.y);
+  setTimeout(() => {
+    respawnPlayer(playerChar1);
+    playerChar1 = createCharacter(playerChar1.spawn.x, playerChar1.spawn.y);
+  }, 1000);
+}
+if (playerChar2.hp <= 0 && !playerChar2.isDying) {
+  playerChar2.isDying = true;
+  triggerDeathEffect();
+  digitalPixelExplosion(playerChar2.torso.position.x, playerChar2.torso.position.y);
+  setTimeout(() => {
+    respawnPlayer(playerChar2);
+    playerChar2 = createCharacter(playerChar2.spawn.x, playerChar2.spawn.y);
+  }, 1000);
+}
+
+      updateCamera();
+      requestAnimationFrame(update);
+    }
+    update();
+
     // --- On-Screen Joystick (Player One) ---
     (function() {
       const joystick = document.getElementById("joystick");
