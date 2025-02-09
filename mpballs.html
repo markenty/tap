@@ -501,7 +501,7 @@ const wallCenterY = fullHeight / 2;
 
 // Left goal wall: position it so its right edge is flush with the left goal.
 const leftGoalWall = Bodies.rectangle(
-  leftGoal.position.x - (goalWidth / 2 + wallThickness / 2),
+  leftGoal.position.x - (goalWidth / 2 + wallThickness / 2 + 20),
   wallCenterY,
   wallThickness,
   fullHeight,
@@ -511,7 +511,7 @@ World.add(world, leftGoalWall);
 
 // Right goal wall: position it so its left edge is flush with the right goal.
 const rightGoalWall = Bodies.rectangle(
-  rightGoal.position.x + (goalWidth / 2 + wallThickness / 2),
+  rightGoal.position.x + (goalWidth / 2 + wallThickness / 2 + 20),
   wallCenterY,
   wallThickness,
   fullHeight,
