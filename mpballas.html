@@ -1295,11 +1295,11 @@
 
     // --- Dynamic Camera with Zoom ---
     let cameraX = 0, cameraY = 0;
-function updateCamera() {
+    function updateCamera() {
   const screenWidth = window.innerWidth;
   const screenHeight = window.innerHeight;
   
-  // Gather positions (players and optionally an enemy)
+  // Use player positions—and include the ball (enemy[0]) if available—for camera focus.
   let points = [
     playerChar1.torso.position,
     playerChar2.torso.position
@@ -1308,48 +1308,42 @@ function updateCamera() {
     points.push(enemies[0].body.position);
   }
   
-  // Determine the bounding box of all points
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  // Calculate the average center of the points.
+  let sumX = 0, sumY = 0;
   points.forEach(p => {
-    minX = Math.min(minX, p.x);
-    minY = Math.min(minY, p.y);
-    maxX = Math.max(maxX, p.x);
-    maxY = Math.max(maxY, p.y);
+    sumX += p.x;
+    sumY += p.y;
   });
+  const centerX = sumX / points.length;
+  const centerY = sumY / points.length;
   
-  // Add some margin around the bounding box
+  // Compute the bounding box of these points with a margin.
   const margin = 100;
-  minX -= margin;
-  minY -= margin;
-  maxX += margin;
-  maxY += margin;
+  let minX = Math.min(...points.map(p => p.x)) - margin;
+  let maxX = Math.max(...points.map(p => p.x)) + margin;
+  let minY = Math.min(...points.map(p => p.y)) - margin;
+  let maxY = Math.max(...points.map(p => p.y)) + margin;
   
   const boxWidth = maxX - minX;
   const boxHeight = maxY - minY;
   
-  // Find the center of the bounding box
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-  
-  // Compute scale factors based on bounding box and screen size
+  // Calculate the scale so that the bounding box fits into the viewport.
   const scaleX = screenWidth / boxWidth;
   const scaleY = screenHeight / boxHeight;
-  let scale = Math.min(scaleX, scaleY);
-  scale = Math.min(scale, 1); // Prevent zooming in beyond scale 1
+  let scale = Math.min(scaleX, scaleY, 1);
   
-  // Define a minimum scale so the camera never shows space outside the play area
-  const minScale = Math.max(screenWidth / levelWidth, screenHeight / gameHeight);
-  scale = Math.max(scale, minScale);
+  // Set the camera position so that the center is in the middle of the viewport.
+  let camX = centerX - screenWidth / (2 * scale);
+  let camY = centerY - screenHeight / (2 * scale);
   
-  // Calculate camera position centered on the bounding box
-  cameraX = centerX - screenWidth / (2 * scale);
-  cameraY = centerY - screenHeight / (2 * scale);
+  // Clamp the camera to the game area bounds.
+  camX = Math.max(0, Math.min(camX, levelWidth - screenWidth / scale));
+  camY = Math.max(0, Math.min(camY, gameHeight - screenHeight / scale));
   
-  // Clamp the camera so it stays within level bounds
-  cameraX = Math.max(0, Math.min(cameraX, levelWidth - screenWidth / scale));
-  cameraY = Math.max(0, Math.min(cameraY, gameHeight - screenHeight / scale));
+  cameraX = camX;
+  cameraY = camY;
   
-  // Apply the transform
+  // Apply the transform to the game container.
   game.style.transformOrigin = "top left";
   game.style.transform = `translate(-${cameraX}px, -${cameraY}px) scale(${scale})`;
   document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
