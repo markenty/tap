@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Top-Down Football Game</title>
+  <title>Top-Down Football (More Accurate)</title>
   <style>
-    /* Field and UI styling */
+    /* FIELD + UI */
     body {
       margin: 0;
       background-color: #006400;
       font-family: Arial, sans-serif;
+      user-select: none;
     }
     #gameCanvas {
       background-color: #007f0e;
@@ -16,14 +17,23 @@
       margin: 10px auto;
       border: 2px solid #fff;
     }
-    #scoreboard, #controls {
+    #scoreboard {
+      text-align: center;
+      color: #fff;
+      margin: 0 auto;
+    }
+    #scoreboard > div {
+      margin: 5px 0;
+    }
+    span.label {
+      display: inline-block;
+      min-width: 100px;
+      font-weight: bold;
+    }
+    #controls {
       text-align: center;
       color: #fff;
       margin-top: 10px;
-    }
-    #scoreboard span {
-      font-size: 20px;
-      margin: 0 10px;
     }
     button {
       font-size: 16px;
@@ -34,451 +44,601 @@
   </style>
 </head>
 <body>
-  <!-- Canvas for the field -->
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
+<canvas id="gameCanvas" width="900" height="650"></canvas>
 
-  <!-- Scoreboard and clock -->
-  <div id="scoreboard">
-    <span id="offenseScore">Offense: 0</span>
-    <span id="defenseScore">Defense: 0</span>
-    <br>
-    <span id="gameClock">Time: 15:00</span>
+<div id="scoreboard">
+  <div><span class="label">Offense Score:</span> <span id="offenseScore">0</span></div>
+  <div><span class="label">Defense Score:</span> <span id="defenseScore">0</span></div>
+  <div><span class="label">Quarter:</span> <span id="quarter">1</span></div>
+  <div><span class="label">Game Clock:</span> <span id="gameClock">15:00</span></div>
+  <div>
+    <span class="label">Down & Distance:</span>
+    <span id="downDistance">1st & 10</span>
   </div>
+</div>
 
-  <!-- Play selection controls (hidden until needed) -->
-  <div id="controls">
-    <button id="playRun" style="display:none;">Run Play</button>
-    <button id="playPass" style="display:none;">Pass Play</button>
-  </div>
+<div id="controls">
+  <button id="playRun" style="display:none;">Run Play</button>
+  <button id="playPass" style="display:none;">Pass Play</button>
+  <button id="kickFieldGoal" style="display:none;">Kick (FG/XP)</button>
+</div>
 
-  <script>
-    /* === Global Variables & Initialization === */
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+<script>
+/* 
+   High-Level Summary of Features Implemented Here:
+   1) 4 downs to gain 10 yards
+   2) Offense/Defense roles, swapping on turnover
+   3) Scoring: touchdown, extra point (simplified), field goal attempts, safeties
+   4) Quarter and clock logic (simplified to 4 quarters, each 15 minutes)
+   5) Basic AI for blocking, tackling, coverage
+   6) Tap-based pass selection (QB -> receiver), run plays, manual player movement
+   7) More robust state tracking (drive yard line, first down yard line, current down, etc.)
+*/
 
-    // Game state holds the play phase, play type, clock, and markers
-    let gameState = {
-      phase: "pre-snap",    // "pre-snap", "play", "post-play"
-      playType: null,       // "run" or "pass"
-      selectedPlayer: null, // for manual movement (tap then choose destination)
-      targeting: { defender: null, target: null }, // for defensive targeting before snap
-      passSelection: null,  // for pass play (first select QB, then receiver)
-      lineOfScrimmage: 500, // y-coordinate for the line of scrimmage
-      firstDownMarker: 500 - 60, // 10 yards ahead (60 px = approx. 10 yards)
-      offenseScore: 0,
-      defenseScore: 0,
-      clock: 15 * 60, // seconds (15-minute half)
-      lastTime: Date.now()
-    };
+/* === Canvas Setup === */
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-    // The ball object: when held, its possessor property points to a Player.
-    let ball = {
-      x: 400,
-      y: 500,
-      possessor: null,
-      inMotion: false,
-      vx: 0,
-      vy: 0,
-      update: function() {
-        if (!this.possessor && this.inMotion) {
-          this.x += this.vx;
-          this.y += this.vy;
-          // simple friction to eventually slow the ball
-          this.vx *= 0.99;
-          this.vy *= 0.99;
-        }
-      },
-      draw: function(ctx) {
-        // Draw the football emoji at its current position
-        ctx.font = "24px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("🏈", this.x, this.y);
-      }
-    };
+/* === GAME STATE === */
+let gameState = {
+  phase: "pre-snap",     // "pre-snap", "play", "post-play", "kick"
+  playType: null,        // "run", "pass", or "kick"
+  selectedPlayer: null,  
+  passSelection: null,   // { qb, receiver }
+  lineOfScrimmage: 500,  // y‐coordinate for LOS (approx)
+  firstDownY: 440,       // y‐coordinate for the next first down
+  offenseScore: 0,
+  defenseScore: 0,
+  quarter: 1,
+  clock: 15 * 60,        // 15 minutes per quarter, in seconds
+  totalQuarters: 4,
+  down: 1,
+  yardsToFirstDown: 10,
+  ballPlacementY: 500,   // Where the ball is placed at snap
+  lastTimestamp: Date.now(),
+  ballSpottedY: 500,     // For tracking ball position after each play
+  fieldGoalRange: 80,    // Distance in Y from end zone for a FG attempt
+};
 
-    // Array to hold all players.
-    let players = [];
-
-    // Player class: each player is a circle with a number.
-    class Player {
-      constructor(id, team, number, x, y, role) {
-        this.id = id;
-        this.team = team;      // "offense" or "defense"
-        this.number = number;
-        this.x = x;
-        this.y = y;
-        this.role = role;      // e.g. "QB", "Snapper", or generic role
-        this.speed = 1.5;
-        this.target = null;    // if set (by tap on field), move toward target
-      }
-
-      update() {
-        // If a manual target is set, move there first.
-        if (this.target) {
-          let dx = this.target.x - this.x;
-          let dy = this.target.y - this.y;
-          let dist = Math.hypot(dx, dy);
-          if (dist > 1) {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
-          } else {
-            this.target = null;
-          }
-        } else if (gameState.phase === "play") {
-          // Simplified AI movement based on team and play type.
-          if (this.team === "offense") {
-            if (ball.possessor === this) {
-              // Ball carrier runs forward (upward toward top end zone)
-              this.y -= 1.5;
-            } else {
-              // Other offensive players run “routes” (small random moves)
-              this.x += (Math.random() - 0.5);
-              this.y += (Math.random() - 0.5);
-            }
-          } else if (this.team === "defense") {
-            // Defensive players home in on the ball carrier if nearby.
-            if (ball.possessor && ball.possessor.team === "offense") {
-              let dx = ball.possessor.x - this.x;
-              let dy = ball.possessor.y - this.y;
-              let dist = Math.hypot(dx, dy);
-              if (dist < 200) {
-                this.x += (dx / dist) * this.speed;
-                this.y += (dy / dist) * this.speed;
-              }
-            }
-            // (If defensive active targeting was set before snap, that logic could be added here.)
-          }
-        }
-      }
-
-      draw(ctx) {
-        // Draw player as a circle
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 15, 0, Math.PI * 2);
-        ctx.fillStyle = this.team === "offense" ? "blue" : "red";
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.stroke();
-        ctx.closePath();
-
-        // Draw player number in the center
-        ctx.fillStyle = "#fff";
-        ctx.font = "12px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.number, this.x, this.y);
-      }
+/* === BALL OBJECT === */
+let ball = {
+  x: canvas.width / 2,
+  y: gameState.lineOfScrimmage,
+  possessor: null,
+  inMotion: false,
+  vx: 0,
+  vy: 0,
+  update() {
+    if (!this.possessor && this.inMotion) {
+      this.x += this.vx;
+      this.y += this.vy;
+      // basic friction
+      this.vx *= 0.985;
+      this.vy *= 0.985;
+    } else if (this.possessor) {
+      // follow the possessor
+      this.x = this.possessor.x;
+      this.y = this.possessor.y;
     }
+  },
+  draw(ctx) {
+    ctx.font = "24px serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🏈", this.x, this.y);
+  }
+};
 
-    /* === Initialization Functions === */
-    // Set up the players in simple formations.
-    function initPlayers() {
-      players = [];
-      // Offense: 11 players (one will be designated as Snapper and one as QB)
-      for (let i = 0; i < 11; i++) {
-        let x = 100 + i * 60;
-        let y = 500;
-        let role = "offense";
-        if (i === 5) role = "QB";
-        if (i === 6) role = "Snapper";  // snapper: tap him to start play
-        players.push(new Player("O" + i, "offense", i + 1, x, y, role));
-      }
-      // Defense: 11 players in a simple line near the top.
-      for (let i = 0; i < 11; i++) {
-        let x = 100 + i * 60;
-        let y = 100;
-        players.push(new Player("D" + i, "defense", i + 1, x, y, "defense"));
-      }
-      if (gameState.phase === "pre-snap") {
-        showPlaySelection();
-      }
-    }
+/* === PLAYERS ARRAY === */
+let players = [];
 
-    // Display the run/pass selection buttons.
-    function showPlaySelection() {
-      document.getElementById("playRun").style.display = "inline-block";
-      document.getElementById("playPass").style.display = "inline-block";
-    }
+/* === PLAYER CLASS === */
+class Player {
+  constructor(id, team, number, x, y, role) {
+    this.id = id;
+    this.team = team;         // "offense" or "defense"
+    this.number = number;
+    this.x = x;
+    this.y = y;
+    this.role = role;         // e.g. "QB", "Snapper", "WR", "LB", "CB"
+    this.speed = 1.8;
+    this.target = null;       
+  }
 
-    /* === Drawing Functions === */
-    // Draw the football field: yard lines, end zones, and marker lines.
-    function drawField() {
-      // Draw horizontal yard lines over the field (excluding end zones)
-      ctx.strokeStyle = "#fff";
-      for (let i = 0; i <= 10; i++) {
-        let y = 50 + i * ((canvas.height - 100) / 10);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-      // Draw a few vertical lines to indicate yard markers.
-      for (let i = 0; i <= 8; i++) {
-        let x = i * (canvas.width / 8);
-        ctx.beginPath();
-        ctx.moveTo(x, 50);
-        ctx.lineTo(x, canvas.height - 50);
-        ctx.stroke();
-      }
-      // Draw end zones: top (blue) and bottom (red).
-      ctx.fillStyle = "blue";
-      ctx.fillRect(0, 0, canvas.width, 50);
-      ctx.fillStyle = "red";
-      ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-    }
-
-    // Main draw function: clear the canvas and redraw field, markers, players, and ball.
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawField();
-
-      // Draw all players.
-      players.forEach(p => p.draw(ctx));
-      // Draw the ball.
-      ball.draw(ctx);
-
-      // Draw the line of scrimmage (white) and first down marker (yellow).
-      ctx.strokeStyle = "#fff";
-      ctx.beginPath();
-      ctx.moveTo(0, gameState.lineOfScrimmage);
-      ctx.lineTo(canvas.width, gameState.lineOfScrimmage);
-      ctx.stroke();
-
-      ctx.strokeStyle = "yellow";
-      ctx.beginPath();
-      ctx.moveTo(0, gameState.firstDownMarker);
-      ctx.lineTo(canvas.width, gameState.firstDownMarker);
-      ctx.stroke();
-
-      // Update the scoreboard display.
-      document.getElementById("offenseScore").innerText = "Offense: " + gameState.offenseScore;
-      document.getElementById("defenseScore").innerText = "Defense: " + gameState.defenseScore;
-      let minutes = Math.floor(gameState.clock / 60);
-      let seconds = Math.floor(gameState.clock % 60);
-      document.getElementById("gameClock").innerText = "Time: " + minutes + ":" + (seconds < 10 ? "0" + seconds : seconds);
-    }
-
-    /* === Game Loop and Updates === */
-    function gameLoop() {
-      let now = Date.now();
-      let delta = (now - gameState.lastTime) / 1000;
-      gameState.lastTime = now;
-
-      // Update the clock only during play.
-      if (gameState.phase === "play") {
-        gameState.clock -= delta;
-        if (gameState.clock <= 0) {
-          gameState.clock = 0;
-          // End-game logic could go here.
-        }
-      }
-
-      // Update all players and the ball.
-      players.forEach(p => p.update());
-      ball.update();
-
-      // Check for tackles (if a defender gets too close to the ball carrier).
-      checkTackles();
-      // Check for a touchdown.
-      checkTouchdown();
-
-      draw();
-      requestAnimationFrame(gameLoop);
-    }
-
-    // If a defender nears the offensive ball carrier, call a tackle and turn over play.
-    function checkTackles() {
-      if (ball.possessor && ball.possessor.team === "offense") {
-        players.forEach(p => {
-          if (p.team === "defense") {
-            let dx = p.x - ball.possessor.x;
-            let dy = p.y - ball.possessor.y;
-            if (Math.hypot(dx, dy) < 20) { // collision radius for a tackle
-              // Tackle: clear possession and switch sides.
-              ball.possessor = null;
-              ball.inMotion = false;
-              gameState.phase = "post-play";
-              swapPossession();
-            }
-          }
-        });
-      }
-    }
-
-    // If the offensive player with the ball reaches the top end zone, award a touchdown.
-    function checkTouchdown() {
-      if (ball.possessor && ball.possessor.team === "offense") {
-        if (ball.possessor.y < 50) {  // top end zone threshold
-          gameState.offenseScore += 6;
-          // (Extra point kicking could be implemented here.)
-          gameState.phase = "post-play";
-          resetPlay();
-        }
-      }
-    }
-
-    // Swap offense and defense after a turnover.
-    function swapPossession() {
-      players.forEach(p => {
-        p.team = (p.team === "offense") ? "defense" : "offense";
-      });
-      // For the next play, assign ball to the first offensive player found.
-      let offensePlayers = players.filter(p => p.team === "offense");
-      ball.possessor = offensePlayers.length ? offensePlayers[0] : null;
-      gameState.phase = "pre-snap";
-      resetPositions();
-    }
-
-    // Reset positions and state for the next play.
-    function resetPlay() {
-      ball.inMotion = false;
-      ball.vx = 0;
-      ball.vy = 0;
-      ball.x = 400;
-      ball.y = 500;
-      gameState.phase = "pre-snap";
-      resetPositions();
-    }
-
-    // Reinitialize player positions.
-    function resetPositions() {
-      initPlayers();
-      // Reset marker positions if needed.
-      gameState.lineOfScrimmage = 500;
-      gameState.firstDownMarker = 500 - 60;
-    }
-
-    /* === User Input Handling === */
-    // Clicking on a player or the field triggers different actions.
-    canvas.addEventListener("click", function(evt) {
-      let rect = canvas.getBoundingClientRect();
-      let mouseX = evt.clientX - rect.left;
-      let mouseY = evt.clientY - rect.top;
-
-      // Check if a player was clicked.
-      let clickedPlayer = null;
-      players.forEach(p => {
-        if (Math.hypot(p.x - mouseX, p.y - mouseY) < 15) {
-          clickedPlayer = p;
-        }
-      });
-
-      if (clickedPlayer) {
-        handlePlayerClick(clickedPlayer);
+  update() {
+    if (this.target) {
+      let dx = this.target.x - this.x;
+      let dy = this.target.y - this.y;
+      let dist = Math.hypot(dx, dy);
+      if (dist > 2) {
+        this.x += (dx / dist) * this.speed;
+        this.y += (dy / dist) * this.speed;
       } else {
-        // If no player was clicked and a player was selected for manual movement,
-        // set that player’s target location.
-        if (gameState.selectedPlayer) {
-          gameState.selectedPlayer.target = { x: mouseX, y: mouseY };
-          gameState.selectedPlayer = null;
-        }
+        this.target = null;
       }
-    });
-
-    // Handle a tap on a player depending on the play phase.
-    function handlePlayerClick(player) {
-      if (gameState.phase === "pre-snap") {
-        // Tap the Snapper to initiate the play.
-        if (player.role === "Snapper" && player.team === "offense") {
-          startPlay();
-        }
-        // Also allow manual selection (for instance, to reposition a player).
-        if (player.team === "offense") {
-          gameState.selectedPlayer = player;
-        }
-        // Defensive active targeting (tap a defensive lineman then an opposing player)
-        if (player.team === "defense") {
-          if (!gameState.targeting.defender) {
-            gameState.targeting.defender = player;
-          } else if (!gameState.targeting.target && player.team !== gameState.targeting.defender.team) {
-            gameState.targeting.target = player;
-          }
-        }
-      } else if (gameState.phase === "play") {
-        // During a pass play, allow selection of QB then receiver.
-        if (gameState.playType === "pass") {
-          if (!gameState.passSelection) {
-            if (player.role === "QB" && player.team === "offense") {
-              gameState.passSelection = { qb: player, receiver: null };
-            }
-          } else if (!gameState.passSelection.receiver) {
-            if (player.team === "offense" && player !== gameState.passSelection.qb) {
-              gameState.passSelection.receiver = player;
-              executePassPlay();
-            }
-          }
+    } else if (gameState.phase === "play") {
+      // Basic AI
+      if (this.team === "offense") {
+        // If you have the ball, move up the field
+        if (ball.possessor === this) {
+          // Move straight up by default
+          this.y -= this.speed;
         } else {
-          // In a run play, tapping the ball carrier lets you set a new target.
-          if (ball.possessor && player.id === ball.possessor.id) {
-            gameState.selectedPlayer = player;
+          // Basic “route running” or blocking
+          if (this.role === "WR") {
+            // run some route up/down the field
+            this.y -= 0.5;
+            this.x += (Math.random() - 0.5);
+          } else {
+            // block or random small movements
+            this.y -= (Math.random() * 0.2);
+          }
+        }
+      } else {
+        // Defense: pursuit if there's a ball carrier
+        if (ball.possessor && ball.possessor.team === "offense") {
+          let dx = ball.possessor.x - this.x;
+          let dy = ball.possessor.y - this.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist < 250) {
+            this.x += (dx / dist) * this.speed * 0.9;
+            this.y += (dy / dist) * this.speed * 0.9;
           }
         }
       }
     }
+  }
 
-    // Called when the Snapper is tapped.
-    function startPlay() {
-      gameState.phase = "play";
-      // Hide play selection buttons.
-      document.getElementById("playRun").style.display = "none";
-      document.getElementById("playPass").style.display = "none";
+  draw(ctx) {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 15, 0, 2 * Math.PI);
+    ctx.fillStyle = (this.team === "offense") ? "blue" : "red";
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.stroke();
+    ctx.closePath();
 
-      // For simplicity, assign the ball to the QB.
-      let qb = players.find(p => p.role === "QB" && p.team === "offense");
-      if (qb) {
-        ball.possessor = qb;
-        ball.x = qb.x;
-        ball.y = qb.y;
-      }
-      // For pass plays, wait for user selection of QB then receiver.
-      if (gameState.playType === "pass") {
-        gameState.passSelection = null;
-      }
+    ctx.fillStyle = "#fff";
+    ctx.font = "12px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(this.number, this.x, this.y);
+  }
+}
+
+/* === INIT PLAYERS === */
+function initPlayers() {
+  players = [];
+  let startX = canvas.width / 2 - 5*30; // position them horizontally
+  // Offense (11 players)
+  // - Quick example roles: 1 QB, 1 Snapper, 2 WR, 2 RB, 5 Linemen
+  //   Just to illustrate differences
+  let rolesOffense = [
+    "QB", "Snapper", "WR", "WR", "RB", "RB",
+    "OL", "OL", "OL", "OL", "OL"
+  ];
+  for (let i = 0; i < 11; i++) {
+    let px = startX + i*30;
+    let py = gameState.lineOfScrimmage + 30;
+    players.push(new Player("O"+i, "offense", i+1, px, py, rolesOffense[i]||"OL"));
+  }
+  // Defense (11 players)
+  // - e.g. 4 DL, 3 LB, 4 DB
+  let rolesDefense = [
+    "DL", "DL", "DL", "DL", "LB", "LB", "LB",
+    "CB", "CB", "S", "S"
+  ];
+  for (let j = 0; j < 11; j++) {
+    let px = startX + j*30;
+    let py = gameState.lineOfScrimmage - 100;
+    players.push(new Player("D"+j, "defense", j+1, px, py, rolesDefense[j]||"DL"));
+  }
+
+  // Assign ball initially to the QB on offense
+  let qb = players.find(p => p.role === "QB" && p.team === "offense");
+  if (qb) {
+    ball.possessor = qb;
+    ball.x = qb.x;
+    ball.y = qb.y;
+  }
+}
+
+/* === FIELD DRAWING === */
+function drawField() {
+  // Clear
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw yard lines
+  // End zones approx: top zone is y=0 to y=50, bottom zone is y=600 to y=650
+  ctx.strokeStyle = "#fff";
+  let yardLineCount = 10;
+  for (let i = 0; i <= yardLineCount; i++) {
+    let y = 50 + i*((canvas.height - 100)/yardLineCount);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  // End Zones
+  ctx.fillStyle = "blue";
+  ctx.fillRect(0, 0, canvas.width, 50);
+  ctx.fillStyle = "red";
+  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+  // LOS (white) & First Down (yellow)
+  ctx.strokeStyle = "#fff";
+  ctx.beginPath();
+  ctx.moveTo(0, gameState.lineOfScrimmage);
+  ctx.lineTo(canvas.width, gameState.lineOfScrimmage);
+  ctx.stroke();
+
+  ctx.strokeStyle = "yellow";
+  ctx.beginPath();
+  ctx.moveTo(0, gameState.firstDownY);
+  ctx.lineTo(canvas.width, gameState.firstDownY);
+  ctx.stroke();
+}
+
+/* === DRAW FUNCTION === */
+function draw() {
+  drawField();
+  // Draw players
+  players.forEach(p => p.draw(ctx));
+  // Draw ball
+  ball.draw(ctx);
+
+  // Update scoreboard
+  document.getElementById("offenseScore").innerText = gameState.offenseScore;
+  document.getElementById("defenseScore").innerText = gameState.defenseScore;
+  document.getElementById("quarter").innerText = gameState.quarter;
+
+  // Down & distance text
+  let distLabel = gameState.down + " & " + gameState.yardsToFirstDown;
+  document.getElementById("downDistance").innerText = distLabel;
+
+  let minutes = Math.floor(gameState.clock / 60);
+  let seconds = Math.floor(gameState.clock % 60);
+  document.getElementById("gameClock").innerText = minutes + ":" + (seconds < 10 ? "0"+seconds : seconds);
+}
+
+/* === GAME LOOP === */
+function gameLoop() {
+  let now = Date.now();
+  let dt = (now - gameState.lastTimestamp) / 1000; 
+  gameState.lastTimestamp = now;
+
+  // Clock update only during play
+  if (gameState.phase === "play") {
+    gameState.clock -= dt;
+    if (gameState.clock <= 0) {
+      gameState.clock = 0;
+      endQuarter();
     }
+  }
 
-    // When both QB and receiver are tapped in a pass play, simulate a throw.
-    function executePassPlay() {
-      if (gameState.passSelection && gameState.passSelection.qb && gameState.passSelection.receiver) {
-        let qb = gameState.passSelection.qb;
-        let receiver = gameState.passSelection.receiver;
-        // Compute a velocity vector from the QB to the receiver.
-        let dx = receiver.x - qb.x;
-        let dy = receiver.y - qb.y;
+  // Update all
+  players.forEach(p => p.update());
+  ball.update();
+
+  // Check tackles
+  checkTackles();
+  // Check if possession crosses LOS for yardage
+  checkYardage();
+  // Check Touchdown
+  checkTouchdown();
+  // Check Safety
+  checkSafety();
+
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+/* === TACKLES === */
+function checkTackles() {
+  if (ball.possessor && ball.possessor.team === "offense") {
+    // For each defender, see if they collide with ball carrier
+    players.forEach(d => {
+      if (d.team === "defense") {
+        let dx = d.x - ball.possessor.x;
+        let dy = d.y - ball.possessor.y;
         let dist = Math.hypot(dx, dy);
-        let speed = 5; // arbitrary pass speed
-        ball.possessor = null;
-        ball.inMotion = true;
-        ball.x = qb.x;
-        ball.y = qb.y;
-        ball.vx = (dx / dist) * speed;
-        ball.vy = (dy / dist) * speed;
-        // After a delay, assume the receiver catches the ball.
-        setTimeout(function() {
-          ball.possessor = receiver;
-          ball.inMotion = false;
-          ball.x = receiver.x;
-          ball.y = receiver.y;
-        }, 1000);
+        if (dist < 20) {
+          // TACKLE: End the play
+          endPlay("tackle");
+        }
+      }
+    });
+  }
+}
+
+/* === CHECK TOUCHDOWN === */
+function checkTouchdown() {
+  // Offense is moving upward, so if ball carrier crosses y < 50 => TD
+  if (ball.possessor && ball.possessor.team === "offense") {
+    if (ball.possessor.y < 50) {
+      // Touchdown
+      gameState.offenseScore += 6;
+      endPlay("touchdown");
+    }
+  }
+}
+
+/* === CHECK SAFETY === */
+function checkSafety() {
+  // If the offense is tackled in its own end zone (bottom zone y>600 => safety)
+  if (ball.possessor && ball.possessor.team === "offense" && gameState.phase === "play") {
+    if (ball.possessor.y > canvas.height - 50) {
+      // Safety
+      gameState.defenseScore += 2;
+      endPlay("safety");
+    }
+  }
+}
+
+/* === CHECK YARDAGE (DOWN & DISTANCE) === */
+function checkYardage() {
+  // The field is oriented top to bottom, so negative yard progress is decreasing y
+  // Start-of-drive LOS is gameState.lineOfScrimmage, firstDownY is 10 yards up ( ~ 60 px).
+  if (ball.possessor && ball.possessor.team === "offense") {
+    let ballCarrierY = ball.possessor.y;
+    // check if they reached first down line
+    if (ballCarrierY < gameState.firstDownY) {
+      // Achieved first down => reset down & new LOS
+      let newLOS = ballCarrierY; // current position
+      gameState.down = 1;
+      gameState.lineOfScrimmage = newLOS;
+      gameState.firstDownY = newLOS - 60; // 10 yards up
+      gameState.yardsToFirstDown = 10;
+    }
+  }
+}
+
+/* === END QUARTER / GAME === */
+function endQuarter() {
+  // If quarter < totalQuarters, go to next quarter
+  // Otherwise, game could end. For now, just go to next quarter.
+  if (gameState.quarter < gameState.totalQuarters) {
+    gameState.quarter++;
+    gameState.clock = 15 * 60;
+  } else {
+    // Final => do a basic “game over” scenario
+    gameState.clock = 0;
+  }
+}
+
+/* === END PLAY === */
+function endPlay(reason) {
+  gameState.phase = "post-play";
+  // Spot the ball at the ball carrier’s position if not a turnover
+  if (ball.possessor && ball.possessor.team === "offense") {
+    gameState.ballSpottedY = ball.possessor.y;
+  }
+
+  // If not a touchdown or safety, or immediate turnover, continue with next down
+  if (reason === "tackle") {
+    useUpDown();
+  }
+  if (reason === "touchdown") {
+    // Show Kick button for extra point
+    document.getElementById("kickFieldGoal").style.display = "inline-block";
+  }
+  if (reason === "safety") {
+    // Turn possession over after a safety, for example
+    swapPossession(true);
+  }
+
+  // Reset
+  ball.inMotion = false;
+  ball.vx = 0;
+  ball.vy = 0;
+  // Wait a second, then move to pre-snap
+  setTimeout(() => {
+    if (reason === "touchdown") {
+      // Prompt for extra point or 2-pt attempt. 
+      // For simplicity here, we show only a Kick button for FG/XP.
+      // If user selects run/pass, they can do a 2-pt attempt, etc.
+    } else if (reason !== "safety") {
+      prepareNextPlay();
+    }
+  }, 1000);
+}
+
+/* === USE ONE DOWN === */
+function useUpDown() {
+  gameState.down++;
+  let yardGained = (gameState.lineOfScrimmage - gameState.ballSpottedY) / 6; // approx yard calc
+  let yardsRemaining = gameState.yardsToFirstDown - Math.round(yardGained);
+  if (yardsRemaining < 0) {
+    yardsRemaining = 10; 
+  }
+  gameState.yardsToFirstDown = yardsRemaining;
+
+  if (gameState.down > 4) {
+    // Turnover on downs
+    swapPossession();
+  }
+}
+
+/* === SWAP POSSESSION === */
+function swapPossession(afterSafety=false) {
+  if (!afterSafety) {
+    // Basic turnover
+    let oldOffense = players.filter(p => p.team === "offense");
+    let oldDefense = players.filter(p => p.team === "defense");
+    oldOffense.forEach(p => p.team = "defense");
+    oldDefense.forEach(p => p.team = "offense");
+  }
+  // Re-init down/distance
+  gameState.down = 1;
+  gameState.yardsToFirstDown = 10;
+  // Move LOS further down for the new offense.
+  gameState.lineOfScrimmage = 500; 
+  gameState.firstDownY = 440;
+  gameState.ballSpottedY = 500;
+
+  // Reassign roles if swapped
+  initPlayers();
+}
+
+/* === PREP FOR NEXT PLAY === */
+function prepareNextPlay() {
+  gameState.phase = "pre-snap";
+  // Reposition players for next snap
+  players.forEach(p => {
+    if (p.team === "offense") {
+      p.y = gameState.lineOfScrimmage + 30;
+    } else {
+      p.y = gameState.lineOfScrimmage - 100;
+    }
+    p.x = canvas.width / 2 - 5*30 + (parseInt(p.number)-1)*30;
+  });
+  // Reassign ball to the offense QB
+  let qb = players.find(p => p.role === "QB" && p.team === "offense");
+  if (qb) {
+    ball.possessor = qb;
+    ball.x = qb.x;
+    ball.y = qb.y;
+  }
+
+  // Show run/pass selection
+  document.getElementById("playRun").style.display = "inline-block";
+  document.getElementById("playPass").style.display = "inline-block";
+  document.getElementById("kickFieldGoal").style.display = "none";
+}
+
+/* === PLAY SELECTION === */
+document.getElementById("playRun").addEventListener("click", () => {
+  gameState.playType = "run";
+  document.getElementById("playRun").style.display = "none";
+  document.getElementById("playPass").style.display = "none";
+});
+
+document.getElementById("playPass").addEventListener("click", () => {
+  gameState.playType = "pass";
+  document.getElementById("playRun").style.display = "none";
+  document.getElementById("playPass").style.display = "none";
+});
+
+document.getElementById("kickFieldGoal").addEventListener("click", () => {
+  // Simple FG logic: If LOS is within fieldGoalRange of the top (like 80 px),
+  // attempt FG => 3 points if successful, else turnover
+  if (gameState.lineOfScrimmage > 50 && gameState.lineOfScrimmage < (50 + gameState.fieldGoalRange)) {
+    // basic success chance
+    let success = Math.random() < 0.9; // 90% chance
+    if (success) {
+      // If it’s an extra point attempt after touchdown => 1 point
+      // If actual FG => 3 points. For simplicity, check reason from endPlay.
+      if (gameState.phase === "post-play") {
+        gameState.offenseScore += 1; // XP
+      } else {
+        gameState.offenseScore += 3; // FG
       }
     }
+  }
+  endPlay("kick");
+  // Next drive
+  swapPossession();
+});
 
-    /* === UI Button Listeners for Play Selection === */
-    document.getElementById("playRun").addEventListener("click", function() {
-      gameState.playType = "run";
-      document.getElementById("playRun").style.display = "none";
-      document.getElementById("playPass").style.display = "none";
-    });
-    document.getElementById("playPass").addEventListener("click", function() {
-      gameState.playType = "pass";
-      document.getElementById("playRun").style.display = "none";
-      document.getElementById("playPass").style.display = "none";
-    });
+/* === START PLAY (SNAP) === */
+function startPlay() {
+  gameState.phase = "play";
+  // If pass, user will have to tap QB => receiver
+}
 
-    /* === Start the Game === */
-    initPlayers();
-    gameState.lastTime = Date.now();
-    gameLoop();
-  </script>
+/* === MOUSE EVENTS === */
+canvas.addEventListener("click", (evt) => {
+  let rect = canvas.getBoundingClientRect();
+  let mx = evt.clientX - rect.left;
+  let my = evt.clientY - rect.top;
+  // Check if a player was clicked
+  let clicked = players.find(p => Math.hypot(p.x - mx, p.y - my) < 15);
+  if (!clicked) {
+    // If a player was selected for manual movement
+    if (gameState.selectedPlayer) {
+      gameState.selectedPlayer.target = { x: mx, y: my };
+      gameState.selectedPlayer = null;
+    }
+  } else {
+    handlePlayerClick(clicked);
+  }
+});
+
+function handlePlayerClick(p) {
+  if (gameState.phase === "pre-snap") {
+    // Snap the ball if p is the Snapper
+    if (p.role === "Snapper" && p.team === "offense") {
+      startPlay();
+    } else {
+      // Alternatively, reposition the player
+      gameState.selectedPlayer = p;
+    }
+  } else if (gameState.phase === "play") {
+    // If run play, tapping the ball carrier => manual target
+    if (gameState.playType === "run") {
+      if (ball.possessor && ball.possessor.id === p.id) {
+        gameState.selectedPlayer = p;
+      }
+    } 
+    // If pass, need to select QB => receiver
+    else if (gameState.playType === "pass") {
+      if (!gameState.passSelection) {
+        // pick QB
+        if (p.role === "QB" && p.team === "offense") {
+          gameState.passSelection = { qb: p, receiver: null };
+        }
+      } else {
+        // pick receiver
+        if (p.team === "offense" && p !== gameState.passSelection.qb) {
+          gameState.passSelection.receiver = p;
+          executePass();
+        }
+      }
+    }
+  }
+}
+
+/* === EXECUTE PASS === */
+function executePass() {
+  if (!gameState.passSelection || !gameState.passSelection.qb || !gameState.passSelection.receiver) {
+    return;
+  }
+  let qb = gameState.passSelection.qb;
+  let recv = gameState.passSelection.receiver;
+  // Initiate ball throw
+  ball.possessor = null;
+  ball.inMotion = true;
+  ball.x = qb.x;
+  ball.y = qb.y;
+  let dx = recv.x - qb.x;
+  let dy = recv.y - qb.y;
+  let dist = Math.hypot(dx, dy);
+  let speed = 6; // pass speed
+  ball.vx = (dx / dist) * speed;
+  ball.vy = (dy / dist) * speed;
+
+  // After some time, assume receiver tries to catch
+  setTimeout(() => {
+    // If no defender intercepts, we give possession to the receiver
+    ball.possessor = recv;
+    ball.inMotion = false;
+    ball.x = recv.x;
+    ball.y = recv.y;
+  }, 800);
+
+  gameState.passSelection = null;
+}
+
+/* === INITIALIZE + MAIN LOOP === */
+initPlayers();
+draw();
+gameState.lastTimestamp = Date.now();
+gameLoop();
+
+// Show run/pass on load
+document.getElementById("playRun").style.display = "inline-block";
+document.getElementById("playPass").style.display = "inline-block";
+</script>
 </body>
 </html>
