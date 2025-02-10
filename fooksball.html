@@ -2,37 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Top-Down Football</title>
+  <title>Responsive Top-Down Football</title>
   <style>
-    /* Full-viewport setup */
+    /* Remove any fixed height/width rules from the canvas so we can set them via JS */
     html, body {
       margin: 0; 
       padding: 0; 
-      height: 100%; 
       width: 100%;
+      height: 100%;
       background: #006400; 
-      overflow: hidden; 
+      overflow: hidden;
       font-family: Arial, sans-serif;
     }
 
-    /* Canvas fills the entire viewport height; width auto-scales. */
+    /* Canvas is absolutely positioned; JS will resize it dynamically */
     #gameCanvas {
-      display: block;
-      height: 100vh;  /* 100% of viewport height */
-      width: auto;    /* keep aspect ratio */
-      margin: 0 auto; /* center horizontally */
-      background-color: #007f0e; /* field color */
+      position: absolute;
+      top: 0;
+      left: 0;
       border: 2px solid #fff;
+      background-color: #007f0e;
       box-sizing: border-box;
+      display: block;
     }
 
     /* Simple overlay for scoreboard & controls */
     #uiOverlay {
       position: absolute;
-      top: 0; left: 0; right: 0;
+      top: 0; 
+      left: 0; 
+      right: 0;
       z-index: 9999;
       text-align: center;
-      pointer-events: none; /* let clicks pass through except on child elements */
+      pointer-events: none; /* let clicks pass through except on children */
     }
     #scoreboard, #controls {
       display: inline-block;
@@ -41,7 +43,7 @@
       padding: 6px 12px;
       margin: 5px;
       border-radius: 8px;
-      pointer-events: auto; /* allow clicks */
+      pointer-events: auto; /* allow clicks on these elements */
     }
     button {
       margin: 0 5px;
@@ -63,7 +65,7 @@
     <span id="defenseScore">Defense: 0</span>
     <span id="quarter">Q1</span>
     <span id="gameClock">15:00</span>
-    <span id="downDistance">1 & 10</span>
+    <span id="downDistance">1 &amp; 10</span>
   </div>
   <br>
   <div id="controls">
@@ -74,28 +76,46 @@
 
 <script>
 /*
-  Overall Approach:
-  - "Field coordinates" are 1200 px tall (0..1200), 530 px wide (0..530).
-  - We transform to actual canvas size for drawing only (in draw functions).
-  - 4 quarters, each 15 min, clock runs in "play" phase.
-  - I-Formation on offense, 4-3 on defense. 
-  - Snap the ball by tapping the center (#70). 
-  - If run selected, RB (#22) gets the handoff automatically, tries to run upfield, 
-    but you can tap the field to change his target. 
-  - If pass selected, the QB (#12) retains possession, 
-    WRs (#80, #82) & TE (#87) run routes, 
-    tapping one of them “throws” the ball. 
-  - Defense pursues the ball carrier. 
+  Responsive version:
+  - A "resizeCanvas()" function adjusts canvas width/height on load and resize,
+    keeping the field's aspect ratio (~ 530 wide : 1200 tall) but filling
+    as much of the window as possible.
+  - All field coordinates remain 530 x 1200 in "game logic", so we only
+    transform them to screen coordinates for drawing.
 */
 
+/** Field dimensions in "game logic" coords **/
+const FIELD_WIDTH = 530;
+const FIELD_HEIGHT = 1200;
+
+/** Retrieve canvas & context **/
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-/** FIELD DIMENSIONS **/
-const FIELD_HEIGHT = 1200;
-const FIELD_WIDTH = 530;
+/** Dynamically resize the canvas to fill available space while preserving the 530:1200 ratio **/
+function resizeCanvas() {
+  const desiredAspect = FIELD_WIDTH / FIELD_HEIGHT; // ~0.4417
+  const winWidth = window.innerWidth;
+  const winHeight = window.innerHeight;
+  const windowAspect = winWidth / winHeight;
 
-/** Game State Object **/
+  // If the window is relatively wider than the field aspect, height is the limiting factor.
+  // Otherwise, width is the limiting factor.
+  if (windowAspect > desiredAspect) {
+    // Window is wider: match height fully, scale width.
+    canvas.height = winHeight;
+    canvas.width  = Math.floor(winHeight * desiredAspect);
+  } else {
+    // Window is taller/narrower: match width fully, scale height.
+    canvas.width  = winWidth;
+    canvas.height = Math.floor(winWidth / desiredAspect);
+  }
+  // Re-draw or re-position if needed
+  draw(); 
+}
+window.addEventListener("resize", resizeCanvas);
+
+/** === GAME STATE === **/
 let gameState = {
   phase: "pre-snap",   // "pre-snap", "play", "post-play"
   quarter: 1,
@@ -108,19 +128,17 @@ let gameState = {
 
   // Start line of scrimmage somewhere in the lower half
   lineOfScrimmage: 800,
-  // 10 yards up from LOS = 100 px up from lineOfScrimmage
-  firstDownMarker: 700,
-
+  firstDownMarker: 700, // ~ 10 yards up from LOS
   lastTime: 0,
-
-  playType: null,  // "run" or "pass"
+  playType: null, // "run" or "pass"
 };
 
+/** BALL OBJECT **/
 let ball = {
   x: 0,
   y: 0,
-  possessor: null, // the Player object who has it
-  inFlight: false, // true while traveling in the air
+  possessor: null,
+  inFlight: false,
   vx: 0,
   vy: 0,
   update(dt) {
@@ -128,61 +146,59 @@ let ball = {
       this.x = this.possessor.x;
       this.y = this.possessor.y;
     } else if (this.inFlight) {
-      // Move ball
       this.x += this.vx * dt;
       this.y += this.vy * dt;
     }
   }
 };
 
-/** Player class **/
+/** PLAYER CLASS **/
 class Player {
   constructor({ x, y, role, number, team }) {
-    this.x = x; 
+    this.x = x;
     this.y = y;
     this.role = role;
     this.number = number;
-    this.team = team; // "offense" / "defense"
-    this.speed = 80;  // px/sec
-    if (this.role==="WR") this.speed = 100;
-    if (this.role==="OL" || this.role==="DL") this.speed = 60;
-    if (this.role==="LB") this.speed = 75;
-    if (this.role==="CB" || this.role==="S") this.speed = 90;
+    this.team = team; // "offense" or "defense"
 
-    this.target = null;   // if set, we move toward it
-    this.routeFn = null;  // pass route function
-    this.routeTime = 0;   // track time on route
+    // Speed in px/sec
+    this.speed = 80;
+    if (this.role === "WR") this.speed = 100;
+    if (this.role === "OL" || this.role==="DL") this.speed = 60;
+    if (this.role === "LB") this.speed = 75;
+    if (this.role === "CB" || this.role==="S") this.speed = 90;
+
+    this.target = null;   // For run/ user taps
+    this.routeFn = null;  // For pass routes
+    this.routeTime = 0;
   }
 
   update(dt) {
-    if (gameState.phase!=="play") return;
-
-    if (this.team==="offense") {
-      // If I'm the ball carrier
-      if (ball.possessor===this) {
-        // If user tapped a target location, follow it
+    if (gameState.phase !== "play") return;
+    if (this.team === "offense") {
+      if (ball.possessor === this) {
+        // I'm the ball carrier
         if (this.target) {
           moveToward(this, this.target.x, this.target.y, this.speed, dt);
-          let d = dist(this.x, this.y, this.target.x, this.target.y);
-          if (d < 10) this.target = null;
+          if (dist(this.x, this.y, this.target.x, this.target.y) < 10) {
+            this.target = null;
+          }
         } else {
-          // Otherwise, keep running upfield
+          // Move upfield
           moveToward(this, this.x, 0, this.speed, dt);
         }
-      }
-      // If I'm a WR/TE in pass mode, run route
-      else if (gameState.playType==="pass" && (this.role==="WR"||this.role==="TE")) {
+      } else if (gameState.playType === "pass" && (this.role === "WR" || this.role==="TE")) {
+        // I'm a receiver on a pass route
         if (this.routeFn) {
           this.routeTime += dt;
-          let desired = this.routeFn(this, this.routeTime);
-          if (desired) {
-            moveToward(this, desired.x, desired.y, this.speed, dt);
+          const desiredPos = this.routeFn(this, this.routeTime);
+          if (desiredPos) {
+            moveToward(this, desiredPos.x, desiredPos.y, this.speed, dt);
           }
         }
-      } 
-      // else if I'm OL or something, minimal movement
+      }
     } else {
-      // Defense: if there's a ball carrier, pursue
+      // Defense
       if (ball.possessor && ball.possessor.team==="offense") {
         let bc = ball.possessor;
         moveToward(this, bc.x, bc.y, this.speed, dt);
@@ -191,9 +207,9 @@ class Player {
   }
 
   draw(ctx) {
-    let scale = getScale();
-    let sx = this.x * scale.sx;
-    let sy = this.y * scale.sy;
+    const scale = getScale();
+    const sx = this.x * scale.sx;
+    const sy = this.y * scale.sy;
 
     ctx.beginPath();
     ctx.arc(sx, sy, 12, 0, 2*Math.PI);
@@ -211,28 +227,49 @@ class Player {
   }
 }
 
-/** We'll hold all players in an array **/
+/** Utility for moving an object toward target coords at given speed */
+function moveToward(obj, tx, ty, speed, dt) {
+  let dx = tx - obj.x;
+  let dy = ty - obj.y;
+  let distVal = Math.sqrt(dx*dx + dy*dy);
+  if (distVal < 1) return;
+  let step = speed * dt;
+  if (step > distVal) step = distVal;
+  let nx = dx / distVal;
+  let ny = dy / distVal;
+  obj.x += nx * step;
+  obj.y += ny * step;
+}
+
+/** Dist helper */
+function dist(ax, ay, bx, by) {
+  let dx = bx - ax;
+  let dy = by - ay;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+/** We'll store all players here. */
 let players = [];
 
-/** I-Formation Offense, 4-3 Defense example **/
+/** I-Formation Offense, 4-3 Defense */
 function initFormation() {
   players = [];
   const los = gameState.lineOfScrimmage;
   const midX = FIELD_WIDTH/2;
 
-  // Offense: I-Form
-  // 5 OL across the line
-  let OLxStart = midX - 2*30;
+  // Offense: I-Formation
+  // 5 OL
+  const OLxStart = midX - 2*30;
   for (let i=0; i<5; i++){
     players.push(new Player({
       x: OLxStart + i*30,
       y: los + 10,
       role: "OL",
-      number: 70+i, // 70..74
+      number: 70 + i,
       team: "offense"
     }));
   }
-  // designate the center (first in that loop) as Snapper
+  // First OL is the center (snapper)
   players[0].role = "Snapper";
 
   // QB behind center
@@ -243,7 +280,7 @@ function initFormation() {
     number: 12,
     team: "offense"
   }));
-  // FB behind QB
+  // FB
   players.push(new Player({
     x: midX,
     y: los + 100,
@@ -251,7 +288,7 @@ function initFormation() {
     number: 44,
     team: "offense"
   }));
-  // RB behind FB (tailback)
+  // RB
   players.push(new Player({
     x: midX,
     y: los + 140,
@@ -259,7 +296,7 @@ function initFormation() {
     number: 22,
     team: "offense"
   }));
-  // TE on right
+  // TE (right)
   players.push(new Player({
     x: midX + 80,
     y: los + 10,
@@ -285,33 +322,31 @@ function initFormation() {
   }));
 
   // Defense (4-3)
-  // D-line
-  let dLineY = los - 30;
-  let dLineXStart = midX - 1.5*30;
+  const dLineY = los - 30;
+  const dLineXStart = midX - 1.5*30;
   for (let i=0; i<4; i++){
     players.push(new Player({
       x: dLineXStart + i*30,
       y: dLineY,
       role: "DL",
-      number: 90 + i, // 90..93
+      number: 90 + i,
       team: "defense"
     }));
   }
   // LBs
-  let lbY = los - 70;
-  let lbXStart = midX - 30;
+  const lbY = los - 70;
+  const lbXStart = midX - 30;
   for (let i=0; i<3; i++){
     players.push(new Player({
       x: lbXStart + i*30,
       y: lbY,
       role: "LB",
-      number: 50 + i, // 50..52
+      number: 50 + i,
       team: "defense"
     }));
   }
   // DBs
-  // corners wide, safeties central
-  let dbY = los - 130;
+  const dbY = los - 130;
   players.push(new Player({ x: midX-180, y: dbY, role:"CB", number:20, team:"defense" }));
   players.push(new Player({ x: midX+180, y: dbY, role:"CB", number:21, team:"defense" }));
   players.push(new Player({ x: midX-50,  y: dbY-40, role:"S", number:30, team:"defense" }));
@@ -327,45 +362,37 @@ function initFormation() {
   ball.vy = 0;
 }
 
-/** Basic Pass Routes (slants, go) **/
-function slantLeft(player, t) {
-  let startX = player.x0; 
-  let startY = player.y0;
-  let speedX = -20;  // px/sec left
-  let speedY = -60; // px/sec up
-  return { x: startX + speedX * t, y: startY + speedY * t };
+/** Basic pass routes */
+function slantLeft(p, t) {
+  let sx = p.x0;
+  let sy = p.y0;
+  // up ~60 px/sec, left ~20 px/sec
+  return { x: sx - 20*t, y: sy - 60*t };
 }
-function slantRight(player, t) {
-  let startX = player.x0; 
-  let startY = player.y0;
-  let speedX = 20;  
-  let speedY = -60; 
-  return { x: startX + speedX * t, y: startY + speedY * t };
+function slantRight(p, t) {
+  let sx = p.x0;
+  let sy = p.y0;
+  return { x: sx + 20*t, y: sy - 60*t };
 }
-function goRoute(player, t) {
-  // straight up
-  let startX = player.x0;
-  let startY = player.y0;
-  let speedY = -90;
-  return { x: startX, y: startY + speedY * t };
+function goRoute(p, t) {
+  // just straight up ~80 px/sec
+  let sx = p.x0;
+  let sy = p.y0;
+  return { x: sx, y: sy - 80*t };
 }
-
-/** Assign pass routes to WR/TE before the snap **/
 function assignPassRoutes() {
   players.forEach(p => {
     if (p.team==="offense" && (p.role==="WR"||p.role==="TE")) {
-      // store initial
       p.x0 = p.x; 
       p.y0 = p.y;
-      // randomly pick one of the three
-      let routeChoices = [slantLeft, slantRight, goRoute];
-      p.routeFn = routeChoices[Math.floor(Math.random()*routeChoices.length)];
+      let routeFuncs = [slantLeft, slantRight, goRoute];
+      p.routeFn = routeFuncs[Math.floor(Math.random()*routeFuncs.length)];
       p.routeTime = 0;
     }
   });
 }
 
-/** RUN / PASS BUTTONS **/
+/** Play selection buttons **/
 const btnRun = document.getElementById("playRun");
 const btnPass = document.getElementById("playPass");
 function showPlayButtons(show) {
@@ -379,22 +406,21 @@ btnRun.addEventListener("click", () => {
 btnPass.addEventListener("click", () => {
   gameState.playType = "pass";
   showPlayButtons(false);
-  // Assign routes
   assignPassRoutes();
 });
 
-/** SNAP THE BALL (start the play) when the snapper is tapped **/
+/** Snap the ball by tapping the center in pre-snap **/
 function startPlay() {
   gameState.phase = "play";
 }
 
-/** MAIN GAME LOOP **/
+/** The main loop with requestAnimationFrame **/
 function gameLoop(timestamp) {
   if (!gameState.lastTime) gameState.lastTime = timestamp;
   let dt = (timestamp - gameState.lastTime)/1000;
   gameState.lastTime = timestamp;
 
-  // Update the clock if in play
+  // Update clock if in play
   if (gameState.phase==="play") {
     gameState.clock -= dt;
     if (gameState.clock<0) {
@@ -403,79 +429,73 @@ function gameLoop(timestamp) {
     }
   }
 
-  // Update players
-  players.forEach(p => p.update(dt));
-  // Update ball
+  // Update players & ball
+  players.forEach(pl => pl.update(dt));
   ball.update(dt);
 
-  // Check collisions/tackles
+  // Check tackle & TD
   if (ball.possessor && ball.possessor.team==="offense") {
     checkTackles();
     checkTouchdown();
   }
 
-  // Redraw
   draw();
   requestAnimationFrame(gameLoop);
 }
 
-/** Check Tackle **/
+/** Tackle check **/
 function checkTackles() {
   let bc = ball.possessor;
   players.forEach(d => {
     if (d.team==="defense") {
-      let distVal = dist(d.x, d.y, bc.x, bc.y);
-      if (distVal<18) {
-        // Tackle
+      if (dist(d.x, d.y, bc.x, bc.y)<18) {
         endPlay("tackle");
       }
     }
   });
 }
 
-/** Check Touchdown **/
+/** Touchdown check **/
 function checkTouchdown() {
   let bc = ball.possessor;
-  // top end zone is y<100
   if (bc.y<100) {
     gameState.offenseScore += 6;
     endPlay("touchdown");
   }
 }
 
-/** End quarter or game if clock hits zero **/
+/** End quarter or game if clock hits 0 **/
 function endQuarterOrGame() {
   if (gameState.quarter<gameState.totalQuarters) {
     gameState.quarter++;
-    gameState.clock=15*60;
+    gameState.clock = 15*60;
   } else {
-    // end of game scenario
+    // game over scenario
     gameState.clock=0;
   }
 }
 
-/** End the play & proceed **/
+/** End the play **/
 function endPlay(reason) {
   gameState.phase="post-play";
   if (reason==="tackle") {
     useDown();
   }
-  // If "touchdown", you might do extra point logic
-  setTimeout(() => {
+  setTimeout(()=>{
     prepareNextPlay();
   }, 1500);
 }
 
-/** Use a down **/
+/** Down logic **/
 function useDown() {
   gameState.down++;
   if (gameState.down>4) {
-    // Turnover
+    // turnover
     swapPossession();
   }
 }
 
-/** Swap Possession **/
+/** Swap possession **/
 function swapPossession() {
   players.forEach(p => {
     p.team = (p.team==="offense") ? "defense":"offense";
@@ -487,43 +507,39 @@ function swapPossession() {
   initFormation();
 }
 
-/** Prepare Next Play **/
+/** Prepare next play **/
 function prepareNextPlay() {
   gameState.phase="pre-snap";
   showPlayButtons(true);
-  // Optionally adjust LOS based on yardage gained, etc.
   initFormation();
 }
 
-/** DRAW ROUTINES **/
+/** DRAW **/
 function draw() {
   ctx.clearRect(0,0, canvas.width, canvas.height);
-
   drawField();
   players.forEach(p => p.draw(ctx));
   drawBall();
   updateScoreboard();
 }
 
+/** Draw field & yard lines **/
 function drawField() {
-  // top end zone => y=0..100
-  // main field => y=100..1100
-  // bottom end zone => 1100..1200
   ctx.save();
   const scale = getScale();
-  // fill entire
+
+  // entire background
   ctx.fillStyle = "#007f0e";
   ctx.fillRect(0,0, canvas.width, canvas.height);
 
-  // end zone top
+  // end zones
   ctx.fillStyle = "blue";
-  ctx.fillRect(0,0, canvas.width, 100*scale.sy);
-  // end zone bottom
+  ctx.fillRect(0, 0, canvas.width, 100*scale.sy);
   ctx.fillStyle = "red";
   ctx.fillRect(0, 1100*scale.sy, canvas.width, 100*scale.sy);
 
-  // yard lines from y=100 to y=1100 every 100 px
-  ctx.strokeStyle = "#fff";
+  // yard lines every 100 px from y=100..1100
+  ctx.strokeStyle="#fff";
   ctx.lineWidth=2;
   for (let y=100; y<=1100; y+=100) {
     ctx.beginPath();
@@ -549,115 +565,99 @@ function drawField() {
   ctx.restore();
 }
 
+/** Draw Ball (Football Emoji) **/
 function drawBall() {
   ctx.save();
   let scale = getScale();
-  let sx = ball.x*scale.sx;
-  let sy = ball.y*scale.sy;
+  let sx = ball.x * scale.sx;
+  let sy = ball.y * scale.sy;
   ctx.font = "24px serif";
   ctx.textAlign = "center";
-  ctx.textBaseline="middle";
+  ctx.textBaseline = "middle";
   ctx.fillText("🏈", sx, sy);
   ctx.restore();
 }
 
+/** Scoreboard updates **/
 function updateScoreboard() {
   document.getElementById("offenseScore").innerText = "Offense: " + gameState.offenseScore;
   document.getElementById("defenseScore").innerText = "Defense: " + gameState.defenseScore;
   document.getElementById("quarter").innerText = "Q" + gameState.quarter;
   let mm = Math.floor(gameState.clock/60);
   let ss = Math.floor(gameState.clock%60);
-  let clockStr = mm + ":" + (ss<10?"0"+ss:ss);
+  let clockStr = mm + ":" + (ss<10 ? "0"+ss : ss);
   document.getElementById("gameClock").innerText = clockStr;
   document.getElementById("downDistance").innerText = gameState.down + " & " + gameState.yardsToFirstDown;
 }
 
-/** Scaling function from field coords to screen coords */
+/** Convert FIELD coords => canvas coords scaling */
 function getScale() {
+  // The canvas' width corresponds to FIELD_WIDTH in logic coords,
+  // The canvas' height corresponds to FIELD_HEIGHT in logic coords.
   return {
     sx: canvas.width / FIELD_WIDTH,
     sy: canvas.height / FIELD_HEIGHT
   };
 }
 
-/** Helpers **/
-function dist(ax, ay, bx, by) {
-  let dx=ax-bx, dy=ay-by;
-  return Math.sqrt(dx*dx + dy*dy);
-}
-function moveToward(obj, tx, ty, speed, dt) {
-  let dx = tx - obj.x;
-  let dy = ty - obj.y;
-  let d = Math.sqrt(dx*dx + dy*dy);
-  if (d<1) return;
-  let step = speed*dt;
-  if (step>d) step=d;
-  let nx = dx/d;
-  let ny = dy/d;
-  obj.x += nx*step;
-  obj.y += ny*step;
-}
-
-/** INPUT / CLICK LOGIC **/
-canvas.addEventListener("click",(evt)=>{
+/** MOUSE/TAP INPUT **/
+canvas.addEventListener("click", (evt) => {
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
   let s = getScale();
-  let fieldX = mx/s.sx;
-  let fieldY = my/s.sy;
+  let fx = mx / s.sx;
+  let fy = my / s.sy;
 
-  // see if a player was clicked
-  let clicked = findPlayerAt(fieldX, fieldY);
-  if (clicked) {
-    handlePlayerClick(clicked);
+  let clickedPlayer = findPlayerAt(fx, fy);
+  if (clickedPlayer) {
+    handlePlayerClick(clickedPlayer);
   } else {
-    // If run play in action, direct the ball carrier
+    // If run play is live, user can direct the ball carrier
     if (gameState.phase==="play" && gameState.playType==="run") {
       let bc = ball.possessor;
       if (bc && bc.team==="offense") {
-        bc.target = { x: fieldX, y: fieldY };
+        bc.target = { x: fx, y: fy };
       }
     }
   }
 });
 function findPlayerAt(x, y) {
-  for (let i=0; i<players.length; i++){
-    let p = players[i];
-    if (dist(x,y,p.x,p.y)<15) return p;
+  for (let p of players) {
+    if (dist(p.x, p.y, x, y) < 15) return p;
   }
   return null;
 }
 
 function handlePlayerClick(p) {
   if (gameState.phase==="pre-snap") {
+    // Snap the ball
     if (p.role==="Snapper" && p.team==="offense") {
-      startPlay(); 
+      startPlay();
     }
   } else if (gameState.phase==="play") {
-    // If pass play, tapping a WR or TE => pass
+    // If pass play, tapping WR/TE => pass
     if (gameState.playType==="pass" && p.team==="offense" && (p.role==="WR"||p.role==="TE")) {
       attemptPass(p);
     }
   }
 }
 
-/** Attempt a pass from QB to target p */
+/** Throw pass from QB to target p **/
 function attemptPass(target) {
   let qb = players.find(x => x.role==="QB" && x.team==="offense");
-  if (!qb || ball.possessor!==qb) return; // Must have the ball
-  // Launch the ball
+  if (!qb || ball.possessor!==qb) return;
+  // Launch pass
   ball.possessor = null;
   ball.inFlight = true;
-  // We'll let pass hang in air ~0.6s
-  let passTime = 0.6;
+  const passTime = 0.6;
   let dx = target.x - qb.x;
   let dy = target.y - qb.y;
   ball.vx = dx / passTime;
   ball.vy = dy / passTime;
 
   setTimeout(()=>{
-    // If still in flight, “catch” it
+    // “Catch”
     ball.inFlight=false;
     ball.possessor=target;
     ball.x=target.x;
@@ -665,9 +665,10 @@ function attemptPass(target) {
   }, passTime*1000);
 }
 
-/** Start everything **/
+/** Initialize & start **/
 initFormation();
 showPlayButtons(true);
+resizeCanvas();          // do an initial resize to fit screen
 requestAnimationFrame(gameLoop);
 </script>
 </body>
