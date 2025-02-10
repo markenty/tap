@@ -1362,7 +1362,7 @@ function triggerScreenshake() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       const threshold = 0.2;
       for (let i = 0; i < gamepads.length; i++) {
-        const gp = gamepads[i];keys1["Space"] = gp.buttons[0]
+        const gp = gamepads[i];
         if (!gp) continue;
         if (gp.index === 0) {
           if (gp.axes[0] < -threshold) {
@@ -1371,16 +1371,11 @@ function triggerScreenshake() {
             keys1["ArrowRight"] = true; keys1["ArrowLeft"] = false;
           } else { keys1["ArrowLeft"] = false; keys1["ArrowRight"] = false; }
           keys1["ArrowUp"] = false;
-          keys1["Space"] = gp.buttons[0].pressed;
-       let lx = gp.axes[0], ly = gp.axes[1];
-let lmag = Math.hypot(lx, ly);
-if (lmag > threshold) {
-  joystickAim1.x = lx / lmag;
-  joystickAim1.y = ly / lmag;
-} else {
-  joystickAim1.x = 0;
-  joystickAim1.y = 0;
-}
+          keys1["Space"] = gp.buttons[0].keys1["Space"] = gp.buttons[0].pressed || gp.buttons[11].pressed;;
+          let rx = gp.axes[2], ry = gp.axes[3];
+          let rmag = Math.hypot(rx, ry);
+          if (rmag > threshold) { joystickAim1.x = rx / rmag; joystickAim1.y = ry / rmag; }
+          else { joystickAim1.x = 0; joystickAim1.y = 0; }
           if (!lastGamepadButtonState[gp.index]) {
             lastGamepadButtonState[gp.index] = new Array(gp.buttons.length).fill(false);
           }
@@ -1398,7 +1393,7 @@ if (lmag > threshold) {
             keys2["ArrowRight"] = true; keys2["ArrowLeft"] = false;
           } else { keys2["ArrowLeft"] = false; keys2["ArrowRight"] = false; }
           keys2["ArrowUp"] = false;
-          keys2["Space"] = gp.buttons[0].pressed;
+          keys2["Space"] = gp.buttons[0].pressed || gp.buttons[11].pressed;
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
           if (rmag > threshold) { joystickAim2.x = rx / rmag; joystickAim2.y = ry / rmag; }
