@@ -1457,7 +1457,7 @@ if (keys1["KeyB"] || keys1["Space"]) {
   
   // Set the force multiplier.
   // Here we use a base multiplier and increase it when aiming down (positive y).
-  let forceMultiplier = 0.002;
+  let forceMultiplier = 0.001;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
@@ -1509,7 +1509,7 @@ if (keys2["Space"]) {
   }
   
   // Set the force multiplier.
-  let forceMultiplier = 0.002;
+  let forceMultiplier = 0.001;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
@@ -1539,7 +1539,7 @@ if (playerChar1.torso.position.y < playAreaHeight - 30) {
     airInput.y /= mag;
     
     // Choose an appropriate force multiplier for air control.
-    const airControlForce = 0.052; // tweak this value as needed
+    const airControlForce = 0.002; // tweak this value as needed
     
     Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
       x: airInput.x * airControlForce,
@@ -1561,7 +1561,7 @@ if (playerChar2.torso.position.y < playAreaHeight - 30) {
     airInput.x /= mag;
     airInput.y /= mag;
     
-    const airControlForce = 0.052; // tweak for desired responsiveness
+    const airControlForce = 0.002; // tweak for desired responsiveness
     
     Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
       x: airInput.x * airControlForce,
