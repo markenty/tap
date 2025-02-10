@@ -1428,23 +1428,16 @@ if (keys1["ArrowRight"]) {
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0.01, y: 0 });
 }
 
-// Jump (and in-air steering) for Player One
+// Jump (and in-air steering) for Player One using left stick / arrow key input
 if (keys1["KeyB"] || keys1["Space"]) {
   const jumpStrength = 11;
   let directionalInput = { x: 0, y: 0 };
 
-  // Prefer gamepad joystick input if its magnitude is significant
-  const joystickMag = Math.hypot(joystickLeft1.x, joystickLeft1.y);
-  if (joystickMag > 0.1) {
-    directionalInput.x = joystickLeft1.x;
-    directionalInput.y = joystickLeft1.y;
-  } else {
-    // Otherwise, build the input vector from arrow keys
-    if (keys1["ArrowLeft"])  directionalInput.x -= 1;
-    if (keys1["ArrowRight"]) directionalInput.x += 1;
-    if (keys1["ArrowUp"])    directionalInput.y -= 1;
-    if (keys1["ArrowDown"])  directionalInput.y += 1;
-  }
+  // Build the input vector from arrow keys (which now reflect left stick input)
+  if (keys1["ArrowLeft"])  directionalInput.x -= 1;
+  if (keys1["ArrowRight"]) directionalInput.x += 1;
+  if (keys1["ArrowUp"])    directionalInput.y -= 1;
+  if (keys1["ArrowDown"])  directionalInput.y += 1;
   
   // Normalize the directional vector (default upward if zero)
   let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
@@ -1452,18 +1445,18 @@ if (keys1["KeyB"] || keys1["Space"]) {
     directionalInput.x /= inputMag;
     directionalInput.y /= inputMag;
   } else {
-    directionalInput.y = -1; // Default upward jump
+    directionalInput.y = -1; // Default upward jump if no input provided
   }
   
-  // Set the force multiplier.
-  // Here we use a base multiplier and increase it when aiming down (positive y).
-  let forceMultiplier = 0.001;
+  // Set the force multiplier (adjust if aiming downwards)
+  let forceMultiplier = 0.008;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
   
   const jumpForce = jumpStrength * forceMultiplier;
   
+  // Apply the jump force to the player's torso
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
@@ -1481,41 +1474,35 @@ if (keys2["ArrowRight"]) {
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: 0.01, y: 0 });
 }
 
-// Jump (and in-air steering) for Player Two
+// Jump (and in-air steering) for Player Two using left stick / arrow key input
 if (keys2["Space"]) {
   const jumpStrength = 11;
   let directionalInput = { x: 0, y: 0 };
 
-  // Prefer gamepad joystick input if its magnitude is significant
-  const joystickMag = Math.hypot(joystickAim2.x, joystickLeft2.y);
-  if (joystickMag > 0.1) {
-    directionalInput.x = joystickLeft2.x;
-    directionalInput.y = joystickLeft2.y;
-  } else {
-    // Otherwise, build the input vector from arrow keys
-    if (keys2["ArrowLeft"])  directionalInput.x -= 1;
-    if (keys2["ArrowRight"]) directionalInput.x += 1;
-    if (keys2["ArrowUp"])    directionalInput.y -= 1;
-    if (keys2["ArrowDown"])  directionalInput.y += 1;
-  }
+  // Build the input vector solely from arrow keys (which now reflect the left stick input)
+  if (keys2["ArrowLeft"])  directionalInput.x -= 1;
+  if (keys2["ArrowRight"]) directionalInput.x += 1;
+  if (keys2["ArrowUp"])    directionalInput.y -= 1;
+  if (keys2["ArrowDown"])  directionalInput.y += 1;
   
-  // Normalize the directional vector (default upward if zero)
+  // Normalize the vector (default upward if no input)
   let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
   if (inputMag > 0) {
     directionalInput.x /= inputMag;
     directionalInput.y /= inputMag;
   } else {
-    directionalInput.y = -1; // Default upward jump
+    directionalInput.y = -1;
   }
   
-  // Set the force multiplier.
-  let forceMultiplier = 0.001;
+  // Set the force multiplier (adjust if aiming downwards)
+  let forceMultiplier = 0.008;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
   
   const jumpForce = jumpStrength * forceMultiplier;
   
+  // Apply the jump force to Player Two's torso
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
