@@ -1367,9 +1367,8 @@
             keys1["ArrowRight"] = true; keys1["ArrowLeft"] = false;
           } else { keys1["ArrowLeft"] = false; keys1["ArrowRight"] = false; }
           keys1["ArrowUp"] = false;
-          // REMOVED: keys1["Space"] = gp.buttons[0].pressed;
-          // NEW: Map jump to the right stick button (index 11)
-          keys1["Space"] = gp.buttons[11] ? gp.buttons[11].pressed : false;
+          // Map jump to both the A button (index 0) and the right stick button (index 11)
+          keys1["Space"] = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[11] && gp.buttons[11].pressed);
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
           if (rmag > threshold) { joystickAim1.x = rx / rmag; joystickAim1.y = ry / rmag; }
@@ -1391,9 +1390,8 @@
             keys2["ArrowRight"] = true; keys2["ArrowLeft"] = false;
           } else { keys2["ArrowLeft"] = false; keys2["ArrowRight"] = false; }
           keys2["ArrowUp"] = false;
-          // REMOVED: keys2["Space"] = gp.buttons[0].pressed;
-          // NEW: Map jump to the right stick button (index 11)
-          keys2["Space"] = gp.buttons[11] ? gp.buttons[11].pressed : false;
+          // Map jump for player two to both the A button (index 0) and the right stick button (index 11)
+          keys2["Space"] = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[11] && gp.buttons[11].pressed);
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
           if (rmag > threshold) { joystickAim2.x = rx / rmag; joystickAim2.y = ry / rmag; }
