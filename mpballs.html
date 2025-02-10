@@ -1434,10 +1434,10 @@ if (keys1["KeyB"] || keys1["Space"]) {
   let directionalInput = { x: 0, y: 0 };
 
   // Prefer gamepad joystick input if its magnitude is significant
-  const joystickMag = Math.hypot(joystickAim1.x, joystickAim1.y);
+  const joystickMag = Math.hypot(joystickLeft1.x, joystickLeft1.y);
   if (joystickMag > 0.1) {
-    directionalInput.x = joystickAim1.x;
-    directionalInput.y = joystickAim1.y;
+    directionalInput.x = joystickLeft1.x;
+    directionalInput.y = joystickLeft1.y;
   } else {
     // Otherwise, build the input vector from arrow keys
     if (keys1["ArrowLeft"])  directionalInput.x -= 1;
@@ -1457,7 +1457,7 @@ if (keys1["KeyB"] || keys1["Space"]) {
   
   // Set the force multiplier.
   // Here we use a base multiplier and increase it when aiming down (positive y).
-  let forceMultiplier = 0.008;
+  let forceMultiplier = 0.001;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
@@ -1487,10 +1487,10 @@ if (keys2["Space"]) {
   let directionalInput = { x: 0, y: 0 };
 
   // Prefer gamepad joystick input if its magnitude is significant
-  const joystickMag = Math.hypot(joystickAim2.x, joystickAim2.y);
+  const joystickMag = Math.hypot(joystickAim2.x, joystickLeft2.y);
   if (joystickMag > 0.1) {
-    directionalInput.x = joystickAim2.x;
-    directionalInput.y = joystickAim2.y;
+    directionalInput.x = joystickLeft2.x;
+    directionalInput.y = joystickLeft2.y;
   } else {
     // Otherwise, build the input vector from arrow keys
     if (keys2["ArrowLeft"])  directionalInput.x -= 1;
@@ -1509,7 +1509,7 @@ if (keys2["Space"]) {
   }
   
   // Set the force multiplier.
-  let forceMultiplier = 0.008;
+  let forceMultiplier = 0.001;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
