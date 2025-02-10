@@ -1446,7 +1446,7 @@ if (keys1["KeyB"] || keys1["Space"]) {
   }
   // Apply a force based on the directional input.
   // Adjust the scaling factor (here, 0.001) until it feels right.
-  const jumpForce = jumpStrength * 0.801;
+  const jumpForce = jumpStrength * 0.01;
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
@@ -1473,7 +1473,7 @@ if (keys2["Space"]) {
   } else {
     directionalInput.y = -1;
   }
-  const jumpForce = jumpStrength * 0.801;
+  const jumpForce = jumpStrength * 0.81;
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
