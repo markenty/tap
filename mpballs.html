@@ -1417,7 +1417,8 @@ function triggerScreenshake() {
       updateGamepadInput();
       Engine.update(engine, 1000/60);
       
-// Player one movement via keyboard/gamepad
+// ----- PLAYER ONE MOVEMENT -----
+// Horizontal movement (always applied)
 if (keys1["ArrowLeft"]) {
   playerChar1.facing = "left";
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: -0.01, y: 0 });
@@ -1426,49 +1427,51 @@ if (keys1["ArrowRight"]) {
   playerChar1.facing = "right";
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0.01, y: 0 });
 }
+
+// Jump (and in-air steering) for Player One
 if (keys1["KeyB"] || keys1["Space"]) {
   const jumpStrength = 11;
   let directionalInput = { x: 0, y: 0 };
 
-  // Prioritize gamepad joystick input if significant
+  // Prefer gamepad joystick input if its magnitude is significant
   const joystickMag = Math.hypot(joystickAim1.x, joystickAim1.y);
   if (joystickMag > 0.1) {
     directionalInput.x = joystickAim1.x;
     directionalInput.y = joystickAim1.y;
   } else {
-    // Otherwise, build input vector from arrow keys
+    // Otherwise, build the input vector from arrow keys
     if (keys1["ArrowLeft"])  directionalInput.x -= 1;
     if (keys1["ArrowRight"]) directionalInput.x += 1;
     if (keys1["ArrowUp"])    directionalInput.y -= 1;
     if (keys1["ArrowDown"])  directionalInput.y += 1;
   }
   
-  // Normalize the directional vector; default to upward if no input
+  // Normalize the directional vector (default upward if zero)
   let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
   if (inputMag > 0) {
     directionalInput.x /= inputMag;
     directionalInput.y /= inputMag;
   } else {
-    directionalInput.y = -1;
+    directionalInput.y = -1; // Default upward jump
   }
   
-  // Set a base multiplier for the jump force
+  // Set the force multiplier.
+  // Here we use a base multiplier and increase it when aiming down (positive y).
   let forceMultiplier = 0.005;
-  // If the player is aiming down (positive y), increase the multiplier so the downward force is more pronounced.
   if (directionalInput.y > 0) {
-    forceMultiplier = 0.01; // Increase downward force; tweak as needed
+    forceMultiplier = 0.01;
   }
   
   const jumpForce = jumpStrength * forceMultiplier;
+  
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
   });
 }
 
-
-// --- Player two movement via gamepad ---
-// Horizontal movement (using arrow keys)
+// ----- PLAYER TWO MOVEMENT -----
+// Horizontal movement (always applied)
 if (keys2["ArrowLeft"]) {
   playerChar2.facing = "left";
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: -0.01, y: 0 });
@@ -1478,45 +1481,47 @@ if (keys2["ArrowRight"]) {
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: 0.01, y: 0 });
 }
 
-// Jump/steering using Space
+// Jump (and in-air steering) for Player Two
 if (keys2["Space"]) {
   const jumpStrength = 11;
   let directionalInput = { x: 0, y: 0 };
 
-  // Prioritize gamepad joystick input if significant
+  // Prefer gamepad joystick input if its magnitude is significant
   const joystickMag = Math.hypot(joystickAim2.x, joystickAim2.y);
   if (joystickMag > 0.1) {
     directionalInput.x = joystickAim2.x;
     directionalInput.y = joystickAim2.y;
   } else {
-    // Otherwise, build input vector from arrow keys
+    // Otherwise, build the input vector from arrow keys
     if (keys2["ArrowLeft"])  directionalInput.x -= 1;
     if (keys2["ArrowRight"]) directionalInput.x += 1;
     if (keys2["ArrowUp"])    directionalInput.y -= 1;
     if (keys2["ArrowDown"])  directionalInput.y += 1;
   }
   
-  // Normalize the directional vector; default to upward if no input
+  // Normalize the directional vector (default upward if zero)
   let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
   if (inputMag > 0) {
     directionalInput.x /= inputMag;
     directionalInput.y /= inputMag;
   } else {
-    directionalInput.y = -1;
+    directionalInput.y = -1; // Default upward jump
   }
   
-  // Set a base force multiplier and adjust it if aiming downward (positive y)
+  // Set the force multiplier.
   let forceMultiplier = 0.005;
   if (directionalInput.y > 0) {
-    forceMultiplier = 0.01; // Increase force when aiming down
+    forceMultiplier = 0.01;
   }
   
   const jumpForce = jumpStrength * forceMultiplier;
+  
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
   });
 }
+
 
 
       
