@@ -1457,7 +1457,7 @@ if (keys1["KeyB"] || keys1["Space"]) {
   
   // Set the force multiplier.
   // Here we use a base multiplier and increase it when aiming down (positive y).
-  let forceMultiplier = 0.005;
+  let forceMultiplier = 0.002;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
@@ -1509,7 +1509,7 @@ if (keys2["Space"]) {
   }
   
   // Set the force multiplier.
-  let forceMultiplier = 0.005;
+  let forceMultiplier = 0.002;
   if (directionalInput.y > 0) {
     forceMultiplier = 0.01;
   }
@@ -1522,7 +1522,53 @@ if (keys2["Space"]) {
   });
 }
 
+// ----- Air Steering for Player One -----
+// Assumes playAreaHeight is the y coordinate of the ground
+if (playerChar1.torso.position.y < playAreaHeight - 30) {
+  // Build directional input from arrow keys
+  let airInput = { x: 0, y: 0 };
+  if (keys1["ArrowLeft"])  airInput.x -= 1;
+  if (keys1["ArrowRight"]) airInput.x += 1;
+  if (keys1["ArrowUp"])    airInput.y -= 1;
+  if (keys1["ArrowDown"])  airInput.y += 1;
+  
+  // Only apply if there is some input
+  let mag = Math.hypot(airInput.x, airInput.y);
+  if (mag > 0) {
+    airInput.x /= mag;
+    airInput.y /= mag;
+    
+    // Choose an appropriate force multiplier for air control.
+    const airControlForce = 0.002; // tweak this value as needed
+    
+    Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
+      x: airInput.x * airControlForce,
+      y: airInput.y * airControlForce
+    });
+  }
+}
 
+// ----- Air Steering for Player Two -----
+if (playerChar2.torso.position.y < playAreaHeight - 30) {
+  let airInput = { x: 0, y: 0 };
+  if (keys2["ArrowLeft"])  airInput.x -= 1;
+  if (keys2["ArrowRight"]) airInput.x += 1;
+  if (keys2["ArrowUp"])    airInput.y -= 1;
+  if (keys2["ArrowDown"])  airInput.y += 1;
+  
+  let mag = Math.hypot(airInput.x, airInput.y);
+  if (mag > 0) {
+    airInput.x /= mag;
+    airInput.y /= mag;
+    
+    const airControlForce = 0.002; // tweak for desired responsiveness
+    
+    Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
+      x: airInput.x * airControlForce,
+      y: airInput.y * airControlForce
+    });
+  }
+}
 
       
       // Update DOM positions for physics bodies
