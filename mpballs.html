@@ -1417,92 +1417,26 @@ function triggerScreenshake() {
       updateGamepadInput();
       Engine.update(engine, 1000/60);
       
-// --- Player one movement via keyboard ---
-if (keys1["ArrowLeft"]) {
-  playerChar1.facing = "left";
-  Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: -0.01, y: 0 });
-}
-if (keys1["ArrowRight"]) {
-  playerChar1.facing = "right";
-  Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0.01, y: 0 });
-}
-if (keys1["KeyB"] || keys1["Space"]) {
-  const jumpStrength = 11;
-  // Gather directional input from arrow keys
-  const directionalInput = { x: 0, y: 0 };
-  if (keys1["ArrowLeft"]) directionalInput.x -= 1;
-  if (keys1["ArrowRight"]) directionalInput.x += 1;
-  if (keys1["ArrowUp"]) directionalInput.y -= 1;
-  if (keys1["ArrowDown"]) directionalInput.y += 1;
-  let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
-  if (inputMag > 0) {
-    directionalInput.x /= inputMag;
-    directionalInput.y /= inputMag;
-  }
-
-  // If on the ground, perform a normal jump; if in air, apply a steering force
-  if (isOnGround(playerChar1)) {
-    const aimMag = Math.hypot(joystickAim1.x, joystickAim1.y);
-    if (aimMag > 0.1) {
-      Body.setVelocity(playerChar1.torso, { 
-        x: joystickAim1.x * jumpStrength, 
-        y: joystickAim1.y * jumpStrength 
-      });
-    } else {
-      Body.setVelocity(playerChar1.torso, { 
-        x: playerChar1.torso.velocity.x, 
-        y: -jumpStrength 
-      });
-    }
-  } else {
-    // Apply a small force to steer the player in mid-air
-    const airSteerForce = 0.002; // Adjust for responsiveness
-    if (inputMag > 0.1) {
-      Body.applyForce(playerChar1.torso, playerChar1.torso.position, { 
-        x: directionalInput.x * airSteerForce, 
-        y: directionalInput.y * airSteerForce 
-      });
-    }
-  }
-}
-
-// --- Player two movement via gamepad (similar approach) ---
-if (keys2["ArrowLeft"]) {
-  playerChar2.facing = "left";
-  Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: -0.01, y: 0 });
-}
-if (keys2["ArrowRight"]) {
-  playerChar2.facing = "right";
-  Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: 0.01, y: 0 });
-}
-if (keys2["Space"]) {
-  const jumpStrength = 11;
-  // For gamepad input, you might use joystickAim2 as your primary directional input.
-  const directionalInput = { x: joystickAim2.x, y: joystickAim2.y };
-  let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
-  
-  if (isOnGround(playerChar2)) {
-    if (inputMag > 0.1) {
-      Body.setVelocity(playerChar2.torso, { 
-        x: directionalInput.x * jumpStrength, 
-        y: directionalInput.y * jumpStrength 
-      });
-    } else {
-      Body.setVelocity(playerChar2.torso, { 
-        x: playerChar2.torso.velocity.x, 
-        y: -jumpStrength 
-      });
-    }
-  } else {
-    const airSteerForce = 0.002;
-    if (inputMag > 0.1) {
-      Body.applyForce(playerChar2.torso, playerChar2.torso.position, { 
-        x: directionalInput.x * airSteerForce, 
-        y: directionalInput.y * airSteerForce 
-      });
-    }
-  }
-}
+      // Player one movement via keyboard
+      if (keys1["ArrowLeft"]) { playerChar1.facing = "left"; Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: -0.01, y: 0 }); }
+      if (keys1["ArrowRight"]) { playerChar1.facing = "right"; Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0.01, y: 0 }); }
+      if (keys1["KeyB"] || keys1["Space"]) {
+        const jumpStrength = 11;
+        const aimMag = Math.hypot(joystickAim1.x, joystickAim1.y);
+        if (aimMag > 0.1) { Body.setVelocity(playerChar1.torso, { x: joystickAim1.x * jumpStrength, y: joystickAim1.y * jumpStrength }); }
+        else { Body.setVelocity(playerChar1.torso, { x: playerChar1.torso.velocity.x, y: -jumpStrength }); }
+      }
+      
+      // Player two movement via gamepad
+      if (keys2["ArrowLeft"]) { playerChar2.facing = "left"; Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: -0.01, y: 0 }); }
+      if (keys2["ArrowRight"]) { playerChar2.facing = "right"; Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: 0.01, y: 0 }); }
+      if (keys2["Space"]) {
+        const jumpStrength = 11;
+        const aimMag = Math.hypot(joystickAim2.x, joystickAim2.y);
+        if (aimMag > 0.1) { Body.setVelocity(playerChar2.torso, { x: joystickAim2.x * jumpStrength, y: joystickAim2.y * jumpStrength }); }
+        else { Body.setVelocity(playerChar2.torso, { x: playerChar2.torso.velocity.x, y: -jumpStrength }); }
+      }
+      
       // Update DOM positions for physics bodies
       domEntities.forEach(body => {
         if (body.domElement) {
@@ -1692,11 +1626,7 @@ if (playerChar2.hp <= 0 && !playerChar2.isDying) {
       requestAnimationFrame(update);
     }
     update();
-function isOnGround(player) {
-  // Assuming playAreaHeight is where the ground starts.
-  // Adjust the threshold (here, 60 pixels) according to your character size.
-  return player.torso.position.y >= (playAreaHeight - 60);
-}
+
     // --- On-Screen Joystick (Player One) ---
     (function() {
       const joystick = document.getElementById("joystick");
