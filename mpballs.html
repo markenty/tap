@@ -1371,7 +1371,7 @@ function triggerScreenshake() {
             keys1["ArrowRight"] = true; keys1["ArrowLeft"] = false;
           } else { keys1["ArrowLeft"] = false; keys1["ArrowRight"] = false; }
           keys1["ArrowUp"] = false;
-          keys1["Space"] = gp.buttons[0].keys1["Space"] = gp.buttons[0].pressed || gp.buttons[11].pressed;;
+          keys1["Space"] = gp.buttons[0].pressed;
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
           if (rmag > threshold) { joystickAim1.x = rx / rmag; joystickAim1.y = ry / rmag; }
@@ -1393,7 +1393,7 @@ function triggerScreenshake() {
             keys2["ArrowRight"] = true; keys2["ArrowLeft"] = false;
           } else { keys2["ArrowLeft"] = false; keys2["ArrowRight"] = false; }
           keys2["ArrowUp"] = false;
-          keys2["Space"] = gp.buttons[0].pressed || gp.buttons[11].pressed;
+          keys2["Space"] = gp.buttons[0].pressed;
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
           if (rmag > threshold) { joystickAim2.x = rx / rmag; joystickAim2.y = ry / rmag; }
