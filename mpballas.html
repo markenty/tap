@@ -881,7 +881,7 @@
 
     // --- Digital Pixel Explosion Animation ---
     function digitalPixelExplosion(x, y) {
-      triggerScreenshake();
+      triggerScreenshake();     
       const numPixels = 50;
       for (let i = 0; i < numPixels; i++) {
         const pixel = document.createElement("div");
@@ -907,9 +907,7 @@
           easing: "ease-out",
           fill: "forwards"
         });
-        setTimeout(() => {
-          if (pixel.parentNode) { pixel.parentNode.removeChild(pixel); }
-        }, 1000);
+        setTimeout(() => { if (pixel.parentNode) { pixel.parentNode.removeChild(pixel); } }, 1000);
       }
     }
 
@@ -1367,7 +1365,7 @@
             keys1["ArrowRight"] = true; keys1["ArrowLeft"] = false;
           } else { keys1["ArrowLeft"] = false; keys1["ArrowRight"] = false; }
           keys1["ArrowUp"] = false;
-          // Map jump to both the A button (index 0) and the right stick button (index 11)
+          // Map jump to both A button (index 0) and right stick button (index 11)
           keys1["Space"] = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[11] && gp.buttons[11].pressed);
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
@@ -1376,10 +1374,16 @@
           if (!lastGamepadButtonState[gp.index]) {
             lastGamepadButtonState[gp.index] = new Array(gp.buttons.length).fill(false);
           }
-          if (gp.buttons[1].pressed && !lastGamepadButtonState[gp.index][1]) {
+          // Shoot/Grab: combine button index 1 and right trigger (index 7)
+          const shootPressed = (gp.buttons[1].pressed || gp.buttons[7].pressed);
+          const shootWasPressed = (lastGamepadButtonState[gp.index][1] || lastGamepadButtonState[gp.index][7]);
+          if (shootPressed && !shootWasPressed) {
             playerShoot(playerChar1, keys1, joystickAim1);
           }
-          if (gp.buttons[2].pressed && !lastGamepadButtonState[gp.index][2]) {
+          // Melee: combine button index 2 and left trigger (index 6)
+          const meleePressed = (gp.buttons[2].pressed || gp.buttons[6].pressed);
+          const meleeWasPressed = (lastGamepadButtonState[gp.index][2] || lastGamepadButtonState[gp.index][6]);
+          if (meleePressed && !meleeWasPressed) {
             meleeAttack(playerChar1, keys1, joystickAim1);
           }
           lastGamepadButtonState[gp.index] = gp.buttons.map(b => b.pressed);
@@ -1390,7 +1394,7 @@
             keys2["ArrowRight"] = true; keys2["ArrowLeft"] = false;
           } else { keys2["ArrowLeft"] = false; keys2["ArrowRight"] = false; }
           keys2["ArrowUp"] = false;
-          // Map jump for player two to both the A button (index 0) and the right stick button (index 11)
+          // Map jump for player two to both A button (index 0) and right stick button (index 11)
           keys2["Space"] = (gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[11] && gp.buttons[11].pressed);
           let rx = gp.axes[2], ry = gp.axes[3];
           let rmag = Math.hypot(rx, ry);
@@ -1399,10 +1403,16 @@
           if (!lastGamepadButtonState[gp.index]) {
             lastGamepadButtonState[gp.index] = new Array(gp.buttons.length).fill(false);
           }
-          if (gp.buttons[1].pressed && !lastGamepadButtonState[gp.index][1]) {
+          // Shoot/Grab for player two: combine button index 1 and right trigger (index 7)
+          const shootPressed2 = (gp.buttons[1].pressed || gp.buttons[7].pressed);
+          const shootWasPressed2 = (lastGamepadButtonState[gp.index][1] || lastGamepadButtonState[gp.index][7]);
+          if (shootPressed2 && !shootWasPressed2) {
             playerShoot(playerChar2, keys2, joystickAim2);
           }
-          if (gp.buttons[2].pressed && !lastGamepadButtonState[gp.index][2]) {
+          // Melee for player two: combine button index 2 and left trigger (index 6)
+          const meleePressed2 = (gp.buttons[2].pressed || gp.buttons[6].pressed);
+          const meleeWasPressed2 = (lastGamepadButtonState[gp.index][2] || lastGamepadButtonState[gp.index][6]);
+          if (meleePressed2 && !meleeWasPressed2) {
             meleeAttack(playerChar2, keys2, joystickAim2);
           }
           lastGamepadButtonState[gp.index] = gp.buttons.map(b => b.pressed);
