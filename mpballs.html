@@ -1521,7 +1521,101 @@ if (keys2["Space"]) {
     y: directionalInput.y * jumpForce
   });
 }
+// --- PLAYER ONE JUMP WITH SPRINGY EXTRA FORCE ---
+//
+if (keys1["KeyB"] || keys1["Space"]) {
+  // Build directional input: use gamepad joystick if available, else arrow keys.
+  let dirInput = { x: 0, y: 0 };
+  const jMag = Math.hypot(joystickAim1.x, joystickAim1.y);
+  if (jMag > 0.1) {
+    dirInput.x = joystickAim1.x;
+    dirInput.y = joystickAim1.y;
+  } else {
+    if (keys1["ArrowLeft"])  dirInput.x -= 1;
+    if (keys1["ArrowRight"]) dirInput.x += 1;
+    if (keys1["ArrowUp"])    dirInput.y -= 1;
+    if (keys1["ArrowDown"])  dirInput.y += 1;
+  }
+  // Normalize the vector; if none, default upward.
+  let mag = Math.hypot(dirInput.x, dirInput.y);
+  if (mag > 0) {
+    dirInput.x /= mag;
+    dirInput.y /= mag;
+  } else {
+    dirInput.y = -1;
+  }
 
+  // If jump was just initiated, set jumpActive and start a timer.
+  if (!playerChar1.jumpActive) {
+    playerChar1.jumpActive = true;
+    playerChar1.jumpTimer = 0.2; // 200 ms of extra force
+  }
+
+  // While jump key is held and timer is running, apply extra (springy) force.
+  if (playerChar1.jumpTimer > 0) {
+    // Adjust the force multiplier for springiness.
+    // You can tweak 'springForce' so that the extra upward (or directional) force feels right.
+    const springForce = 0.015;  
+    Body.applyForce(
+      playerChar1.torso,
+      playerChar1.torso.position,
+      {
+        x: dirInput.x * springForce,
+        y: dirInput.y * springForce
+      }
+    );
+    // Decrease the timer by the frame's deltaTime.
+    playerChar1.jumpTimer -= deltaTime;
+  }
+} else {
+  // When jump key is released, reset the jump state.
+  playerChar1.jumpActive = false;
+  playerChar1.jumpTimer = 0;
+}
+
+//
+// --- PLAYER TWO JUMP WITH SPRINGY EXTRA FORCE ---
+//
+if (keys2["Space"]) {
+  let dirInput2 = { x: 0, y: 0 };
+  const jMag2 = Math.hypot(joystickAim2.x, joystickAim2.y);
+  if (jMag2 > 0.1) {
+    dirInput2.x = joystickAim2.x;
+    dirInput2.y = joystickAim2.y;
+  } else {
+    if (keys2["ArrowLeft"])  dirInput2.x -= 1;
+    if (keys2["ArrowRight"]) dirInput2.x += 1;
+    if (keys2["ArrowUp"])    dirInput2.y -= 1;
+    if (keys2["ArrowDown"])  dirInput2.y += 1;
+  }
+  let mag2 = Math.hypot(dirInput2.x, dirInput2.y);
+  if (mag2 > 0) {
+    dirInput2.x /= mag2;
+    dirInput2.y /= mag2;
+  } else {
+    dirInput2.y = -1;
+  }
+
+  if (!playerChar2.jumpActive) {
+    playerChar2.jumpActive = true;
+    playerChar2.jumpTimer = 0.2; // 200 ms of extra force
+  }
+  if (playerChar2.jumpTimer > 0) {
+    const springForce = 0.015;
+    Body.applyForce(
+      playerChar2.torso,
+      playerChar2.torso.position,
+      {
+        x: dirInput2.x * springForce,
+        y: dirInput2.y * springForce
+      }
+    );
+    playerChar2.jumpTimer -= deltaTime;
+  }
+} else {
+  playerChar2.jumpActive = false;
+  playerChar2.jumpTimer = 0;
+}
 // ----- Air Steering for Player One -----
 // Assumes playAreaHeight is the y coordinate of the ground
 if (playerChar1.torso.position.y < playAreaHeight - 30) {
