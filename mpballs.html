@@ -1429,46 +1429,31 @@ if (keys1["ArrowRight"]) {
 }
 
 // Jump (and in-air steering) for Player One
-if (keys1["KeyB"] || keys1["Space"]) {
-  const jumpStrength = 11;
-  let directionalInput = { x: 0, y: 0 };
+// Jump (with spring compression effect) for Player One
+if ((keys1["KeyB"] || keys1["Space"] || lastGamepadButtonState[0]?.[0]) && !playerChar1.isJumping) {
+  playerChar1.isJumping = true;
 
-  // Prefer gamepad joystick input if its magnitude is significant
-  const joystickMag = Math.hypot(joystickAim1.x, joystickAim1.y);
-  if (joystickMag > 0.1) {
-    directionalInput.x = joystickAim1.x;
-    directionalInput.y = joystickAim1.y;
-  } else {
-    // Otherwise, build the input vector from arrow keys
-    if (keys1["ArrowLeft"])  directionalInput.x -= 1;
-    if (keys1["ArrowRight"]) directionalInput.x += 1;
-    if (keys1["ArrowUp"])    directionalInput.y -= 1;
-    if (keys1["ArrowDown"])  directionalInput.y += 1;
-  }
-  
-  // Normalize the directional vector (default upward if zero)
-  let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
-  if (inputMag > 0) {
-    directionalInput.x /= inputMag;
-    directionalInput.y /= inputMag;
-  } else {
-    directionalInput.y = -1; // Default upward jump
-  }
-  
-  // Set the force multiplier.
-  // Here we use a base multiplier and increase it when aiming down (positive y).
-  let forceMultiplier = 0.001;
-  if (directionalInput.y > 0) {
-    forceMultiplier = 0.01;
-  }
-  
-  const jumpForce = jumpStrength * forceMultiplier;
-  
-  Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
-    x: directionalInput.x * jumpForce,
-    y: directionalInput.y * jumpForce
-  });
+  // **Compression Phase - Player Squashes Down Slightly**
+  Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0, y: 2.5 });
+
+  setTimeout(() => {
+    // **Strong Impulse-Based Bounce**
+    const jumpImpulse = -0.4;
+    Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0, y: jumpImpulse });
+
+    setTimeout(() => {
+      playerChar1.isJumping = false;
+    }, 300); // Prevents double jump spam
+  }, 80); // Short delay for a "springy" effect
 }
+
+// **Dynamic Bounciness - If falling fast, bounce a bit**
+if (playerChar1.torso.velocity.y > 10) {
+  playerChar1.torso.restitution = 0.8; // More bounce on heavy landings
+} else {
+  playerChar1.torso.restitution = 0; // Normal landings
+}
+
 
 // ----- PLAYER TWO MOVEMENT -----
 // Horizontal movement (always applied)
@@ -1482,45 +1467,31 @@ if (keys2["ArrowRight"]) {
 }
 
 // Jump (and in-air steering) for Player Two
-if (keys2["Space"]) {
-  const jumpStrength = 11;
-  let directionalInput = { x: 0, y: 0 };
+// Jump (with spring compression effect) for Player Two
+if ((keys2["Space"] || lastGamepadButtonState[1]?.[0]) && !playerChar2.isJumping) {
+  playerChar2.isJumping = true;
 
-  // Prefer gamepad joystick input if its magnitude is significant
-  const joystickMag = Math.hypot(joystickAim2.x, joystickAim2.y);
-  if (joystickMag > 0.1) {
-    directionalInput.x = joystickAim2.x;
-    directionalInput.y = joystickAim2.y;
-  } else {
-    // Otherwise, build the input vector from arrow keys
-    if (keys2["ArrowLeft"])  directionalInput.x -= 1;
-    if (keys2["ArrowRight"]) directionalInput.x += 1;
-    if (keys2["ArrowUp"])    directionalInput.y -= 1;
-    if (keys2["ArrowDown"])  directionalInput.y += 1;
-  }
-  
-  // Normalize the directional vector (default upward if zero)
-  let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
-  if (inputMag > 0) {
-    directionalInput.x /= inputMag;
-    directionalInput.y /= inputMag;
-  } else {
-    directionalInput.y = -1; // Default upward jump
-  }
-  
-  // Set the force multiplier.
-  let forceMultiplier = 0.001;
-  if (directionalInput.y > 0) {
-    forceMultiplier = 0.01;
-  }
-  
-  const jumpForce = jumpStrength * forceMultiplier;
-  
-  Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
-    x: directionalInput.x * jumpForce,
-    y: directionalInput.y * jumpForce
-  });
+  // **Compression Phase**
+  Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: 0, y: 2.5 });
+
+  setTimeout(() => {
+    // **Impulse-Based Jump**
+    const jumpImpulse = -0.4;
+    Body.applyForce(playerChar2.torso, playerChar2.torso.position, { x: 0, y: jumpImpulse });
+
+    setTimeout(() => {
+      playerChar2.isJumping = false;
+    }, 300);
+  }, 80);
 }
+
+// **Bouncier Landings**
+if (playerChar2.torso.velocity.y > 10) {
+  playerChar2.torso.restitution = 0.8;
+} else {
+  playerChar2.torso.restitution = 0;
+}
+
 
 // ----- Air Steering for Player One -----
 // Assumes playAreaHeight is the y coordinate of the ground
@@ -1539,7 +1510,7 @@ if (playerChar1.torso.position.y < playAreaHeight - 30) {
     airInput.y /= mag;
     
     // Choose an appropriate force multiplier for air control.
-    const airControlForce = 0.002; // tweak this value as needed
+    const airControlForce = 0.0008; // tweak this value as needed
     
     Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
       x: airInput.x * airControlForce,
@@ -1561,7 +1532,7 @@ if (playerChar2.torso.position.y < playAreaHeight - 30) {
     airInput.x /= mag;
     airInput.y /= mag;
     
-    const airControlForce = 0.002; // tweak for desired responsiveness
+    const airControlForce = 0.0008; // tweak for desired responsiveness
     
     Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
       x: airInput.x * airControlForce,
