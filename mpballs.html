@@ -1417,7 +1417,7 @@ function triggerScreenshake() {
       updateGamepadInput();
       Engine.update(engine, 1000/60);
       
-   // Player one movement via keyboard
+ // Player one movement via keyboard/gamepad
 if (keys1["ArrowLeft"]) {
   playerChar1.facing = "left";
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: -0.01, y: 0 });
@@ -1427,31 +1427,39 @@ if (keys1["ArrowRight"]) {
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, { x: 0.01, y: 0 });
 }
 if (keys1["KeyB"] || keys1["Space"]) {
-  // Use a jump strength as a base multiplier (adjust as needed)
   const jumpStrength = 11;
-  // Build a directional input vector from arrow keys
-  const directionalInput = { x: 0, y: 0 };
-  if (keys1["ArrowLeft"])  directionalInput.x -= 1;
-  if (keys1["ArrowRight"]) directionalInput.x += 1;
-  if (keys1["ArrowUp"])    directionalInput.y -= 1;
-  if (keys1["ArrowDown"])  directionalInput.y += 1;
-  // Compute the magnitude
+  let directionalInput = { x: 0, y: 0 };
+
+  // Prioritize gamepad joystick input if its magnitude is significant
+  const joystickMag = Math.hypot(joystickAim1.x, joystickAim1.y);
+  if (joystickMag > 0.1) {
+    directionalInput.x = joystickAim1.x;
+    directionalInput.y = joystickAim1.y;
+  } else {
+    // Otherwise, use keyboard arrow keys for directional input
+    if (keys1["ArrowLeft"])  directionalInput.x -= 1;
+    if (keys1["ArrowRight"]) directionalInput.x += 1;
+    if (keys1["ArrowUp"])    directionalInput.y -= 1;
+    if (keys1["ArrowDown"])  directionalInput.y += 1;
+  }
+
+  // Normalize the directional vector; default to upward if no input
   let inputMag = Math.hypot(directionalInput.x, directionalInput.y);
   if (inputMag > 0) {
     directionalInput.x /= inputMag;
     directionalInput.y /= inputMag;
   } else {
-    // Default to upward if no input is given
     directionalInput.y = -1;
   }
-  // Apply a force based on the directional input.
-  // Adjust the scaling factor (here, 0.001) until it feels right.
-  const jumpForce = jumpStrength * 0.01;
+
+  // Scale the jump force. Adjust the multiplier (here, 0.005) to suit your game’s feel.
+  const jumpForce = jumpStrength * 0.005;
   Body.applyForce(playerChar1.torso, playerChar1.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
   });
 }
+
 
 // Player two movement via gamepad (or keyboard) follows a similar pattern
 if (keys2["ArrowLeft"]) {
@@ -1473,7 +1481,7 @@ if (keys2["Space"]) {
   } else {
     directionalInput.y = -1;
   }
-  const jumpForce = jumpStrength * 0.81;
+  const jumpForce = jumpStrength * 0.005;
   Body.applyForce(playerChar2.torso, playerChar2.torso.position, {
     x: directionalInput.x * jumpForce,
     y: directionalInput.y * jumpForce
