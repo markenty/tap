@@ -1505,7 +1505,9 @@
     function update() {
       updateGamepadInput();
       Engine.update(engine, 1000/60);
-      
+      const invisibleLeftX = 22.5;
+const invisibleRightX = levelWidth - 22.5;
+
       // ----- PLAYER ONE MOVEMENT -----
       if (keys1["ArrowLeft"]) {
         playerChar1.facing = "left";
@@ -1798,7 +1800,18 @@
           addPlayerClass(playerChar2, "player2");
         }, 1000);
       }
-
+// --- Enemy Out-Of-Bounds Check & Respawn with "OUT!" Logic using additional boundaries ---
+enemies.forEach(enemy => {
+  if (
+    enemy.body.position.x < additionalInvisibleLeftX ||
+    enemy.body.position.x > additionalInvisibleRightX ||
+    enemy.body.position.y > groundBottom
+  ) {
+    triggerOutEffect();
+    removeEnemy(enemy.body);
+    setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 1000);
+  }
+});
       updateCamera();
       requestAnimationFrame(update);
     }
@@ -1869,18 +1882,7 @@ const additionalInvisibleRightWall = Bodies.rectangle(
 
 World.add(world, [additionalInvisibleLeftWall, additionalInvisibleRightWall]);
 
-// --- Enemy Out-Of-Bounds Check & Respawn with "OUT!" Logic using additional boundaries ---
-enemies.forEach(enemy => {
-  if (
-    enemy.body.position.x < additionalInvisibleLeftX ||
-    enemy.body.position.x > additionalInvisibleRightX ||
-    enemy.body.position.y > groundBottom
-  ) {
-    triggerOutEffect();
-    removeEnemy(enemy.body);
-    setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 1000);
-  }
-});
+
 
     // --- On-Screen Button Mappings (Player One) ---
     const dpad = document.getElementById("dpad");
