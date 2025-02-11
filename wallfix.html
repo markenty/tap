@@ -57,13 +57,13 @@
       top: 0; left: 0;
       z-index: 1;
     }
-    /* Visual Ground – its top is at playAreaHeight-20 with height = 100px */
+    /* Visual Ground – top at playAreaHeight-20, height = 100px */
     #ground {
       position: absolute;
       left: 0;
       background: #0d0c29;
     }
-    /* Visual Ceiling – same as ground, but at the top of the game area */
+    /* Visual Ceiling – placed at the top of the game area */
     #ceiling {
       position: absolute;
       left: 0;
@@ -653,9 +653,7 @@
     // --- Player Death Effect & Respawn Functions ---
     function triggerDeathEffect() {
       let existingOverlay = document.getElementById("deathOverlay");
-      if (existingOverlay) {
-        existingOverlay.parentNode.removeChild(existingOverlay);
-      }
+      if(existingOverlay) { existingOverlay.parentNode.removeChild(existingOverlay); }
       const deathOverlay = document.createElement("div");
       deathOverlay.id = "deathOverlay";
       deathOverlay.style.position = "absolute";
@@ -699,11 +697,11 @@
                      player.leftUpperLeg, player.leftFoot];
       parts.forEach(part => {
         World.remove(world, part);
-        if(part.domElement && part.domElement.parentNode){
+        if(part.domElement && part.domElement.parentNode) {
           part.domElement.parentNode.removeChild(part.domElement);
         }
       });
-      if(player.hpContainer && player.hpContainer.parentNode){
+      if(player.hpContainer && player.hpContainer.parentNode) {
         player.hpContainer.parentNode.removeChild(player.hpContainer);
       }
     }
@@ -1434,13 +1432,6 @@
       }
     }
     
-    function triggerScreenshake() {
-      const screenEl = document.getElementById("screen");
-      screenEl.classList.remove("shake");
-      void screenEl.offsetWidth;
-      screenEl.classList.add("shake");
-    }
-    
     // --- Player Death Check & Effect ---
     function checkPlayerDeath() {
       if(playerChar1.hp <= 0 && !playerChar1.isDying) {
@@ -1688,7 +1679,7 @@
       });
     
       updateCamera();
-      checkPlayerDeath(); // Check for player death each frame
+      checkPlayerDeath();
       requestAnimationFrame(update);
     }
     update();
