@@ -385,7 +385,9 @@
     let tvs = [];
     let domEntities = [], platforms = [], walls = [], coins = [], bullets = [], enemies = [];
     let leftScore = 0, rightScore = 0;
-
+const now = Date.now();
+let dt = (now - lastTime) / 1000;  // dt in seconds
+lastTime = now;
     // Separate input objects for player one and player two
     let keys1 = {}, keys2 = {};
     let joystickAim1 = { x: 0, y: 0 }, joystickAim2 = { x: 0, y: 0 };
@@ -1514,20 +1516,38 @@ function triggerOutEffect() {
   }, 1000);
 }
 
-// --- Check if Enemies Are Out-Of-Bounds ---
-function checkEnemyOutOfBounds() {
-  // Iterate over a copy of the enemies array so removals don’t disrupt iteration
+
+// --- Check if Enemies Are Out-Of-Bounds or Stuck ---
+function checkEnemyOutOfBounds(dt) {
+  // Iterate over a copy so removals don’t disrupt iteration.
   enemies.slice().forEach(enemy => {
     const pos = enemy.body.position;
-    // If the enemy’s x position is off the left/right edges
-    // or if its y position is below the safety floor, trigger the out effect.
+    const speed = enemy.body.speed;
+    
+    // If the enemy's x position is off the left/right edges
+    // or if its y position is below the safety floor, remove it.
     if (pos.x < 0 || pos.x > levelWidth || pos.y > safetyFloorY) {
       triggerOutEffect();
       removeEnemy(enemy.body);
-      // Respawn the enemy after a short delay (e.g., 2000ms)
       setTimeout(() => {
         createEnemy(levelWidth / 2, playAreaHeight / 2);
       }, 2000);
+    } 
+    // Check if the enemy is "stuck" on/inside the floor.
+    // For example, if the enemy's center is very near or below the floor's top (playAreaHeight)
+    // and its speed is nearly zero, consider it stuck.
+    else if (pos.y > playAreaHeight - 10 && speed < 0.01) {
+      enemy.stuckTimer = (enemy.stuckTimer || 0) + dt;
+      if (enemy.stuckTimer > 2) { // enemy stuck for more than 2 seconds
+        triggerOutEffect();
+        removeEnemy(enemy.body);
+        setTimeout(() => {
+          createEnemy(levelWidth / 2, playAreaHeight / 2);
+        }, 2000);
+      }
+    } else {
+      // Reset the stuck timer if the enemy is moving or not too low.
+      enemy.stuckTimer = 0;
     }
   });
 }
@@ -1840,7 +1860,7 @@ enemies.forEach(enemy => {
 });
 
 // Check if any enemy has gone out-of-bounds
-checkEnemyOutOfBounds();
+checkEnemyOutOfBounds(dt);
       updateCamera();
       requestAnimationFrame(update);
     }
