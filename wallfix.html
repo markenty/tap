@@ -1044,6 +1044,25 @@
         }
       });
     });
+    // --- Trigger "OUT!" Effect when enemy leaves game area ---
+    function triggerOutEffect() {
+      let outText = document.createElement("div");
+      outText.id = "outText";
+      outText.innerText = "OUT!";
+      outText.style.position = "absolute";
+      outText.style.top = "50%";
+      outText.style.left = "50%";
+      outText.style.transform = "translate(-50%, -50%)";
+      outText.style.fontSize = "72px";
+      outText.style.fontWeight = "bold";
+      outText.style.fontFamily = '"Impact", "Arial Black", sans-serif';
+      outText.style.color = "white";
+      outText.style.zIndex = "60";
+      outText.style.pointerEvents = "none";
+      game.appendChild(outText);
+      outText.classList.add("goalTextAnimation");
+      setTimeout(() => { if (outText.parentNode) { outText.parentNode.removeChild(outText); } }, 1000);
+    }
     function triggerGoalEffect() {
       let flash = document.getElementById("flashOverlay");
       if (!flash) {
