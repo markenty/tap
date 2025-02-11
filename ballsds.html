@@ -767,7 +767,7 @@
           let mag = Math.hypot(dx, dy);
           dx /= mag; dy /= mag;
         }
-        const throwSpeed = 30;
+        const throwSpeed = 55;
         Body.setVelocity(obj, { x: dx * throwSpeed, y: dy * throwSpeed });
         Body.setAngularVelocity(obj, 0.5);
         obj.collisionFilter.mask = 0xFFFFFFFF;
