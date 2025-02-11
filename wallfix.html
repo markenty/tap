@@ -1823,6 +1823,33 @@
       joystick.addEventListener("touchend", (e) => { dragging = false; snapBack(); e.preventDefault(); });
       joystick.addEventListener("touchcancel", (e) => { dragging = false; snapBack(); e.preventDefault(); });
     })();
+    // --- Additional Invisible Walls to Block Throws ---
+// Calculate midpoint positions between the goal and existing invisible wall:
+// Left goal is at x = 50 and invisibleLeftWall is at x = 22.5, so midpoint:
+const additionalInvisibleLeftX = (50 + invisibleLeftX) / 2;  // ~36.25
+// Right goal is at x = levelWidth - 50 and invisibleRightWall is at x = levelWidth - 22.5, so midpoint:
+const additionalInvisibleRightX = ((levelWidth - 50) + invisibleRightX) / 2;  // ~levelWidth - 36.25
+
+const additionalInvisibleWallThickness = 20;
+
+const additionalInvisibleLeftWall = Bodies.rectangle(
+  additionalInvisibleLeftX,
+  playableHeight / 2,
+  additionalInvisibleWallThickness,
+  playableHeight,
+  { isStatic: true, label: "additionalInvisibleLeftWall", restitution: 1, friction: 0, render: { fillStyle: "transparent" } }
+);
+
+const additionalInvisibleRightWall = Bodies.rectangle(
+  additionalInvisibleRightX,
+  playableHeight / 2,
+  additionalInvisibleWallThickness,
+  playableHeight,
+  { isStatic: true, label: "additionalInvisibleRightWall", restitution: 1, friction: 0, render: { fillStyle: "transparent" } }
+);
+
+World.add(world, [additionalInvisibleLeftWall, additionalInvisibleRightWall]);
+
 // --- Trigger "OUT!" Effect on Invisible Wall Collision ---
 Events.on(engine, "collisionStart", function(event) {
   event.pairs.forEach(pair => {
