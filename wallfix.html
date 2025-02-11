@@ -387,10 +387,10 @@
     let walkCycle1 = 0, walkCycle2 = 0;
     let lastTime = Date.now();
     
-    // Declare playerChar1 and playerChar2 in the outer scope so they are available to update()
+    // Declare playerChar1 and playerChar2 in the outer scope so they are available globally.
     let playerChar1, playerChar2;
     
-    // Define updateGamepadInput to handle gamepad input
+    // Define updateGamepadInput to handle gamepad input.
     function updateGamepadInput() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       const threshold = 0.2;
@@ -646,7 +646,7 @@
     createGoalDom(leftGoal, "left");
     createGoalDom(rightGoal, "right");
     
-    // Visible goal walls: their bottom must line up with groundBottom.
+    // Visible goal walls: ensure their bottom lines up with groundBottom.
     const wallHeight = playableHeight;
     const wallCenterY = groundBottom - (wallHeight / 2);
     const wallThickness = 50;
@@ -874,7 +874,7 @@
       return char;
     }
     
-    // Create two players now that createCharacter is defined.
+    // Create two players.
     playerChar1 = createCharacter(100, playAreaHeight/2);
     playerChar2 = createCharacter(levelWidth - 100, playAreaHeight/2);
     function addPlayerClass(player, className) {
@@ -1824,7 +1824,7 @@
         character.hpBar.style.width = (hpPercentage * containerWidth) + "px";
       })(playerChar2);
       
-      // --- Enemy Out-Of-Bounds Check & Respawn ---
+      // --- Enemy Out-Of-Bounds Check & Respawn with "OUT!" Logic ---
       enemies.forEach(enemy => {
         if (enemy.body.position.x < invisibleLeftX ||
             enemy.body.position.x > (levelWidth - invisibleLeftX) ||
