@@ -1028,19 +1028,19 @@
           removeEnemy(pair.bodyA);
           updateScoreboard();
           triggerGoalEffect();
-          setTimeout(() => { createEnemy(500, 100); }, 2000);
+          setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 2000);
         } else if (pair.bodyA.label === "rightGoal" && pair.bodyB.label === "enemy") {
           rightScore++;
           removeEnemy(pair.bodyB);
           updateScoreboard();
           triggerGoalEffect();
-          setTimeout(() => { createEnemy(500, 100); }, 2000);
+          setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 2000);
         } else if (pair.bodyB.label === "rightGoal" && pair.bodyA.label === "enemy") {
           rightScore++;
           removeEnemy(pair.bodyA);
           updateScoreboard();
           triggerGoalEffect();
-          setTimeout(() => { createEnemy(500, 100); }, 2000);
+          setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 2000);
         }
       });
     });
