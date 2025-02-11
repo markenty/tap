@@ -57,7 +57,7 @@
       top: 0; left: 0;
       z-index: 1;
     }
-    /* Visual Ground – top at playAreaHeight-20, height = 100px */
+    /* Visual Ground – top at playAreaHeight-20 with height = 100px */
     #ground {
       position: absolute;
       left: 0;
@@ -387,6 +387,61 @@
     let walkCycle1 = 0, walkCycle2 = 0;
     let lastTime = Date.now();
     
+    // Define updateGamepadInput to handle gamepad input
+    function updateGamepadInput() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      const threshold = 0.2;
+      for (let i = 0; i < gamepads.length; i++) {
+        const gp = gamepads[i];
+        if (!gp) continue;
+        if (gp.index === 0) {
+          // Player 1
+          if (gp.axes[0] < -threshold) {
+            keys1["ArrowLeft"] = true;
+            keys1["ArrowRight"] = false;
+          } else if (gp.axes[0] > threshold) {
+            keys1["ArrowRight"] = true;
+            keys1["ArrowLeft"] = false;
+          } else {
+            keys1["ArrowLeft"] = false;
+            keys1["ArrowRight"] = false;
+          }
+          keys1["Space"] = gp.buttons[0].pressed || gp.buttons[11].pressed;
+          let rx = gp.axes[2], ry = gp.axes[3];
+          let rmag = Math.hypot(rx, ry);
+          if (rmag > threshold) {
+            joystickAim1.x = rx / rmag;
+            joystickAim1.y = ry / rmag;
+          } else {
+            joystickAim1.x = 0;
+            joystickAim1.y = 0;
+          }
+        } else if (gp.index === 1) {
+          // Player 2
+          if (gp.axes[0] < -threshold) {
+            keys2["ArrowLeft"] = true;
+            keys2["ArrowRight"] = false;
+          } else if (gp.axes[0] > threshold) {
+            keys2["ArrowRight"] = true;
+            keys2["ArrowLeft"] = false;
+          } else {
+            keys2["ArrowLeft"] = false;
+            keys2["ArrowRight"] = false;
+          }
+          keys2["Space"] = gp.buttons[0].pressed || gp.buttons[11].pressed;
+          let rx = gp.axes[2], ry = gp.axes[3];
+          let rmag = Math.hypot(rx, ry);
+          if (rmag > threshold) {
+            joystickAim2.x = rx / rmag;
+            joystickAim2.y = ry / rmag;
+          } else {
+            joystickAim2.x = 0;
+            joystickAim2.y = 0;
+          }
+        }
+      }
+    }
+    
     // Level dimensions
     const levelWidth = 3000;
     function getViewportHeight() {
@@ -511,7 +566,7 @@
       return body;
     }
     
-    // Spawn a few platforms and walls.
+    // Spawn test platforms and walls.
     for(let i = 0; i < 2; i++){
       const width = Math.floor(Math.random() * 101) + 200;
       const x = Math.random() * (levelWidth - width);
@@ -697,11 +752,11 @@
                      player.leftUpperLeg, player.leftFoot];
       parts.forEach(part => {
         World.remove(world, part);
-        if(part.domElement && part.domElement.parentNode) {
+        if(part.domElement && part.domElement.parentNode){
           part.domElement.parentNode.removeChild(part.domElement);
         }
       });
-      if(player.hpContainer && player.hpContainer.parentNode) {
+      if(player.hpContainer && player.hpContainer.parentNode){
         player.hpContainer.parentNode.removeChild(player.hpContainer);
       }
     }
@@ -1683,6 +1738,109 @@
       requestAnimationFrame(update);
     }
     update();
+    
+    // --- Dynamic Camera with Zoom ---
+    let cameraX = 0, cameraY = 0;
+    function updateCamera() {
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      let points = [ playerChar1.torso.position, playerChar2.torso.position ];
+      if(enemies.length > 0){ points.push(enemies[0].body.position); }
+      let sumX = 0, sumY = 0;
+      points.forEach(p => { sumX += p.x; sumY += p.y; });
+      const centerX = sumX / points.length;
+      const centerY = sumY / points.length;
+      const margin = 100;
+      let minX = Math.min(...points.map(p => p.x)) - margin;
+      let maxX = Math.max(...points.map(p => p.x)) + margin;
+      let minY = Math.min(...points.map(p => p.y)) - margin;
+      let maxY = Math.max(...points.map(p => p.y)) + margin;
+      const boxWidth = maxX - minX;
+      const boxHeight = maxY - minY;
+      const scaleX = screenWidth / boxWidth;
+      const scaleY = screenHeight / boxHeight;
+      let scale = Math.min(scaleX, scaleY, 1);
+      let camX = centerX - screenWidth / (2 * scale);
+      let camY = centerY - screenHeight / (2 * scale);
+      camX = Math.max(0, Math.min(camX, levelWidth - screenWidth / scale));
+      camY = Math.max(0, Math.min(camY, gameHeight - screenHeight / scale));
+      cameraX = camX;
+      cameraY = camY;
+      game.style.transformOrigin = "top left";
+      game.style.transform = `translate(-${cameraX}px, -${cameraY}px) scale(${scale})`;
+      document.getElementById("parallax").style.backgroundPosition = (-cameraX * 0.5) + "px 0";
+    }
+    
+    // --- Gamepad Support ---
+    let lastGamepadButtonState = {};
+    window.addEventListener("gamepadconnected", (e) => {
+      console.log("Gamepad connected:", e.gamepad);
+      const controls = document.getElementById("controls");
+      if(controls){ controls.style.display = "none"; }
+    });
+    window.addEventListener("gamepaddisconnected", (e) => {
+      console.log("Gamepad disconnected:", e.gamepad);
+      delete lastGamepadButtonState[e.gamepad.index];
+      const gamepads = navigator.getGamepads();
+      let connected = false;
+      for(let i = 0; i < gamepads.length; i++){
+        if(gamepads[i]) { connected = true; break; }
+      }
+      if(!connected){
+        const controls = document.getElementById("controls");
+        if(controls){ controls.style.display = "flex"; }
+      }
+    });
+    function updateGamepadInput() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      const threshold = 0.2;
+      for(let i = 0; i < gamepads.length; i++){
+        const gp = gamepads[i];
+        if(!gp) continue;
+        if(gp.index === 0){
+          if(gp.axes[0] < -threshold){ keys1["ArrowLeft"] = true; keys1["ArrowRight"] = false; }
+          else if(gp.axes[0] > threshold){ keys1["ArrowRight"] = true; keys1["ArrowLeft"] = false; }
+          else { keys1["ArrowLeft"] = false; keys1["ArrowRight"] = false; }
+          keys1["ArrowUp"] = false;
+          keys1["Space"] = (gp.buttons[0].pressed || gp.buttons[11].pressed);
+          let rx = gp.axes[2], ry = gp.axes[3];
+          let rmag = Math.hypot(rx, ry);
+          if(rmag > threshold){ joystickAim1.x = rx / rmag; joystickAim1.y = ry / rmag; }
+          else { joystickAim1.x = 0; joystickAim1.y = 0; }
+          if(!lastGamepadButtonState[gp.index]){
+            lastGamepadButtonState[gp.index] = new Array(gp.buttons.length).fill(false);
+          }
+          const shootPressed = (gp.buttons[1].pressed || gp.buttons[7].pressed);
+          const shootWasPressed = (lastGamepadButtonState[gp.index][1] || lastGamepadButtonState[gp.index][7]);
+          if(shootPressed && !shootWasPressed){ playerShoot(playerChar1, keys1, joystickAim1); }
+          const meleePressed = (gp.buttons[2].pressed || gp.buttons[6].pressed);
+          const meleeWasPressed = (lastGamepadButtonState[gp.index][2] || lastGamepadButtonState[gp.index][6]);
+          if(meleePressed && !meleeWasPressed){ meleeAttack(playerChar1, keys1, joystickAim1); }
+          lastGamepadButtonState[gp.index] = gp.buttons.map(b => b.pressed);
+        }
+        else if(gp.index === 1){
+          if(gp.axes[0] < -threshold){ keys2["ArrowLeft"] = true; keys2["ArrowRight"] = false; }
+          else if(gp.axes[0] > threshold){ keys2["ArrowRight"] = true; keys2["ArrowLeft"] = false; }
+          else { keys2["ArrowLeft"] = false; keys2["ArrowRight"] = false; }
+          keys2["ArrowUp"] = false;
+          keys2["Space"] = (gp.buttons[0].pressed || gp.buttons[11].pressed);
+          let rx = gp.axes[2], ry = gp.axes[3];
+          let rmag = Math.hypot(rx, ry);
+          if(rmag > threshold){ joystickAim2.x = rx / rmag; joystickAim2.y = ry / rmag; }
+          else { joystickAim2.x = 0; joystickAim2.y = 0; }
+          if(!lastGamepadButtonState[gp.index]){
+            lastGamepadButtonState[gp.index] = new Array(gp.buttons.length).fill(false);
+          }
+          const shootPressed2 = (gp.buttons[1].pressed || gp.buttons[7].pressed);
+          const shootWasPressed2 = (lastGamepadButtonState[gp.index][1] || lastGamepadButtonState[gp.index][7]);
+          if(shootPressed2 && !shootWasPressed2){ playerShoot(playerChar2, keys2, joystickAim2); }
+          const meleePressed2 = (gp.buttons[2].pressed || gp.buttons[6].pressed);
+          const meleeWasPressed2 = (lastGamepadButtonState[gp.index][2] || lastGamepadButtonState[gp.index][6]);
+          if(meleePressed2 && !meleeWasPressed2){ meleeAttack(playerChar2, keys2, joystickAim2); }
+          lastGamepadButtonState[gp.index] = gp.buttons.map(b => b.pressed);
+        }
+      }
+    }
     
     // --- On-Screen Joystick (Player One) ---
     (function(){
