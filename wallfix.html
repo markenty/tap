@@ -710,7 +710,13 @@
         state: "patrol",
         direction: Math.random() < 0.5 ? -1 : 1
       };
-      enemy.body = Bodies.circle(x, y, 20, { friction: 0.5, frictionAir: 0.05, restitution: 0.1, label: "enemy" });
+      enemy.body = Bodies.circle(x, y, 20, { 
+  friction: 0.5, 
+  frictionAir: 0.05, 
+  restitution: 0.5,  // Increased bounciness
+  label: "enemy",
+  isBullet: true
+});
       createDomElement(enemy.body, "enemy", 40, 40);
       World.add(world, enemy.body);
 
@@ -1537,6 +1543,10 @@ function checkEnemyOutOfBounds() {
       updateGamepadInput();
       Engine.update(engine, 1000/60);
       
+      engine.positionIterations = 10;
+engine.velocityIterations = 10;
+engine.constraintIterations = 4;
+
       // ----- PLAYER ONE MOVEMENT -----
       if (keys1["ArrowLeft"]) {
         playerChar1.facing = "left";
