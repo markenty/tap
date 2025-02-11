@@ -1850,24 +1850,19 @@ const additionalInvisibleRightWall = Bodies.rectangle(
 
 World.add(world, [additionalInvisibleLeftWall, additionalInvisibleRightWall]);
 
-// --- Trigger "OUT!" Effect on Invisible Wall Collision ---
-Events.on(engine, "collisionStart", function(event) {
-  event.pairs.forEach(pair => {
-    if (
-      (pair.bodyA.label === "enemy" && (pair.bodyB.label === "invisibleLeftWall" || pair.bodyB.label === "invisibleRightWall")) ||
-      (pair.bodyB.label === "enemy" && (pair.bodyA.label === "invisibleLeftWall" || pair.bodyA.label === "invisibleRightWall"))
-    ) {
-      let enemyBody = (pair.bodyA.label === "enemy") ? pair.bodyA : pair.bodyB;
-      // Ensure we only trigger once per enemy
-      if (!enemyBody.outTriggered) {
-        enemyBody.outTriggered = true;
-        triggerOutEffect();
-        removeEnemy(enemyBody);
-        setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 1000);
-      }
-    }
-  });
+// --- Enemy Out-Of-Bounds Check & Respawn with "OUT!" Logic using additional boundaries ---
+enemies.forEach(enemy => {
+  if (
+    enemy.body.position.x < additionalInvisibleLeftX ||
+    enemy.body.position.x > additionalInvisibleRightX ||
+    enemy.body.position.y > groundBottom
+  ) {
+    triggerOutEffect();
+    removeEnemy(enemy.body);
+    setTimeout(() => { createEnemy(levelWidth / 2, playAreaHeight / 2); }, 1000);
+  }
 });
+
     // --- On-Screen Button Mappings (Player One) ---
     const dpad = document.getElementById("dpad");
     dpad.querySelector(".up").addEventListener("touchstart", (e) => { e.preventDefault(); keys1["ArrowUp"] = true; });
