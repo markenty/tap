@@ -133,14 +133,11 @@
     const PIXEL_SIZE = 4;
     let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
     let bombCount = 0, points = 0;
-    // autoStrikeTime holds remaining auto-strike (melee) time.
     let autoStrikeTime = 10;
-    // autoStrikeInterval: frequency (seconds) of auto-strikes.
     let autoStrikeInterval = 0.3, autoStrikeTimer = 0;
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
-    // Array for melee (swoosh) effects.
     let meleeEffects = [];
     function spawnMeleeEffect(x, y, angle) {
       meleeEffects.push({ x, y, angle, timer: 0.2, duration: 0.2 });
@@ -730,6 +727,7 @@
       let halfWidth = (canvas.width / camera.zoom) / 2;
       let halfHeight = (canvas.height / camera.zoom) / 2;
       let worldWidth = worldMaxX - worldMinX, worldHeight = worldMaxY - worldMinY;
+      // Use player's base position for camera targeting
       let targetX = player.position.x, targetY = player.position.y;
       if (worldWidth < canvas.width / camera.zoom) { targetX = worldMinX + worldWidth / 2; }
       else { targetX = clamp(player.position.x, worldMinX + halfWidth, worldMaxX - halfWidth); }
@@ -742,16 +740,11 @@
     const bullets = [], enemies = [];
     let enemySpawnTimer = 0, enemySpawnInterval = 3.0;
     
-    // AUTO-STRIKE (MELEE) LOGIC:
-    // Every autoStrikeInterval seconds (while autoStrikeTime > 0), automatically strike enemies in melee range.
     function performAutoStrike() {
       let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
       let meleeRange = 50;
       enemies.forEach(enemy => {
-        let enemyCenter = new Vector2(
-          enemy.position.x + enemy.knockback.x + enemy.width / 2,
-          enemy.position.y + enemy.knockback.y + enemy.height / 2
-        );
+        let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
         if (playerCenter.subtract(enemyCenter).length() < meleeRange) {
           enemy.alive = false;
           spawnEnemyExplosionEffect(enemy.position);
@@ -762,15 +755,13 @@
       });
     }
     
-    // Manual strike: tapping an enemy always triggers a manual strike.
+    // Manual strike function – checks if tap falls on any enemy (using enemy base position)
     function performManualStrikeAt(tapX, tapY) {
-      // Use the rendered position (position + knockback) for enemy bounds.
+      let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
       for (let enemy of enemies) {
-        let renderedPos = enemy.position.add(enemy.knockback);
-        let screenPos = camera.worldToScreen(renderedPos);
+        let screenPos = camera.worldToScreen(enemy.position);
         let rect = { x: screenPos.x, y: screenPos.y, width: enemy.width, height: enemy.height };
-        if (tapX >= rect.x && tapX <= rect.x + rect.width &&
-            tapY >= rect.y && tapY <= rect.y + rect.height) {
+        if (tapX >= rect.x && tapX <= rect.x + rect.width && tapY >= rect.y && tapY <= rect.y + rect.height) {
           enemy.alive = false;
           spawnEnemyExplosionEffect(enemy.position);
           killCount++;
@@ -784,12 +775,42 @@
       return false;
     }
     
+    // Combined click handler – if the tap hits an enemy, perform strike and headbutt;
+    // if not, then if a movement direction can be computed, move the player;
+    // if tapped on player, trigger headbutt.
+    canvas.addEventListener("click", (evt) => {
+      evt.preventDefault();
+      let boundingRect = canvas.getBoundingClientRect();
+      let tapX = evt.clientX - boundingRect.left, tapY = evt.clientY - boundingRect.top;
+      
+      // Check if tap hit an enemy
+      let enemyHit = performManualStrikeAt(tapX, tapY);
+      if (enemyHit) {
+        triggerHeadbutt();
+        return;
+      }
+      
+      // Otherwise, try to compute a movement direction
+      let dir = computeDirection(evt.clientX, evt.clientY);
+      if (dir && !player.moving) {
+        player.move(dir);
+      } else {
+        // If no movement direction (i.e. tapped on player's base area), trigger headbutt.
+        let playerScreenPos = camera.worldToScreen(player.position);
+        if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
+            tapY >= playerScreenPos.y && tapY <= playerScreenPos.y + player.height) {
+          triggerHeadbutt();
+        }
+      }
+    });
+    
     function computeDirection(clientX, clientY) {
       let rect = canvas.getBoundingClientRect();
       let tapX = clientX - rect.left, tapY = clientY - rect.top;
       let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
       let gridX = Math.floor((worldPos.x / 32 + worldPos.y / 16) / 2);
       let gridY = Math.floor((worldPos.y / 16 - worldPos.x / 32) / 2);
+      // If the tap is on the player's current grid cell, no movement.
       if (gridX === player.gridX && gridY === player.gridY) return null;
       let dx = gridX - player.gridX, dy = gridY - player.gridY;
       let direction;
@@ -801,44 +822,12 @@
       return direction;
     }
     
-    // Always allow player movement.
-    canvas.addEventListener("touchstart", (evt) => {
-      evt.preventDefault();
-      let touch = evt.touches[0];
-      let dir = computeDirection(touch.clientX, touch.clientY);
-      if (dir) {
-        if (!player.moving) player.move(dir);
-      }
-    });
-    canvas.addEventListener("mousedown", (evt) => {
-      evt.preventDefault();
-      let dir = computeDirection(evt.clientX, evt.clientY);
-      if (dir) {
-        if (!player.moving) player.move(dir);
-      }
-    });
-    // On click, always check for manual strike.
-    canvas.addEventListener("click", (evt) => {
-      let rect = canvas.getBoundingClientRect();
-      let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
-      if (performManualStrikeAt(tapX, tapY)) {
-        evt.stopPropagation();
-        return;
-      }
-      // If tap on player, trigger headbutt.
-      let playerScreenPos = camera.worldToScreen(player.position);
-      if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
-          tapY >= playerScreenPos.y && tapY <= playerScreenPos.y + player.height) {
-        triggerHeadbutt();
-        evt.stopPropagation();
-      }
-    });
-    
     function rectIntersect(a, b) {
       return a.x < b.x + b.width && a.x + a.width > b.x &&
              a.y < b.y + b.height && a.y + a.height > b.y;
     }
     
+    // triggerHeadbutt – uses the player's base position (as originally)
     function triggerHeadbutt() {
       let playerScreenPos = camera.worldToScreen(player.position);
       let headbuttDiv = document.getElementById("headbuttEffect");
@@ -849,8 +838,7 @@
       headbuttDiv.classList.add("active");
       let playerBox = { x: playerScreenPos.x, y: playerScreenPos.y, width: player.width, height: player.height };
       enemies.forEach((enemy) => {
-        let enemyRenderedPos = enemy.position.add(enemy.knockback);
-        let enemyScreenPos = camera.worldToScreen(enemyRenderedPos);
+        let enemyScreenPos = camera.worldToScreen(enemy.position);
         let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
         if (rectIntersect(playerBox, enemyBox)) {
           let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
@@ -938,7 +926,6 @@
       ctx.strokeRect(20, 80, 200, 24);
       ctx.fillText("Points: " + Math.floor(points), 30, 98);
       
-      // Auto-strike meter drawn as a black rectangle with white border.
       ctx.fillStyle = "black";
       ctx.fillRect(20, 110, 200, 24);
       ctx.strokeStyle = "white";
@@ -946,7 +933,6 @@
       ctx.fillStyle = "white";
       ctx.font = "16px Arial";
       ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
-      // Show ✅ if autoStrikeTime > 0, ❌ otherwise.
       ctx.textAlign = "right";
       ctx.font = "20px Arial";
       ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 215, 128);
@@ -983,7 +969,6 @@
       const cost = 200;
       if (points >= cost) {
         points -= cost;
-        // Increase auto-strike timer.
         autoStrikeTime += 10;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
@@ -1001,7 +986,6 @@
       if (!player.isDead && !isUpgradeMenuVisible) { points += effectiveDelta * 10; }
       
       if (!isUpgradeMenuVisible) {
-        // Update manual player control.
         player.update(effectiveDelta);
         enemies.forEach(enemy => enemy.update(effectiveDelta));
         bullets.forEach(bullet => bullet.update(effectiveDelta));
@@ -1079,7 +1063,6 @@
           }
         }
         
-        // AUTO-STRIKE (MELEE) LOGIC:
         if (autoStrikeTime > 0) {
           autoStrikeTime -= deltaTime;
           autoStrikeTimer -= deltaTime;
@@ -1118,21 +1101,57 @@
     }
     requestAnimationFrame(gameLoop);
     
-    // performAutoStrike() checks for enemies in melee range and strikes them.
-    function performAutoStrike() {
-      let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
-      let meleeRange = 50;
-      enemies.forEach(enemy => {
-        let enemyCenter = new Vector2(
-          enemy.position.x + enemy.knockback.x + enemy.width / 2,
-          enemy.position.y + enemy.knockback.y + enemy.height / 2
-        );
-        if (playerCenter.subtract(enemyCenter).length() < meleeRange) {
-          enemy.alive = false;
-          spawnEnemyExplosionEffect(enemy.position);
-          killCount++;
-          let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
-          spawnMeleeEffect(playerCenter.x, playerCenter.y, angle);
+    // Combined click handler: if tap on enemy then strike and headbutt; otherwise, if a movement direction is computed, move; if tap on player, headbutt.
+    canvas.addEventListener("click", (evt) => {
+      evt.preventDefault();
+      let boundingRect = canvas.getBoundingClientRect();
+      let tapX = evt.clientX - boundingRect.left, tapY = evt.clientY - boundingRect.top;
+      
+      // Check for enemy tap
+      let enemyHit = performManualStrikeAt(tapX, tapY);
+      if (enemyHit) {
+        triggerHeadbutt();
+        evt.stopPropagation();
+        return;
+      }
+      
+      // If no enemy hit, try movement
+      let dir = computeDirection(evt.clientX, evt.clientY);
+      if (dir && !player.moving) {
+        player.move(dir);
+      } else {
+        // If tap on player's area, trigger headbutt
+        let playerScreenPos = camera.worldToScreen(player.position);
+        if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
+            tapY >= playerScreenPos.y && tapY <= playerScreenPos.y + player.height) {
+          triggerHeadbutt();
+        }
+      }
+    });
+    
+    function rectIntersect(a, b) {
+      return a.x < b.x + b.width && a.x + a.width > b.x &&
+             a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+    
+    // triggerHeadbutt uses player's base position (like before) and applies knockback to any enemy overlapping the player's base hitbox.
+    function triggerHeadbutt() {
+      let playerScreenPos = camera.worldToScreen(player.position);
+      let headbuttDiv = document.getElementById("headbuttEffect");
+      headbuttDiv.style.left = (playerScreenPos.x + player.width / 2 - 32) + "px";
+      headbuttDiv.style.top = (playerScreenPos.y + player.height / 2 - 32) + "px";
+      headbuttDiv.classList.remove("active");
+      void headbuttDiv.offsetWidth;
+      headbuttDiv.classList.add("active");
+      let playerBox = { x: playerScreenPos.x, y: playerScreenPos.y, width: player.width, height: player.height };
+      enemies.forEach((enemy) => {
+        let enemyScreenPos = camera.worldToScreen(enemy.position);
+        let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
+        if (rectIntersect(playerBox, enemyBox)) {
+          let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
+          let enemyCenter = new Vector2(enemyBox.x + enemyBox.width / 2, enemyBox.y + enemyBox.height / 2);
+          let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
+          enemy.knockback = enemy.knockback.add(knockVec);
         }
       });
     }
