@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bomb-A-Bear</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #505050;
+      touch-action: none;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+      background: #505050;
+    }
+    /* --- Bomb Button Styling --- */
+    #bombBtn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10;
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.85);
+      border: none;
+      border-radius: 50%;
+      font-size: 36px;
+      line-height: 80px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s;
+      user-select: none;
+    }
+    /* Glow effect when a bomb is ready */
+    #bombBtn.ready {
+      box-shadow: 0 0 15px 3px rgba(255, 255, 0, 0.9);
+    }
+    #bombBtn:active {
+      background: rgba(255,255,255,1);
+      transform: scale(0.95);
+    }
+    /* Dim bomb button when disabled */
+    #bombBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+    /* Responsive adjustments for mobile: larger button with centered emoji */
+    @media (max-width: 600px) {
+      #bombBtn {
+        width: 100px;
+        height: 100px;
+        font-size: 48px;
+        line-height: 100px;
+        bottom: 15px;
+        right: 15px;
+      }
+    }
+    
+    /* --- Headbutt Effect Styling --- */
+    #headbuttEffect {
+      position: absolute;
+      pointer-events: none;
+      width: 64px;
+      height: 64px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      transform: scale(0);
+      opacity: 0;
+    }
+    /* The headbutt animation is triggered by adding the "active" class */
+    #headbuttEffect.active {
+      animation: headbuttAnim 0.3s forwards;
+    }
+    @keyframes headbuttAnim {
+      0% { transform: scale(0); opacity: 1; }
+      50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    @media (max-width: 600px) {
+      #headbuttEffect {
+        width: 48px;
+        height: 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  
+  <!-- Bomb Deploy Button with bomb emoji as label -->
+  <button id="bombBtn">💣</button>
+  <!-- Headbutt effect overlay (initially hidden) -->
+  <div id="headbuttEffect"></div>
+  
+  <script>
+    "use strict";
+    // Global pixel upscaling factor.
+    const PIXEL_SIZE = 4;
+    let timeScale = 1.0;
+    let slowMotionTimer = 0;
+    let killCount = 0;
+    
+    // Global bomb inventory.
+    let bombCount = 0;
+    // Global point counter – increases over time while the player is alive.
+    let points = 0;
+    
+    // Global timer for animations.
+    let globalTime = 0;
+    
+    // Auto-move globals.
+    let autoMoveIntervalID = null;
+    let autoMoveDirection = null;
+    
+    // Utility: clamp a value between min and max.
+    function clamp(val, min, max) {
+      return Math.min(Math.max(val, min), max);
+    }
+    
+    // ---------------------------
+    // Vector2 Class
+    // ---------------------------
+    class Vector2 {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+      }
+      add(v) {
+        return new Vector2(this.x + v.x, this.y + v.y);
+      }
+      subtract(v) {
+        return new Vector2(this.x - v.x, this.y - v.y);
+      }
+      scale(s) {
+        return new Vector2(this.x * s, this.y * s);
+      }
+      length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+      }
+      normalize() {
+        let len = this.length();
+        return new Vector2(this.x / (len || 1), this.y / (len || 1));
+      }
+    }
+    
+    // ---------------------------
+    // Camera Class – Follows player and clamps to board bounds.
+    // ---------------------------
+    class Camera {
+      constructor(screenWidth, screenHeight) {
+        this.position = new Vector2(0, 0);
+        this.zoom = 1.0;
+        this.screenWidth = screenWidth;
+        this.screenHeight = screenHeight;
+      }
+      worldToScreen(worldPos) {
+        return new Vector2(
+          (worldPos.x - this.position.x) * this.zoom + this.screenWidth / 2,
+          (worldPos.y - this.position.y) * this.zoom + this.screenHeight / 2
+        );
+      }
+      screenToWorld(screenPos) {
+        return new Vector2(
+          (screenPos.x - this.screenWidth / 2) / this.zoom + this.position.x,
+          (screenPos.y - this.screenHeight / 2) / this.zoom + this.position.y
+        );
+      }
+    }
+    
+    // ---------------------------
+    // Tile and TileMap Classes
+    // ---------------------------
+    class Tile {
+      constructor(gridX, gridY, tileType, color) {
+        this.gridX = gridX;
+        this.gridY = gridY;
+        this.tileType = tileType; // 0 means walkable.
+        this.color = color;
+      }
+    }
+    class TileMap {
+      constructor(width, height, tileWidth, tileHeight) {
+        this.width = width;
+        this.height = height;
+        this.tileWidth = tileWidth;
+        this.tileHeight = tileHeight;
+        this.tiles = [];
+        for (let y = 0; y < height; y++) {
+          let row = [];
+          for (let x = 0; x < width; x++) {
+            row.push(new Tile(x, y, 0, "#64dd64"));
+          }
+          this.tiles.push(row);
+        }
+      }
+      gridToWorld(gridX, gridY) {
+        return new Vector2(
+          (gridX - gridY) * (this.tileWidth / 2),
+          (gridX + gridY) * (this.tileHeight / 2)
+        );
+      }
+      render(ctx, camera) {
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            let worldPos = this.gridToWorld(x, y);
+            let screenPos = camera.worldToScreen(worldPos);
+            let halfW = this.tileWidth / 2;
+            let halfH = this.tileHeight / 2;
+            ctx.beginPath();
+            ctx.moveTo(screenPos.x, screenPos.y + halfH);
+            ctx.lineTo(screenPos.x + halfW, screenPos.y);
+            ctx.lineTo(screenPos.x + this.tileWidth, screenPos.y + halfH);
+            ctx.lineTo(screenPos.x + halfW, screenPos.y + this.tileHeight);
+            ctx.closePath();
+            ctx.fillStyle = this.tiles[y][x].color;
+            ctx.fill();
+            ctx.strokeStyle = "#000";
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    
+    // ---------------------------
+    // Particle Class – Supports optional acceleration.
+    // ---------------------------
+    class Particle {
+      constructor(position, velocity, life, color, size, acceleration) {
+        this.position = position;
+        this.velocity = velocity;
+        this.acceleration = acceleration || new Vector2(0, 0);
+        this.life = life;
+        this.maxLife = life;
+        this.color = color;
+        this.size = size;
+      }
+      update(deltaTime) {
+        this.velocity = this.velocity.add(this.acceleration.scale(deltaTime));
+        this.position = this.position.add(this.velocity.scale(deltaTime));
+        this.life -= deltaTime;
+      }
+      render(ctx, camera) {
+        let alpha = Math.max(this.life / this.maxLife, 0);
+        let screenPos = camera.worldToScreen(this.position);
+        ctx.fillStyle = this.color.replace("ALPHA", alpha);
+        ctx.beginPath();
+        ctx.arc(screenPos.x, screenPos.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    let effects = [];
+    function spawnPickupEffect(position) {
+      const count = 10;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 50 + 50;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 0.5 + 0.5;
+        let size = Math.random() * 2 + 2;
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(255,215,0,ALPHA)", size));
+      }
+    }
+    function spawnBloodEffect(position) {
+      const count = 20;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 100 + 50;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 0.5 + 0.5;
+        let size = Math.random() * 1 + 1;
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(200,0,0,ALPHA)", size));
+      }
+    }
+    function spawnExplosionEffect(position) {
+      const count = 30;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 80 + 40;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 0.5 + 0.5;
+        let size = Math.random() * 2 + 2;
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(255,165,0,ALPHA)", size));
+      }
+    }
+    function spawnEnemyExplosionEffect(position) {
+      const count = 50;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 200 + 100;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 1 + 0.5;
+        let size = Math.random() * 3 + 2;
+        let color = Math.random() < 0.5 ? "rgba(255,105,180,ALPHA)" : "rgba(255,0,0,ALPHA)";
+        let acceleration = new Vector2(0, 300);
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration));
+      }
+    }
+    function updateEffects(deltaTime) {
+      for (let i = effects.length - 1; i >= 0; i--) {
+        effects[i].update(deltaTime);
+        if (effects[i].life <= 0) effects.splice(i, 1);
+      }
+    }
+    function renderEffects(ctx, camera) {
+      for (let eff of effects) {
+        eff.render(ctx, camera);
+      }
+    }
+    
+    // ---------------------------
+    // Health Pickup Class
+    // ---------------------------
+    class HealthPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap;
+        this.gridX = tileX;
+        this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        let angle = t;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(angle);
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("❤️", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    // ---------------------------
+    // Bomb Pickup Class
+    // ---------------------------
+    class BombPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap;
+        this.gridX = tileX;
+        this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        let angle = t;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(angle);
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("💣", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    // ---------------------------
+    // BaitBomb Class – Deployed by the player.
+    // ---------------------------
+    class BaitBomb {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap;
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.timer = 3.0;
+      }
+      update(deltaTime) {
+        this.timer -= deltaTime;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let pulse = 1 + 0.2 * Math.sin(t * 10);
+        let flash = Math.abs(Math.sin(t * 15));
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y);
+        ctx.scale(pulse, pulse);
+        ctx.shadowBlur = 20 * flash;
+        ctx.shadowColor = `rgba(255,255,0,${flash})`;
+        ctx.font = `${this.tileMap.tileWidth / 2}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = flash > 0.5 ? "#FFFF00" : "#FFFFFF";
+        ctx.fillText("💣", 0, 0);
+        ctx.restore();
+        ctx.font = "12px sans-serif";
+        ctx.fillStyle = "white";
+        ctx.fillText(this.timer.toFixed(1), screenPos.x, screenPos.y - 5);
+      }
+    }
+    
+    // ---------------------------
+    // Global arrays for pickups, bombs, bullets, and enemies.
+    // ---------------------------
+    let pickups = [];
+    let baitBombs = [];
+    let pickupSpawnTimer = 0;
+    const pickupSpawnInterval = 10.0;
+    
+    // ---------------------------
+    // Bullet Class
+    // ---------------------------
+    class Bullet {
+      constructor(position, velocity, owner) {
+        this.position = new Vector2(position.x, position.y);
+        this.startPosition = new Vector2(position.x, position.y);
+        this.velocity = velocity;
+        this.radius = 5;
+        this.alive = true;
+        this.owner = owner;
+        this.maxDistance = Math.sqrt(Math.pow(tileMap.tileWidth / 2, 2) +
+                                     Math.pow(tileMap.tileHeight / 2, 2));
+      }
+      update(deltaTime) {
+        this.position = this.position.add(this.velocity.scale(deltaTime));
+        if (this.position.subtract(this.startPosition).length() >= this.maxDistance) {
+          this.alive = false;
+        }
+        if (
+          this.position.x < -50 || this.position.x > canvas.width + 50 ||
+          this.position.y < -50 || this.position.y > canvas.height + 50
+        ) {
+          this.alive = false;
+        }
+      }
+      render(ctx, camera) {
+        let screenPos = camera.worldToScreen(this.position);
+        ctx.beginPath();
+        ctx.arc(screenPos.x, screenPos.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "yellow";
+        ctx.fill();
+      }
+    }
+    
+    // ---------------------------
+    // Player Class – With movement, shooting, animation, and death effects.
+    // ---------------------------
+    class Player {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap;
+        this.gridX = tileX;
+        this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.pixelSize = PIXEL_SIZE * 0.5;
+        this.width = 32 * this.pixelSize;
+        this.height = 32 * this.pixelSize;
+        this.moving = false;
+        this.startPos = null;
+        this.targetPos = null;
+        this.moveDuration = 0.1;
+        this.moveTime = 0;
+        this.targetGridX = tileX;
+        this.targetGridY = tileY;
+        this.direction = "down";
+        this.maxHP = 100;
+        this.hp = 100;
+        this.knockback = new Vector2(0, 0);
+        this.isDead = false;
+    
+        this.spriteSheet = new Image();
+        this.spriteLoaded = false;
+        this.spriteSheet.onload = () => { this.spriteLoaded = true; };
+        this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-SHIRMOND-SHEET.png";
+    
+        this.frameCount = 4;
+        this.currentFrame = 0;
+        this.frameTime = 0;
+        this.frameDelay = 0.1;
+      }
+      update(deltaTime) {
+        if (this.moving) {
+          this.moveTime += deltaTime;
+          let t = Math.min(this.moveTime / this.moveDuration, 1);
+          this.position = new Vector2(
+            this.startPos.x + (this.targetPos.x - this.startPos.x) * t,
+            this.startPos.y + (this.targetPos.y - this.startPos.y) * t
+          );
+          this.frameTime += deltaTime;
+          if (this.frameTime >= this.frameDelay) {
+            this.currentFrame = (this.currentFrame + 1) % this.frameCount;
+            this.frameTime = 0;
+          }
+          if (t >= 1) {
+            this.moving = false;
+            this.gridX = this.targetGridX;
+            this.gridY = this.targetGridY;
+            this.currentFrame = 0;
+          }
+        } else {
+          this.currentFrame = 0;
+        }
+        this.knockback = this.knockback.scale(0.9);
+      }
+      render(ctx, camera) {
+        let pos = this.position.add(this.knockback);
+        let screenPos = camera.worldToScreen(pos);
+        if (this.spriteLoaded) {
+          let row = 0;
+          switch (this.direction) {
+            case "down": row = 0; break;
+            case "right": row = 1; break;
+            case "up": row = 2; break;
+            case "left": row = 3; break;
+            default: row = 0;
+          }
+          let srcX = this.currentFrame * 32;
+          let srcY = row * 32;
+          ctx.drawImage(
+            this.spriteSheet,
+            srcX, srcY, 32, 32,
+            screenPos.x, screenPos.y, this.width, this.height
+          );
+        } else {
+          ctx.fillStyle = "red";
+          ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
+        }
+      }
+      move(direction) {
+        if (this.moving) return;
+        let newGridX = this.gridX;
+        let newGridY = this.gridY;
+        if (direction === "up") { newGridY -= 1; }
+        else if (direction === "down") { newGridY += 1; }
+        else if (direction === "left") { newGridX -= 1; }
+        else if (direction === "right") { newGridX += 1; }
+        if (newGridX < 0 || newGridX >= this.tileMap.width ||
+            newGridY < 0 || newGridY >= this.tileMap.height) return;
+        if (this.tileMap.tiles[newGridY][newGridX].tileType !== 0) return;
+        this.moving = true;
+        this.moveTime = 0;
+        this.startPos = this.position;
+        this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
+        this.targetGridX = newGridX;
+        this.targetGridY = newGridY;
+        this.direction = direction;
+        this.frameTime = 0;
+        this.currentFrame = 0;
+      }
+      shoot() {
+        let startPos = new Vector2(
+          this.position.x + this.width / 2,
+          this.position.y + this.height / 2
+        );
+        let directionVector;
+        switch (this.direction) {
+          case "up": directionVector = new Vector2(0, -1); break;
+          case "down": directionVector = new Vector2(0, 1); break;
+          case "left": directionVector = new Vector2(-1, 0); break;
+          case "right": directionVector = new Vector2(1, 0); break;
+          default: directionVector = new Vector2(0, -1);
+        }
+        let bulletSpeed = 600;
+        let velocity = directionVector.scale(bulletSpeed);
+        bullets.push(new Bullet(
+          new Vector2(this.position.x + this.width / 2, this.position.y + this.height / 2),
+          velocity,
+          "player"
+        ));
+      }
+      shootAt(target) {
+        let startPos = new Vector2(
+          this.position.x + this.width / 2,
+          this.position.y + this.height / 2
+        );
+        let diff = target.subtract(startPos);
+        let norm = diff.normalize();
+        let bulletSpeed = 600;
+        let velocity = norm.scale(bulletSpeed);
+        bullets.push(new Bullet(startPos, velocity, "player"));
+      }
+      respawn() {
+        this.gridX = 5;
+        this.gridY = 5;
+        this.position = this.tileMap.gridToWorld(this.gridX, this.gridY);
+        this.hp = this.maxHP;
+        this.isDead = false;
+      }
+    }
+    
+    // ---------------------------
+    // Enemy Class
+    // ---------------------------
+    class Enemy {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap;
+        this.gridX = tileX;
+        this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.pixelSize = PIXEL_SIZE * 0.5;
+        this.width = 32 * this.pixelSize;
+        this.height = 32 * this.pixelSize;
+        this.spriteSheet = new Image();
+        this.spriteLoaded = false;
+        this.spriteSheet.onload = () => { this.spriteLoaded = true; };
+        this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-BEAR-SHEET.png";
+        this.alive = true;
+        this.maxHP = 40;
+        this.hp = 40;
+        this.moving = false;
+        this.startPos = null;
+        this.targetPos = null;
+        this.moveDuration = 0.2;
+        this.moveTime = 0;
+        this.targetGridX = tileX;
+        this.targetGridY = tileY;
+        this.direction = "down";
+        this.frameCount = 4;
+        this.currentFrame = 0;
+        this.frameTime = 0;
+        this.frameDelay = 0.15;
+        this.attackCooldown = 0;
+        this.knockback = new Vector2(0, 0);
+      }
+      update(deltaTime) {
+        if (this.moving) {
+          this.moveTime += deltaTime;
+          let t = Math.min(this.moveTime / this.moveDuration, 1);
+          this.position = new Vector2(
+            this.startPos.x + (this.targetPos.x - this.startPos.x) * t,
+            this.startPos.y + (this.targetPos.y - this.startPos.y) * t
+          );
+          this.frameTime += deltaTime;
+          if (this.frameTime >= this.frameDelay) {
+            this.currentFrame = (this.currentFrame + 1) % this.frameCount;
+            this.frameTime = 0;
+          }
+          if (t >= 1) {
+            this.moving = false;
+            this.gridX = this.targetGridX;
+            this.gridY = this.targetGridY;
+            this.currentFrame = 0;
+          }
+        } else {
+          let targetGridX, targetGridY;
+          if (baitBombs.length > 0) {
+            let targetBomb = baitBombs[0];
+            targetGridX = targetBomb.tileX;
+            targetGridY = targetBomb.tileY;
+          } else {
+            targetGridX = player.gridX;
+            targetGridY = player.gridY;
+            let dxP = player.gridX - this.gridX;
+            let dyP = player.gridY - this.gridY;
+            let manhattanP = Math.abs(dxP) + Math.abs(dyP);
+            if (manhattanP <= 1 && this.attackCooldown <= 0) {
+              this.shoot();
+              this.attackCooldown = 1.0;
+              return;
+            }
+          }
+          let dx = targetGridX - this.gridX;
+          let dy = targetGridY - this.gridY;
+          if (Math.abs(dx) + Math.abs(dy) > 0) {
+            let direction;
+            if (Math.abs(dx) >= Math.abs(dy)) {
+              direction = dx > 0 ? "right" : "left";
+            } else {
+              direction = dy > 0 ? "down" : "up";
+            }
+            this.move(direction);
+          }
+          if (this.attackCooldown > 0) {
+            this.attackCooldown -= deltaTime;
+          }
+        }
+        this.knockback = this.knockback.scale(0.9);
+      }
+      render(ctx, camera) {
+        let pos = this.position.add(this.knockback);
+        let screenPos = camera.worldToScreen(pos);
+        if (this.spriteLoaded) {
+          let row = 0;
+          switch (this.direction) {
+            case "down": row = 0; break;
+            case "right": row = 1; break;
+            case "up": row = 2; break;
+            case "left": row = 3; break;
+            default: row = 0;
+          }
+          let srcX = this.currentFrame * 32;
+          let srcY = row * 32;
+          ctx.drawImage(
+            this.spriteSheet,
+            srcX, srcY, 32, 32,
+            screenPos.x, screenPos.y, this.width, this.height
+          );
+        } else {
+          ctx.fillStyle = "green";
+          ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
+        }
+      }
+      move(direction) {
+        if (this.moving) return;
+        let newGridX = this.gridX;
+        let newGridY = this.gridY;
+        if (direction === "up") newGridY -= 1;
+        else if (direction === "down") newGridY += 1;
+        else if (direction === "left") newGridX -= 1;
+        else if (direction === "right") newGridX += 1;
+        if (newGridX < 0 || newGridX >= this.tileMap.width ||
+            newGridY < 0 || newGridY >= this.tileMap.height) return;
+        if (this.tileMap.tiles[newGridY][newGridX].tileType !== 0) return;
+        this.moving = true;
+        this.moveTime = 0;
+        this.startPos = this.position;
+        this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
+        this.targetGridX = newGridX;
+        this.targetGridY = newGridY;
+        this.direction = direction;
+        this.frameTime = 0;
+        this.currentFrame = 0;
+      }
+      shoot() {
+        let startPos = new Vector2(
+          this.position.x + this.width / 2,
+          this.position.y + this.height / 2
+        );
+        let playerCenter = new Vector2(
+          player.position.x + player.width / 2,
+          player.position.y + player.height / 2
+        );
+        let diff = playerCenter.subtract(startPos);
+        let norm = diff.normalize();
+        let bulletSpeed = 600;
+        let velocity = norm.scale(bulletSpeed);
+        bullets.push(new Bullet(startPos, velocity, "enemy"));
+      }
+    }
+    
+    // ---------------------------
+    // Global Variables for Pickups and Screen Shake.
+    // ---------------------------
+    let screenShakeTime = 0;
+    let screenShakeMagnitude = 0;
+    let shakeOffset = new Vector2(0, 0);
+    
+    // ---------------------------
+    // Collision Resolution (Knockback)
+    // ---------------------------
+    function resolveCollision(entityA, entityB) {
+      let ax = entityA.position.x + entityA.knockback.x,
+          ay = entityA.position.y + entityA.knockback.y,
+          aw = entityA.width, ah = entityA.height;
+      let bx = entityB.position.x + entityB.knockback.x,
+          by = entityB.position.y + entityB.knockback.y,
+          bw = entityB.width, bh = entityB.height;
+      if (ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by) {
+        let centerA = new Vector2(ax + aw / 2, ay + ah / 2);
+        let centerB = new Vector2(bx + bw / 2, by + bh / 2);
+        let diff = centerA.subtract(centerB);
+        let distance = diff.length();
+        if (distance === 0) { diff = new Vector2(1, 0); distance = 1; }
+        let minDistance = (aw + bw) / 4;
+        let overlap = minDistance - distance;
+        if (overlap > 0) {
+          let knock = diff.normalize().scale(overlap * 0.5);
+          entityA.knockback = entityA.knockback.add(knock);
+          entityB.knockback = entityB.knockback.subtract(knock);
+        }
+      }
+    }
+    
+    // ---------------------------
+    // Setup Canvas and Camera.
+    // ---------------------------
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const camera = new Camera(canvas.width, canvas.height);
+    const tileMap = new TileMap(20, 20, 64, 32);
+    let corners = [
+      tileMap.gridToWorld(0, 0),
+      tileMap.gridToWorld(tileMap.width - 1, 0),
+      tileMap.gridToWorld(0, tileMap.height - 1),
+      tileMap.gridToWorld(tileMap.width - 1, tileMap.height - 1)
+    ];
+    let worldMinX = Math.min(...corners.map(c => c.x));
+    let worldMaxX = Math.max(...corners.map(c => c.x)) + tileMap.tileWidth;
+    let worldMinY = Math.min(...corners.map(c => c.y));
+    let worldMaxY = Math.max(...corners.map(c => c.y)) + tileMap.tileHeight;
+    function updateCamera() {
+      let halfWidth = (canvas.width / camera.zoom) / 2;
+      let halfHeight = (canvas.height / camera.zoom) / 2;
+      let worldWidth = worldMaxX - worldMinX;
+      let worldHeight = worldMaxY - worldMinY;
+      let targetX = player.position.x;
+      let targetY = player.position.y;
+      if (worldWidth < canvas.width / camera.zoom) {
+        targetX = worldMinX + worldWidth / 2;
+      } else {
+        targetX = clamp(player.position.x, worldMinX + halfWidth, worldMaxX - halfWidth);
+      }
+      if (worldHeight < canvas.height / camera.zoom) {
+        targetY = worldMinY + worldHeight / 2;
+      } else {
+        targetY = clamp(player.position.y, worldMinY + halfHeight, worldMaxY - halfHeight);
+      }
+      camera.position = new Vector2(targetX, targetY);
+    }
+    
+    // ---------------------------
+    // Create Player, Enemies, and Pickups.
+    // ---------------------------
+    let player = new Player(5, 5, tileMap);
+    const bullets = [];
+    const enemies = [];
+    let enemySpawnTimer = 0;
+    const enemySpawnInterval = 3.0;
+    
+    // ---------------------------
+    // Input Listeners – Auto-move (tap/hold) control.
+    // ---------------------------
+    function computeDirection(clientX, clientY) {
+      let rect = canvas.getBoundingClientRect();
+      let tapX = clientX - rect.left;
+      let tapY = clientY - rect.top;
+      let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
+      // For tileWidth=64 and tileHeight=32: half sizes are 32 and 16.
+      let gridX = Math.floor((worldPos.x / 32 + worldPos.y / 16) / 2);
+      let gridY = Math.floor((worldPos.y / 16 - worldPos.x / 32) / 2);
+      if (gridX === player.gridX && gridY === player.gridY) return null;
+      let dx = gridX - player.gridX;
+      let dy = gridY - player.gridY;
+      let direction;
+      if (Math.abs(dx) + Math.abs(dy) === 1) {
+        if (dx === 1) direction = "right";
+        else if (dx === -1) direction = "left";
+        else if (dy === 1) direction = "down";
+        else if (dy === -1) direction = "up";
+      } else {
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          direction = dx > 0 ? "right" : "left";
+        } else {
+          direction = dy > 0 ? "down" : "up";
+        }
+      }
+      return direction;
+    }
+    
+    // Touch events for mobile.
+    canvas.addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      let touch = evt.touches[0];
+      autoMoveDirection = computeDirection(touch.clientX, touch.clientY);
+      if (autoMoveDirection) {
+        if (!player.moving) player.move(autoMoveDirection);
+        autoMoveIntervalID = setInterval(() => {
+          if (!player.moving && autoMoveDirection) player.move(autoMoveDirection);
+        }, 300);
+      }
+    });
+    canvas.addEventListener("touchmove", (evt) => {
+      evt.preventDefault();
+      let touch = evt.touches[0];
+      let newDirection = computeDirection(touch.clientX, touch.clientY);
+      if (newDirection) autoMoveDirection = newDirection;
+    });
+    canvas.addEventListener("touchend", (evt) => {
+      evt.preventDefault();
+      if (autoMoveIntervalID) clearInterval(autoMoveIntervalID);
+      autoMoveIntervalID = null;
+      autoMoveDirection = null;
+    });
+    
+    // Mouse events for desktop hold-to-move.
+    canvas.addEventListener("mousedown", (evt) => {
+      evt.preventDefault();
+      autoMoveDirection = computeDirection(evt.clientX, evt.clientY);
+      if (autoMoveDirection) {
+        if (!player.moving) player.move(autoMoveDirection);
+        autoMoveIntervalID = setInterval(() => {
+          if (!player.moving && autoMoveDirection) player.move(autoMoveDirection);
+        }, 300);
+      }
+    });
+    canvas.addEventListener("mousemove", (evt) => {
+      if (autoMoveIntervalID !== null) {
+        let newDirection = computeDirection(evt.clientX, evt.clientY);
+        if (newDirection) autoMoveDirection = newDirection;
+      }
+    });
+    canvas.addEventListener("mouseup", (evt) => {
+      if (autoMoveIntervalID) clearInterval(autoMoveIntervalID);
+      autoMoveIntervalID = null;
+      autoMoveDirection = null;
+    });
+    
+    // ---------------------------
+    // Headbutt Attack – Triggered by clicking/tapping on the player sprite.
+    // ---------------------------
+    function rectIntersect(a, b) {
+      return a.x < b.x + b.width && a.x + a.width > b.x &&
+             a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+    
+    function triggerHeadbutt() {
+      // Position the headbutt effect div over the player (centered)
+      let playerScreenPos = camera.worldToScreen(player.position);
+      let headbuttDiv = document.getElementById("headbuttEffect");
+      headbuttDiv.style.left = (playerScreenPos.x + player.width/2 - 32) + "px";
+      headbuttDiv.style.top = (playerScreenPos.y + player.height/2 - 32) + "px";
+      // Restart animation by removing and re-adding the "active" class
+      headbuttDiv.classList.remove("active");
+      void headbuttDiv.offsetWidth;  // force reflow
+      headbuttDiv.classList.add("active");
+      
+      // Check collision: for each enemy overlapping the player's bounding box,
+      // apply a knockback vector twice the base force.
+      let playerBox = {
+          x: playerScreenPos.x,
+          y: playerScreenPos.y,
+          width: player.width,
+          height: player.height
+      };
+      enemies.forEach((enemy) => {
+         let enemyScreenPos = camera.worldToScreen(enemy.position);
+         let enemyBox = {
+           x: enemyScreenPos.x,
+           y: enemyScreenPos.y,
+           width: enemy.width,
+           height: enemy.height
+         };
+         if (rectIntersect(playerBox, enemyBox)) {
+           let playerCenter = new Vector2(playerBox.x + playerBox.width/2, playerBox.y + playerBox.height/2);
+           let enemyCenter = new Vector2(enemyBox.x + enemyBox.width/2, enemyBox.y + enemyBox.height/2);
+           let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
+           enemy.knockback = enemy.knockback.add(knockVec);
+         }
+      });
+    }
+    
+    // Click event on canvas to trigger headbutt if clicking on the player sprite.
+    canvas.addEventListener("click", (evt) => {
+      let rect = canvas.getBoundingClientRect();
+      let x = evt.clientX - rect.left;
+      let y = evt.clientY - rect.top;
+      let playerScreenPos = camera.worldToScreen(player.position);
+      if (x >= playerScreenPos.x && x <= playerScreenPos.x + player.width &&
+          y >= playerScreenPos.y && y <= playerScreenPos.y + player.height) {
+            triggerHeadbutt();
+            evt.stopPropagation();
+            return;
+      }
+    });
+    
+    // ---------------------------
+    // Bomb Deployment.
+    // ---------------------------
+    function deployBomb() {
+      if (bombCount > 0) {
+        bombCount--;
+        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));
+      }
+    }
+    document.getElementById("bombBtn").addEventListener("touchstart", (evt) => {
+      evt.preventDefault();
+      deployBomb();
+    });
+    document.getElementById("bombBtn").addEventListener("mousedown", (evt) => {
+      evt.preventDefault();
+      deployBomb();
+    });
+    canvas.addEventListener("contextmenu", (evt) => {
+      evt.preventDefault();
+      deployBomb();
+    });
+    
+    // ---------------------------
+    // Pickup Collection Logic.
+    // ---------------------------
+    function updatePickups() {
+      for (let i = pickups.length - 1; i >= 0; i--) {
+        let pickup = pickups[i];
+        if (
+          player.position.x < pickup.position.x + pickup.size &&
+          player.position.x + player.width > pickup.position.x &&
+          player.position.y < pickup.position.y + pickup.size &&
+          player.position.y + player.height > pickup.position.y
+        ) {
+          if (pickup instanceof BombPickup) {
+            bombCount++;
+            spawnPickupEffect(pickup.position);
+          } else {
+            player.hp = Math.min(player.hp + 20, player.maxHP);
+            spawnPickupEffect(pickup.position);
+          }
+          pickups.splice(i, 1);
+        }
+      }
+    }
+    
+    // ---------------------------
+    // Update Bait Bombs.
+    // ---------------------------
+    function updateBaitBombs(deltaTime) {
+      for (let i = baitBombs.length - 1; i >= 0; i--) {
+        baitBombs[i].update(deltaTime);
+        if (baitBombs[i].timer <= 0) {
+          screenShakeTime = 0.5;
+          screenShakeMagnitude = 20;
+          spawnExplosionEffect(baitBombs[i].position);
+          let bx = baitBombs[i].tileX, by = baitBombs[i].tileY;
+          enemies.forEach((enemy) => {
+            if (
+              enemy.gridX >= bx - 1 && enemy.gridX <= bx + 1 &&
+              enemy.gridY >= by - 1 && enemy.gridY <= by + 1
+            ) {
+              if (enemy.alive) {
+                let blastDir = enemy.position.subtract(baitBombs[i].position).normalize();
+                let blastForce = blastDir.scale(200);
+                enemy.knockback = enemy.knockback.add(blastForce);
+                enemy.alive = false;
+                spawnEnemyExplosionEffect(enemy.position);
+                killCount++;
+              }
+            }
+          });
+          baitBombs.splice(i, 1);
+        }
+      }
+    }
+    
+    // ---------------------------
+    // HUD – Display HP, kill count, bomb count, and points.
+    // ---------------------------
+    function drawHUD(ctx) {
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 20, 200, 24);
+      ctx.fillStyle = "red";
+      let hpWidth = (player.hp / player.maxHP) * 100;
+      ctx.fillRect(22, 22, hpWidth, 20);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 20, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.fillText("HP: " + player.hp, 30, 38);
+      ctx.fillText("Kills: " + killCount, 130, 38);
+      
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 50, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 50, 200, 24);
+      ctx.fillText("Bombs: " + bombCount, 30, 68);
+
+      // New HUD element for Points
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 80, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 80, 200, 24);
+      ctx.fillText("Points: " + Math.floor(points), 30, 98);
+    }
+    
+    // ---------------------------
+    // Main Game Loop.
+    // ---------------------------
+    let lastTime = performance.now();
+    function gameLoop() {
+      let currentTime = performance.now();
+      let deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+      globalTime += deltaTime;
+      let effectiveDelta = deltaTime * timeScale;
+      
+      // Update the points counter – increase points over time when alive.
+      if (!player.isDead) {
+        points += effectiveDelta * 10; // 10 points per second
+      }
+    
+      player.update(effectiveDelta);
+      enemies.forEach((enemy) => enemy.update(effectiveDelta));
+      bullets.forEach((bullet) => bullet.update(effectiveDelta));
+      updateEffects(effectiveDelta);
+      updatePickups();
+      updateBaitBombs(effectiveDelta);
+    
+      // --- Bullet Collision Handling ---
+      bullets.forEach((bullet) => {
+        if (bullet.owner === "player") {
+          enemies.forEach((enemy) => {
+            if (
+              bullet.position.x >= enemy.position.x &&
+              bullet.position.x <= enemy.position.x + enemy.width &&
+              bullet.position.y >= enemy.position.y &&
+              bullet.position.y <= enemy.position.y + enemy.height
+            ) {
+              bullet.alive = false;
+              let baseKnock = bullet.velocity.normalize().scale(20);
+              enemy.knockback = enemy.knockback.add(baseKnock);
+              screenShakeTime = 0.2;
+              screenShakeMagnitude = 10;
+            }
+          });
+        } else if (bullet.owner === "enemy") {
+          if (
+            bullet.position.x >= player.position.x &&
+            bullet.position.x <= player.position.x + player.width &&
+            bullet.position.y >= player.position.y &&
+            bullet.position.y <= player.position.y + player.height
+          ) {
+            bullet.alive = false;
+            player.hp -= 20;
+            screenShakeTime = 0.2;
+            screenShakeMagnitude = 5;
+            if (player.hp <= 0 && !player.isDead) {
+              player.isDead = true;
+              spawnBloodEffect(player.position);
+              slowMotionTimer = 1.0;
+              timeScale = 0.2;
+              player.knockback = player.knockback.add(new Vector2(0, -50));
+            }
+          }
+        }
+      });
+    
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        if (!bullets[i].alive) bullets.splice(i, 1);
+      }
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        if (!enemies[i].alive) enemies.splice(i, 1);
+      }
+    
+      enemySpawnTimer += effectiveDelta;
+      if (enemySpawnTimer >= enemySpawnInterval) {
+        enemySpawnTimer = 0;
+        let edge = Math.floor(Math.random() * 4);
+        let gridX, gridY;
+        if (edge === 0) {
+          gridX = 0;
+          gridY = Math.floor(Math.random() * tileMap.height);
+        } else if (edge === 1) {
+          gridX = tileMap.width - 1;
+          gridY = Math.floor(Math.random() * tileMap.height);
+        } else if (edge === 2) {
+          gridY = 0;
+          gridX = Math.floor(Math.random() * tileMap.width);
+        } else {
+          gridY = tileMap.height - 1;
+          gridX = Math.floor(Math.random() * tileMap.width);
+        }
+        enemies.push(new Enemy(gridX, gridY, tileMap));
+      }
+    
+      pickupSpawnTimer += effectiveDelta;
+      if (pickupSpawnTimer >= pickupSpawnInterval) {
+        pickupSpawnTimer = 0;
+        let gridX = Math.floor(Math.random() * tileMap.width);
+        let gridY = Math.floor(Math.random() * tileMap.height);
+        if (Math.random() < 0.2) {
+          pickups.push(new BombPickup(gridX, gridY, tileMap));
+        } else {
+          pickups.push(new HealthPickup(gridX, gridY, tileMap));
+        }
+      }
+    
+      enemies.forEach((enemy) => resolveCollision(player, enemy));
+      for (let i = 0; i < enemies.length; i++) {
+        for (let j = i + 1; j < enemies.length; j++) {
+          resolveCollision(enemies[i], enemies[j]);
+        }
+      }
+    
+      if (screenShakeTime > 0) {
+        screenShakeTime -= effectiveDelta;
+        shakeOffset = new Vector2(
+          (Math.random() * 2 - 1) * screenShakeMagnitude,
+          (Math.random() * 2 - 1) * screenShakeMagnitude
+        );
+      } else {
+        shakeOffset = new Vector2(0, 0);
+      }
+    
+      updateCamera();
+      let renderCamera = new Camera(camera.screenWidth, camera.screenHeight);
+      renderCamera.zoom = camera.zoom;
+      renderCamera.position = camera.position.add(shakeOffset);
+    
+      if (player.isDead) {
+        slowMotionTimer -= deltaTime;
+        if (slowMotionTimer <= 0) {
+          player.respawn();
+          player.isDead = false;
+          timeScale = 1.0;
+        }
+      }
+    
+      ctx.fillStyle = "#505050";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      tileMap.render(ctx, renderCamera);
+      enemies.forEach((enemy) => enemy.render(ctx, renderCamera));
+      pickups.forEach((pickup) => pickup.render(ctx, renderCamera, globalTime));
+      baitBombs.forEach((bomb) => bomb.render(ctx, renderCamera, globalTime));
+      bullets.forEach((bullet) => bullet.render(ctx, renderCamera));
+      renderEffects(ctx, renderCamera);
+      player.render(ctx, renderCamera);
+      drawHUD(ctx);
+    
+      // --- Update bomb button appearance and glow effect ---
+      let bombBtn = document.getElementById("bombBtn");
+      if(bombCount > 0){
+        bombBtn.style.opacity = "1";
+        bombBtn.disabled = false;
+        bombBtn.classList.add("ready");
+      } else {
+        bombBtn.style.opacity = "0.5";
+        bombBtn.disabled = true;
+        bombBtn.classList.remove("ready");
+      }
+    
+      requestAnimationFrame(gameLoop);
+    }
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
