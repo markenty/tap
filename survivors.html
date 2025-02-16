@@ -144,6 +144,20 @@
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
+    // ---- NEW EFFECTS VARIABLES AND FUNCTIONS ----
+    let screenFlashAlpha = 0;
+    let spriteFlashes = [];
+    
+    function triggerScreenFlash() {
+      screenFlashAlpha = 0.5; // adjust flash intensity as desired
+    }
+    
+    function addSpriteFlash(position) {
+      // Add a flash effect at the given position (duration 0.2s)
+      spriteFlashes.push({ position: position, timer: 0.2, duration: 0.2 });
+    }
+    // -----------------------------------------------
+    
     // Melee effects array and functions
     let meleeEffects = [];
     function spawnMeleeEffect(x, y, angle) {
@@ -661,6 +675,8 @@
             default: row = 0;
           }
           let srcX = this.currentFrame * 32, srcY = row * 32;
+          // If flash effect is desired, check if this enemy was struck.
+          // Instead of modifying the enemy, we now use global spriteFlashes.
           ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
         } else {
           ctx.fillStyle = "green";
@@ -760,6 +776,9 @@
       enemies.forEach(enemy => {
         let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
         if (playerCenter.subtract(enemyCenter).length() < meleeRange) {
+          // Trigger flash effects on enemy death.
+          triggerScreenFlash();
+          addSpriteFlash(enemy.position);
           enemy.alive = false;
           spawnEnemyExplosionEffect(enemy.position);
           killCount++;
@@ -778,6 +797,9 @@
         let screenPos = camera.worldToScreen(enemy.position);
         let rect = { x: screenPos.x, y: screenPos.y, width: enemy.width, height: enemy.height };
         if (tapX >= rect.x && tapX <= rect.x + rect.width && tapY >= rect.y && tapY <= rect.y + rect.height) {
+          // Trigger flash effects on enemy death.
+          triggerScreenFlash();
+          addSpriteFlash(enemy.position);
           enemy.alive = false;
           spawnEnemyExplosionEffect(enemy.position);
           killCount++;
@@ -852,6 +874,8 @@
         let enemyScreenPos = camera.worldToScreen(enemy.position);
         let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
         if (rectIntersect(playerBox, enemyBox)) {
+          // For headbutt collisions, also add sprite flash effect.
+          addSpriteFlash(enemy.position);
           let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
           let enemyCenter = new Vector2(enemyBox.x + enemyBox.width / 2, enemyBox.y + enemyBox.height / 2);
           let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
@@ -902,6 +926,8 @@
                 enemy.alive = false;
                 spawnEnemyExplosionEffect(enemy.position);
                 killCount++;
+                triggerScreenFlash();
+                addSpriteFlash(enemy.position);
               }
             }
           });
@@ -1037,6 +1063,7 @@
                 slowMotionTimer = 1.0;
                 timeScale = 0.2;
                 player.knockback = player.knockback.add(new Vector2(0, -50));
+                triggerScreenFlash();
               }
             }
           }
@@ -1110,6 +1137,28 @@
       player.render(ctx, camera);
       drawHUD(ctx);
       
+      // Draw screen flash overlay (fades out)
+      if (screenFlashAlpha > 0) {
+        ctx.fillStyle = "rgba(255,255,255," + screenFlashAlpha + ")";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        screenFlashAlpha -= deltaTime * 2;
+        if (screenFlashAlpha < 0) screenFlashAlpha = 0;
+      }
+      
+      // Draw sprite flash effects (white flash at struck positions)
+      for (let i = spriteFlashes.length - 1; i >= 0; i--) {
+        let flash = spriteFlashes[i];
+        let alpha = flash.timer / flash.duration;
+        ctx.fillStyle = "rgba(255,255,255," + alpha + ")";
+        ctx.beginPath();
+        ctx.arc(flash.position.x, flash.position.y, 32, 0, Math.PI * 2);
+        ctx.fill();
+        flash.timer -= deltaTime;
+        if (flash.timer <= 0) {
+          spriteFlashes.splice(i, 1);
+        }
+      }
+      
       let bombBtn = document.getElementById("bombBtn");
       if (bombCount > 0) { bombBtn.style.opacity = "1"; bombBtn.disabled = false; bombBtn.classList.add("ready"); }
       else { bombBtn.style.opacity = "0.5"; bombBtn.disabled = true; bombBtn.classList.remove("ready"); }
@@ -1177,6 +1226,7 @@
         let enemyScreenPos = camera.worldToScreen(enemy.position);
         let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
         if (rectIntersect(playerBox, enemyBox)) {
+          addSpriteFlash(enemy.position);
           let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
           let enemyCenter = new Vector2(enemyBox.x + enemyBox.width / 2, enemyBox.y + enemyBox.height / 2);
           let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
