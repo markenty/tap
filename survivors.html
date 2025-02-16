@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Bomb-A-Bear</title>
-  < evict you if you if you can understand I'm not trying to legally evict you I'm telling you style>
+  <style>
     html, body {
       -webkit-user-select: none; /* Chrome, Safari, Opera */
       -moz-user-select: none;    /* Firefox */
@@ -750,7 +750,8 @@
     
     let player = new Player(5, 5, tileMap);
     const bullets = [], enemies = [];
-    let enemySpawnTimer = 0, enemySpawnInterval = 3.0;
+    let enemySpawnTimer = 0;
+    // enemySpawnInterval is now computed dynamically in the game loop based on killCount.
     
     function performAutoStrike() {
       let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
@@ -1048,8 +1049,10 @@
           if (!enemies[i].alive) enemies.splice(i, 1);
         }
         
+        // Compute dynamic enemy spawn interval based on killCount.
+        let dynamicEnemySpawnInterval = Math.max(3.0 - (killCount * 0.05), 0.5);
         enemySpawnTimer += effectiveDelta;
-        if (enemySpawnTimer >= enemySpawnInterval) {
+        if (enemySpawnTimer >= dynamicEnemySpawnInterval) {
           enemySpawnTimer = 0;
           let edge = Math.floor(Math.random() * 4);
           let gridX, gridY;
