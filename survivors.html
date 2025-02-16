@@ -149,11 +149,12 @@
     let spriteFlashes = [];
     
     function triggerScreenFlash() {
-      screenFlashAlpha = 0.5; // adjust flash intensity as desired
+      // Set flash intensity to red.
+      screenFlashAlpha = 0.5;
     }
     
     function addSpriteFlash(position) {
-      // Add a flash effect at the given position (duration 0.2s)
+      // Add a red flash effect at the given position (duration 0.2s)
       spriteFlashes.push({ position: position, timer: 0.2, duration: 0.2 });
     }
     // -----------------------------------------------
@@ -675,8 +676,6 @@
             default: row = 0;
           }
           let srcX = this.currentFrame * 32, srcY = row * 32;
-          // If flash effect is desired, check if this enemy was struck.
-          // Instead of modifying the enemy, we now use global spriteFlashes.
           ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
         } else {
           ctx.fillStyle = "green";
@@ -776,7 +775,7 @@
       enemies.forEach(enemy => {
         let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
         if (playerCenter.subtract(enemyCenter).length() < meleeRange) {
-          // Trigger flash effects on enemy death.
+          // Trigger red flash effects on enemy death.
           triggerScreenFlash();
           addSpriteFlash(enemy.position);
           enemy.alive = false;
@@ -797,7 +796,7 @@
         let screenPos = camera.worldToScreen(enemy.position);
         let rect = { x: screenPos.x, y: screenPos.y, width: enemy.width, height: enemy.height };
         if (tapX >= rect.x && tapX <= rect.x + rect.width && tapY >= rect.y && tapY <= rect.y + rect.height) {
-          // Trigger flash effects on enemy death.
+          // Trigger red flash effects on enemy death.
           triggerScreenFlash();
           addSpriteFlash(enemy.position);
           enemy.alive = false;
@@ -874,7 +873,6 @@
         let enemyScreenPos = camera.worldToScreen(enemy.position);
         let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
         if (rectIntersect(playerBox, enemyBox)) {
-          // For headbutt collisions, also add sprite flash effect.
           addSpriteFlash(enemy.position);
           let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
           let enemyCenter = new Vector2(enemyBox.x + enemyBox.width / 2, enemyBox.y + enemyBox.height / 2);
@@ -1137,26 +1135,38 @@
       player.render(ctx, camera);
       drawHUD(ctx);
       
-      // Draw screen flash overlay (fades out)
+      // Draw red screen flash overlay (fades out)
       if (screenFlashAlpha > 0) {
-        ctx.fillStyle = "rgba(255,255,255," + screenFlashAlpha + ")";
+        ctx.fillStyle = "rgba(255,0,0," + screenFlashAlpha + ")";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         screenFlashAlpha -= deltaTime * 2;
         if (screenFlashAlpha < 0) screenFlashAlpha = 0;
       }
       
-      // Draw sprite flash effects (white flash at struck positions)
+      // Draw sprite flash effects (red flash) – skip if overlapping the player.
       for (let i = spriteFlashes.length - 1; i >= 0; i--) {
         let flash = spriteFlashes[i];
+        // Check if flash is within player's bounding box.
+        let playerBox = {
+          x: player.position.x,
+          y: player.position.y,
+          width: player.width,
+          height: player.height
+        };
+        if (flash.position.x >= playerBox.x && flash.position.x <= playerBox.x + playerBox.width &&
+            flash.position.y >= playerBox.y && flash.position.y <= playerBox.y + playerBox.height) {
+          flash.timer -= deltaTime;
+          if (flash.timer <= 0) spriteFlashes.splice(i, 1);
+          continue;
+        }
         let alpha = flash.timer / flash.duration;
-        ctx.fillStyle = "rgba(255,255,255," + alpha + ")";
+        ctx.fillStyle = "rgba(255,0,0," + alpha + ")";
+        let flashScreenPos = camera.worldToScreen(flash.position);
         ctx.beginPath();
-        ctx.arc(flash.position.x, flash.position.y, 32, 0, Math.PI * 2);
+        ctx.arc(flashScreenPos.x, flashScreenPos.y, 32, 0, Math.PI * 2);
         ctx.fill();
         flash.timer -= deltaTime;
-        if (flash.timer <= 0) {
-          spriteFlashes.splice(i, 1);
-        }
+        if (flash.timer <= 0) spriteFlashes.splice(i, 1);
       }
       
       let bombBtn = document.getElementById("bombBtn");
