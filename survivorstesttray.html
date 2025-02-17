@@ -1218,8 +1218,8 @@
       
       // Deplete strike meter over time
       if (!player.isDead && !isUpgradeMenuVisible) {
-        player.maxStrikeMeter = Math.max(0, player.StrikeMeter - goldDecayRate * deltaTime);
-      }
+  player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
+}
       
       let effectiveDelta = deltaTime * timeScale;
       
