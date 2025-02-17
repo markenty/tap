@@ -1133,63 +1133,74 @@
       }
     }
     
-    // Updated HUD: now uses player.strikeMeter for display
-    function drawHUD(ctx) {
-      // Responsive HP Bar
-      let hudWidth = Math.min(300, canvas.width - 40);
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 20, hudWidth, 24);
-      let hpWidth = (player.hp / player.maxHP) * hudWidth;
-      ctx.fillStyle = "red";
-      ctx.fillRect(20, 20, hpWidth, 24);
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 20, hudWidth, 24);
-      ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText("HP", 25, 38);
-      
-      // Kills Table
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 50, 100, 24);
-      ctx.fillStyle = "white";
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 50, 100, 24);
-      ctx.fillText("Total Kills: " + killCount, 25, 68);
-      
-      // Points Counter
-      ctx.fillStyle = "black";
-      ctx.fillRect(130, 50, 100, 24);
-      ctx.fillStyle = "white";
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(130, 50, 100, 24);
-      ctx.fillText("Points: " + Math.floor(points), 135, 68);
-      
-      // Strike Meter Bar using player.strikeMeter
-      ctx.fillStyle = "#222";
-      ctx.fillRect(20, 80, hudWidth, 24);
-      let fillWidth = (player.strikeMeter / strikeMeterCapacity) * hudWidth;
-      fillWidth = Math.min(fillWidth, hudWidth);
-      ctx.fillStyle = "rgba(255,215,0,0.8)";
-      ctx.fillRect(20, 80, fillWidth, 24);
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 80, hudWidth, 24);
-      ctx.fillStyle = "white";
-      ctx.fillText("Max Strike-Range: " + strikeRangeTiles + " tile(s)", 25, 98);
-      
-    // Auto Strike Timer
-ctx.fillStyle = "black";
-ctx.fillRect(20, 110, hudWidth, 24);
-ctx.strokeStyle = "white";
-ctx.strokeRect(20, 110, hudWidth, 24);
-ctx.fillStyle = "white";
-ctx.fillText("Auto-Strike: " + autoStrikeTime.toFixed(1) + "s", 25, 128);
+   function drawHUD(ctx) {
+  // Define the full HUD width (up to a max of 300px, with 20px margins)
+  let hudWidth = Math.min(300, canvas.width - 40);
 
-// Auto Strike Indicator (tray-based)
-ctx.textAlign = "right";
-ctx.font = "16px Arial";
-ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 215, 128);
-ctx.textAlign = "left";
-    }
+  // --- Full Width Bars at the Top ---
+
+  // HP Bar (full width)
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 20, hudWidth, 24);
+  let hpWidth = (player.hp / player.maxHP) * hudWidth;
+  ctx.fillStyle = "red";
+  ctx.fillRect(20, 20, hpWidth, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 20, hudWidth, 24);
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.fillText("HP", 25, 38);
+
+  // Strike Meter Bar (full width)
+  ctx.fillStyle = "#222";
+  ctx.fillRect(20, 50, hudWidth, 24);
+  let fillWidth = (player.strikeMeter / strikeMeterCapacity) * hudWidth;
+  fillWidth = Math.min(fillWidth, hudWidth);
+  ctx.fillStyle = "rgba(255,215,0,0.8)";
+  ctx.fillRect(20, 50, fillWidth, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 50, hudWidth, 24);
+  ctx.fillStyle = "white";
+  ctx.fillText("Max Strike-Range: " + strikeRangeTiles + " tile(s)", 25, 68);
+
+  // Auto Strike Timer (full width)
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 80, hudWidth, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 80, hudWidth, 24);
+  ctx.fillStyle = "white";
+  ctx.fillText("Auto-Strike: " + autoStrikeTime.toFixed(1) + "s", 25, 98);
+  
+  // Auto Strike Indicator (tray-based) - adjust position as needed
+  ctx.textAlign = "right";
+  ctx.font = "16px Arial";
+  ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 20 + hudWidth, 98);
+  ctx.textAlign = "left";
+
+  // --- Below Full Width Bars: Half-Width Boxes for Points and Kills ---
+
+  // Calculate half the HUD width
+  let halfWidth = hudWidth / 2;
+  // Set a vertical offset below the previous bars (you can adjust this value)
+  let yOffset = 110;
+
+  // Points Box
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, yOffset, halfWidth, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, yOffset, halfWidth, 24);
+  ctx.fillStyle = "white";
+  ctx.fillText("Pts: " + Math.floor(points), 25, yOffset + 18);
+
+  // Kills Box
+  ctx.fillStyle = "black";
+  ctx.fillRect(20 + halfWidth, yOffset, halfWidth, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20 + halfWidth, yOffset, halfWidth, 24);
+  ctx.fillStyle = "white";
+  ctx.fillText("Kills: " + killCount, 20 + halfWidth + 5, yOffset + 18);
+}
+
     
     function showUpgradeMenu() {
       isUpgradeMenuVisible = true;
