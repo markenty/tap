@@ -138,30 +138,26 @@
     const PIXEL_SIZE = 4;
     let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
     let bombCount = 0, points = 0;
-    // Persistent auto-strike bonus.
     let baseAutoStrikeTime = 10;
     let autoStrikeTime = baseAutoStrikeTime;
     let autoStrikeInterval = 0.3, autoStrikeTimer = 0;
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
-    // New dash variable. Default dash is 1 tile.
+    // Dash range (in tiles)
     let dashTiles = 1;
     
-    // ---- NEW EFFECTS VARIABLES AND FUNCTIONS ----
+    // New flash effects
     let screenFlashAlpha = 0;
     let spriteFlashes = [];
-    
     function triggerScreenFlash() {
       screenFlashAlpha = 0.5;
     }
-    
     function addSpriteFlash(position) {
       spriteFlashes.push({ position: position, timer: 0.2, duration: 0.2 });
     }
-    // -----------------------------------------------
     
-    // Melee effects array and functions
+    // Melee effects
     let meleeEffects = [];
     function spawnMeleeEffect(x, y, angle) {
       meleeEffects.push({ x, y, angle, timer: 0.2, duration: 0.2 });
@@ -300,7 +296,6 @@
       }
     }
     
-    // Declare effects only once.
     let effects = [];
     function spawnPickupEffect(position) {
       const count = 10;
@@ -540,15 +535,15 @@
           ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
         }
       }
-      // Modified move function to dash by dashTiles.
-      move(direction) {
+      // useDash: if true, move dashTiles; otherwise, move 1 tile.
+      move(direction, useDash = false) {
         if (this.moving) return;
+        let distance = useDash ? dashTiles : 1;
         let newGridX = this.gridX, newGridY = this.gridY;
-        if (direction === "up") newGridY -= dashTiles;
-        else if (direction === "down") newGridY += dashTiles;
-        else if (direction === "left") newGridX -= dashTiles;
-        else if (direction === "right") newGridX += dashTiles;
-        // Clamp to board boundaries.
+        if (direction === "up") newGridY -= distance;
+        else if (direction === "down") newGridY += distance;
+        else if (direction === "left") newGridX -= distance;
+        else if (direction === "right") newGridX += distance;
         newGridX = Math.max(0, Math.min(newGridX, this.tileMap.width - 1));
         newGridY = Math.max(0, Math.min(newGridY, this.tileMap.height - 1));
         if (this.tileMap.tiles[newGridY][newGridX].tileType !== 0) return;
@@ -771,7 +766,6 @@
     let player = new Player(5, 5, tileMap);
     const bullets = [], enemies = [];
     let enemySpawnTimer = 0;
-    // enemySpawnInterval is computed dynamically based on killCount.
     
     function performAutoStrike() {
       let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
@@ -817,21 +811,42 @@
       return false;
     }
     
-    canvas.addEventListener("click", (evt) => {
+    // Use mouse events to differentiate tap vs. drag.
+    let dragStart = null;
+    canvas.addEventListener("mousedown", (evt) => {
+      dragStart = { x: evt.clientX, y: evt.clientY };
+    });
+    canvas.addEventListener("mousemove", (evt) => {
+      // (Optional) You can show a preview here.
+    });
+    canvas.addEventListener("mouseup", (evt) => {
+      if (!dragStart) return;
+      let dx = evt.clientX - dragStart.x;
+      let dy = evt.clientY - dragStart.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 10) {
+        // Drag detected: perform dash move.
+        let direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+        if (!player.moving) {
+          player.move(direction, true);
+        }
+      } else {
+        // Treat as a tap.
+        handleTap(evt);
+      }
+      dragStart = null;
+    });
+    
+    function handleTap(evt) {
       evt.preventDefault();
-      let boundingRect = canvas.getBoundingClientRect();
-      let tapX = evt.clientX - boundingRect.left, tapY = evt.clientY - boundingRect.top;
-      
-      let enemyHit = performManualStrikeAt(tapX, tapY);
-      if (enemyHit) {
+      let rect = canvas.getBoundingClientRect();
+      let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
+      if (performManualStrikeAt(tapX, tapY)) {
         triggerHeadbutt();
-        evt.stopPropagation();
         return;
       }
-      
       let dir = computeDirection(evt.clientX, evt.clientY);
       if (dir && !player.moving) {
-        player.move(dir);
+        player.move(dir, false);
       } else {
         let playerScreenPos = camera.worldToScreen(player.position);
         if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
@@ -839,7 +854,7 @@
           triggerHeadbutt();
         }
       }
-    });
+    }
     
     function computeDirection(clientX, clientY) {
       let rect = canvas.getBoundingClientRect();
@@ -972,7 +987,6 @@
       ctx.font = "16px Arial";
       ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
       
-      // Dash HUD info.
       ctx.fillStyle = "black";
       ctx.fillRect(20, 140, 200, 24);
       ctx.strokeStyle = "white";
@@ -1005,7 +1019,7 @@
       timeScale = 1.0;
     }
     
-    // Dash upgrade listener.
+    // Upgrade listeners
     document.getElementById("increaseDash").addEventListener("click", () => {
       const cost = 300;
       if (points >= cost && dashTiles < tileMap.width) {
@@ -1014,7 +1028,6 @@
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
-    
     document.getElementById("increaseHP").addEventListener("click", () => {
       const cost = 50;
       if (points >= cost) {
@@ -1194,73 +1207,8 @@
     }
     requestAnimationFrame(gameLoop);
     
-    canvas.addEventListener("click", (evt) => {
-      evt.preventDefault();
-      let boundingRect = canvas.getBoundingClientRect();
-      let tapX = evt.clientX - boundingRect.left, tapY = evt.clientY - boundingRect.top;
-      
-      let enemyHit = performManualStrikeAt(tapX, tapY);
-      if (enemyHit) {
-        triggerHeadbutt();
-        evt.stopPropagation();
-        return;
-      }
-      
-      let dir = computeDirection(evt.clientX, evt.clientY);
-      if (dir && !player.moving) {
-        player.move(dir);
-      } else {
-        let playerScreenPos = camera.worldToScreen(player.position);
-        if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
-            tapY >= playerScreenPos.y && tapY <= playerScreenPos.y + player.height) {
-          triggerHeadbutt();
-        }
-      }
-    });
+    // Remove previous click listener; we use mousedown/mousemove/mouseup for input.
     
-    function computeDirection(clientX, clientY) {
-      let rect = canvas.getBoundingClientRect();
-      let tapX = clientX - rect.left, tapY = clientY - rect.top;
-      let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
-      let gridX = Math.floor((worldPos.x / 32 + worldPos.y / 16) / 2);
-      let gridY = Math.floor((worldPos.y / 16 - worldPos.x / 32) / 2);
-      if (gridX === player.gridX && gridY === player.gridY) return null;
-      let dx = gridX - player.gridX, dy = gridY - player.gridY;
-      let direction;
-      if (Math.abs(dx) + Math.abs(dy) === 1) {
-        direction = dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up";
-      } else {
-        direction = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
-      }
-      return direction;
-    }
-    
-    function rectIntersect(a, b) {
-      return a.x < b.x + b.width && a.x + a.width > b.x &&
-             a.y < b.y + b.height && a.y + a.height > b.y;
-    }
-    
-    function triggerHeadbutt() {
-      let playerScreenPos = camera.worldToScreen(player.position);
-      let headbuttDiv = document.getElementById("headbuttEffect");
-      headbuttDiv.style.left = (playerScreenPos.x + player.width / 2 - 32) + "px";
-      headbuttDiv.style.top = (playerScreenPos.y + player.height / 2 - 32) + "px";
-      headbuttDiv.classList.remove("active");
-      void headbuttDiv.offsetWidth;
-      headbuttDiv.classList.add("active");
-      let playerBox = { x: playerScreenPos.x, y: playerScreenPos.y, width: player.width, height: player.height };
-      enemies.forEach((enemy) => {
-        let enemyScreenPos = camera.worldToScreen(enemy.position);
-        let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
-        if (rectIntersect(playerBox, enemyBox)) {
-          addSpriteFlash(enemy.position);
-          let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
-          let enemyCenter = new Vector2(enemyBox.x + enemyBox.width / 2, enemyBox.y + enemyBox.height / 2);
-          let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
-          enemy.knockback = enemy.knockback.add(knockVec);
-        }
-      });
-    }
   </script>
 </body>
 </html>
