@@ -112,8 +112,8 @@
       opacity: 0.5;
       pointer-events: none;
     }
-    /* Overlay for bomb count (and timers for power-ups) */
-    .tray-slot .counter, 
+    /* Overlay for bomb count and power-up timers */
+    .tray-slot .counter,
     .tray-slot .timer {
       position: absolute;
       bottom: 2px;
@@ -378,9 +378,7 @@
     // Existing pickups
     class HealthPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; 
-        this.gridX = tileX; 
-        this.gridY = tileY;
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -390,10 +388,10 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; 
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
-        ctx.font = `${this.size}px sans-serif`; 
-        ctx.textAlign = "center"; 
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("❤️", 0, 0);
         ctx.restore();
@@ -402,9 +400,7 @@
     
     class BombPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; 
-        this.gridX = tileX; 
-        this.gridY = tileY;
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -414,10 +410,10 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; 
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
-        ctx.font = `${this.size}px sans-serif`; 
-        ctx.textAlign = "center"; 
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("💣", 0, 0);
         ctx.restore();
@@ -426,9 +422,7 @@
     
     class SwordPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; 
-        this.gridX = tileX; 
-        this.gridY = tileY;
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -438,10 +432,10 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; 
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
-        ctx.font = `${this.size}px sans-serif`; 
-        ctx.textAlign = "center"; 
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("⚔️", 0, 0);
         ctx.restore();
@@ -451,9 +445,7 @@
     // NEW: Defensive Boost Pickup (Shield)
     class DefenseBoostPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; 
-        this.gridX = tileX; 
-        this.gridY = tileY;
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -476,9 +468,7 @@
     // NEW: Healing Charm Pickup
     class HealingCharmPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; 
-        this.gridX = tileX; 
-        this.gridY = tileY;
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -982,7 +972,7 @@
       });
     }
     
-    // Bomb deployment triggered by tapping the bomb tile (explosives slot)
+    // Bomb deployment triggered by tapping the bomb tile
     function deployBomb() {
       if (bombCount > 0) {
         bombCount--;
@@ -990,7 +980,7 @@
       }
     }
     
-    // Ensure tapping the bomb tile drops a bomb like the old bomb button.
+    // Tapping the bomb tile (explosives slot) deploys a bomb
     const explosivesSlot = document.getElementById("explosivesSlot");
     explosivesSlot.addEventListener("click", (evt) => {
       if (bombCount > 0) {
@@ -1000,7 +990,7 @@
       }
     });
     
-    // Update explosives slot to show bomb count overlay
+    // Update bomb tile to show bomb count overlay
     function updateExplosivesSlot() {
       explosivesSlot.innerHTML = "💣<div class='counter'>" + bombCount + "</div>";
       if (bombCount > 0) {
@@ -1012,7 +1002,7 @@
       }
     }
     
-    // Update power-up tray slots (defense & healing charm)
+    // Update power-up tray slots for shield and healing charm
     function updatePowerupTraySlots() {
       const defenseSlot = document.getElementById("defenseSlot");
       const charmsSlot = document.getElementById("charmsSlot");
@@ -1092,7 +1082,7 @@
       }
     }
     
-    // Modified HUD: Responsive HP bar, separate kills table, strike meter.
+    // Updated HUD: HP bar, Kills box, Points box, Strike Meter, Auto Strike timer.
     function drawHUD(ctx) {
       // Responsive HP Bar
       let hudWidth = Math.min(300, canvas.width - 40);
@@ -1115,6 +1105,14 @@
       ctx.strokeRect(20, 50, 100, 24);
       ctx.fillText("Kills: " + killCount, 25, 68);
       
+      // Points Counter
+      ctx.fillStyle = "black";
+      ctx.fillRect(130, 50, 100, 24);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(130, 50, 100, 24);
+      ctx.fillText("Pts: " + Math.floor(points), 135, 68);
+      
       // Strike Meter Bar
       ctx.fillStyle = "#222";
       ctx.fillRect(20, 80, hudWidth, 24);
@@ -1125,9 +1123,9 @@
       ctx.strokeStyle = "white";
       ctx.strokeRect(20, 80, hudWidth, 24);
       ctx.fillStyle = "white";
-      ctx.fillText("Strike Range: " + strikeRangeTiles + " tile(s)", 25, 98);
+      ctx.fillText("Strike: " + strikeRangeTiles + " tile(s)", 25, 98);
       
-      // Auto Strike Time
+      // Auto Strike Timer
       ctx.fillStyle = "black";
       ctx.fillRect(20, 110, 100, 24);
       ctx.strokeStyle = "white";
@@ -1218,7 +1216,7 @@
       lastTime = currentTime;
       globalTime += deltaTime;
       
-      // Deplete strike meter
+      // Deplete strike meter over time
       if (!player.isDead && !isUpgradeMenuVisible) {
         player.maxStrikeMeter = Math.max(0, player.maxStrikeMeter - goldDecayRate * deltaTime);
       }
