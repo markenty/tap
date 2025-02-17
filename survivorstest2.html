@@ -937,61 +937,65 @@
     }
     
     function drawHUD(ctx) {
-      // HP Bar
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 20, 200, 24);
-      ctx.fillStyle = "red";
-      let hpWidth = (player.hp / player.maxHP) * 100;
-      ctx.fillRect(22, 22, hpWidth, 20);
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 20, 200, 24);
-      ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText("HP: " + player.hp, 30, 38);
-      ctx.fillText("Kills: " + killCount, 130, 38);
-      
-      // Bombs
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 50, 200, 24);
-      ctx.fillStyle = "white";
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 50, 200, 24);
-      ctx.fillText("Bombs: " + bombCount, 30, 68);
-      
-      // Points
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 80, 200, 24);
-      ctx.fillStyle = "white";
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 80, 200, 24);
-      ctx.fillText("Points: " + Math.floor(points), 30, 98);
-      
-      // Auto Strike Time
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 110, 200, 24);
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 110, 200, 24);
-      ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
-      
-      // Strike Meter Bar (original HUD code)
-      ctx.fillStyle = "#222";
-      ctx.fillRect(20, 140, 200, 24);
-      let fillWidth = (player.maxStrikeMeter / 100) * 200;
-      ctx.fillStyle = "rgba(255,215,0,0.8)";
-      ctx.fillRect(20, 140, fillWidth, 24);
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 140, 200, 24);
-      ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText("Strike Range: " + strikeRangeTiles + " tile(s)", 30, 158);
-      
-      ctx.textAlign = "right";
-      ctx.font = "20px Arial";
-      ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 215, 128);
-      ctx.textAlign = "left";
-    }
+  // HP Bar
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 20, 200, 24);
+  ctx.fillStyle = "red";
+  let hpWidth = (player.hp / player.maxHP) * 100;
+  ctx.fillRect(22, 22, hpWidth, 20);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 20, 200, 24);
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.fillText("HP: " + player.hp, 30, 38);
+  ctx.fillText("Kills: " + killCount, 130, 38);
+  
+  // Bombs
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 50, 200, 24);
+  ctx.fillStyle = "white";
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 50, 200, 24);
+  ctx.fillText("Bombs: " + bombCount, 30, 68);
+  
+  // Points
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 80, 200, 24);
+  ctx.fillStyle = "white";
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 80, 200, 24);
+  ctx.fillText("Points: " + Math.floor(points), 30, 98);
+  
+  // Auto Strike Time
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 110, 200, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 110, 200, 24);
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
+  
+  // Strike Meter Bar (responsive and clamped)
+  // Adjust the meter width relative to canvas width (max 200px, with 20px margins)
+  let hudMeterWidth = Math.min(200, canvas.width - 40);
+  ctx.fillStyle = "#222";
+  ctx.fillRect(20, 140, hudMeterWidth, 24);
+  // Compute fill width based on current meter vs. maximum capacity
+  let fillWidth = (player.maxStrikeMeter / strikeMeterCapacity) * hudMeterWidth;
+  fillWidth = Math.min(fillWidth, hudMeterWidth);
+  ctx.fillStyle = "rgba(255,215,0,0.8)";
+  ctx.fillRect(20, 140, fillWidth, 24);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 140, hudMeterWidth, 24);
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.fillText("Strike Range: " + strikeRangeTiles + " tile(s)", 30, 158);
+  
+  ctx.textAlign = "right";
+  ctx.font = "20px Arial";
+  ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 215, 128);
+  ctx.textAlign = "left";
+}
     
     function showUpgradeMenu() {
       isUpgradeMenuVisible = true;
