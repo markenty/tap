@@ -1416,16 +1416,24 @@ document.getElementById("increaseAutoRun").addEventListener("click", () => {
         
         pickupSpawnTimer += effectiveDelta;
         if (pickupSpawnTimer >= pickupSpawnInterval) {
-          pickupSpawnTimer = 0;
-          let gridX = Math.floor(Math.random() * tileMap.width);
-          let gridY = Math.floor(Math.random() * tileMap.height);
-          let rand = Math.random();
-          if (rand < 0.1) { pickups.push(new BombPickup(gridX, gridY, tileMap)); }
-          else if (rand < 0.2) { pickups.push(new SwordPickup(gridX, gridY, tileMap)); }
-          else if (rand < 0.3) { pickups.push(new HealthPickup(gridX, gridY, tileMap)); }
-          else if (rand < 0.4) { pickups.push(new DefenseBoostPickup(gridX, gridY, tileMap)); }
-          else if (rand < 0.5) { pickups.push(new HealingCharmPickup(gridX, gridY, tileMap)); }
-        }
+  pickupSpawnTimer = 0;
+  let gridX = Math.floor(Math.random() * tileMap.width);
+  let gridY = Math.floor(Math.random() * tileMap.height);
+  // Randomly choose one of the five pickup types:
+  let rand = Math.random();
+  if (rand < 0.2) { 
+    pickups.push(new BombPickup(gridX, gridY, tileMap));
+  } else if (rand < 0.4) {
+    pickups.push(new SwordPickup(gridX, gridY, tileMap));
+  } else if (rand < 0.6) {
+    pickups.push(new HealthPickup(gridX, gridY, tileMap));
+  } else if (rand < 0.8) {
+    pickups.push(new DefenseBoostPickup(gridX, gridY, tileMap));
+  } else {
+    pickups.push(new HealingCharmPickup(gridX, gridY, tileMap));
+  }
+}
+
         
         enemies.forEach(enemy => resolveCollision(player, enemy));
         for (let i = 0; i < enemies.length; i++) {
