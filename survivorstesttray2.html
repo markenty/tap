@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bomb-A-Bear</title>
+  <style>
+    html, body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #505050;
+      touch-action: none;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+      background: #505050;
+    }
+    /* --- Bomb Button Styling --- */
+    #bombBtn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10;
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.85);
+      border: none;
+      border-radius: 50%;
+      font-size: 36px;
+      line-height: 80px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s;
+      user-select: none;
+    }
+    #bombBtn.ready {
+      box-shadow: 0 0 15px 3px rgba(255,255,0,0.9);
+    }
+    #bombBtn:active {
+      background: rgba(255,255,255,1);
+      transform: scale(0.95);
+    }
+    #bombBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+    /* --- Headbutt Effect Styling --- */
+    #headbuttEffect {
+      position: absolute;
+      pointer-events: none;
+      width: 64px;
+      height: 64px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      transform: scale(0);
+      opacity: 0;
+    }
+    #headbuttEffect.active {
+      animation: headbuttAnim 0.3s forwards;
+    }
+    @keyframes headbuttAnim {
+      0% { transform: scale(0); opacity: 1; }
+      50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    @media (max-width: 600px) {
+      #bombBtn {
+        width: 100px;
+        height: 100px;
+        font-size: 48px;
+        line-height: 100px;
+        bottom: 15px;
+        right: 15px;
+      }
+      #headbuttEffect {
+        width: 48px;
+        height: 48px;
+      }
+    }
+    /* --- Upgrade Menu Overlay Styling --- */
+    #upgradeMenu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #upgradeMenu .menu-content {
+      background: #ffebcd;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    #upgradeMenu button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #upgradeMenu .menu-content .menu-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    /* --- Tray Styling --- */
+    #itemTray {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      gap: 10px;
+      z-index: 20;
+    }
+    .tray-slot {
+      position: relative;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid white;
+      border-radius: 10px;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .tray-slot.active {
+      box-shadow: 0 0 15px 3px rgba(255,255,0,0.9);
+      transform: scale(1.1);
+    }
+    .tray-slot.dimmed {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    /* Overlay for bomb count and power-up timers */
+    .tray-slot .counter,
+    .tray-slot .timer {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 14px;
+      color: yellow;
+    }
+    @media (max-width: 600px) {
+      #itemTray {
+        grid-template-columns: repeat(4, 50px);
+        gap: 8px;
+        bottom: 15px;
+      }
+      .tray-slot {
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+      }
+      .tray-slot .counter, .tray-slot .timer {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  
+  <!-- Bomb Deploy Button -->
+  <button id="bombBtn">💣</button>
+  <!-- Headbutt Effect Overlay -->
+  <div id="headbuttEffect"></div>
+  
+  <!-- Upgrade Menu Overlay -->
+  <div id="upgradeMenu">
+    <div class="menu-content">
+      <h1>Upgrade Menu</h1>
+      <p>You have <span id="pointsDisplay"></span> points.</p>
+      <div class="menu-buttons">
+        <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
+        <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
+        <button id="increaseDash">➡️ Increase Strike Range (+1 tile) - Cost: 300</button>
+        <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
+        <button id="increaseHealingCharmTime">🪬 Increase Healing Charm (Duration & Heal) - Cost: 250</button>
+        <button id="increaseShieldingTime">🛡️ Increase Shielding (Duration & Reduction) - Cost: 250</button>
+      </div>
+      <button id="resumeGame" style="margin-top: 20px;">▶️ Resume Game</button>
+    </div>
+  </div>
+  
+  <!-- Item Tray (Attack, Defense, Charms, Explosives) -->
+  <div id="itemTray">
+    <div class="tray-slot" id="attackSlot">👊</div>
+    <div class="tray-slot dimmed" id="defenseSlot">🛡️</div>
+    <div class="tray-slot dimmed" id="charmsSlot">🪬</div>
+    <div class="tray-slot" id="explosivesSlot">💣</div>
+  </div>
+  
+  <script>
+    "use strict";
+    
+    const PIXEL_SIZE = 4;
+    const goldDecayRate = 5;
+    
+    let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
+    let bombCount = 0, points = 0;
+    let baseAutoStrikeTime = 10;
+    let autoStrikeTime = baseAutoStrikeTime;
+    let autoStrikeInterval = 0.3, autoStrikeTimer = 0;
+    let globalTime = 0;
+    let isUpgradeMenuVisible = false;
+    
+    // Strike-related (using strikeMeter for current value)
+    let strikeRangeTiles = 1;
+    let strikeMeterCapacity = 100;
+    
+    // Power-up state variables
+    let defenseBoostActive = false;
+    let defenseBoostTimer = 0;
+    let healingCharmActive = false;
+    let healingCharmTimer = 0;
+    // Base durations and effects
+    let baseDefenseBoostDuration = 10;
+    let baseShieldDamageReduction = 0.5;
+    let baseHealingCharmDuration = 10;
+    let baseHealingCharmHeal = 1;
+    
+    let screenFlashAlpha = 0;
+    let spriteFlashes = [];
+    function triggerScreenFlash() { screenFlashAlpha = 0.5; }
+    function addSpriteFlash(position) { spriteFlashes.push({ position: position, timer: 0.2, duration: 0.2 }); }
+    
+    let meleeEffects = [];
+    function spawnMeleeEffect(x, y, angle) { meleeEffects.push({ x, y, angle, timer: 0.2, duration: 0.2 }); }
+    function renderMeleeEffects(ctx, camera) {
+      for (let effect of meleeEffects) {
+        let progress = 1 - (effect.timer / effect.duration);
+        let screenPos = camera.worldToScreen(new Vector2(effect.x, effect.y));
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y);
+        ctx.rotate(effect.angle);
+        ctx.beginPath();
+        ctx.arc(0, 0, 40 * progress, Math.PI, Math.PI + 0.8, false);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    function updateMeleeEffects(deltaTime) {
+      for (let i = meleeEffects.length - 1; i >= 0; i--) {
+        meleeEffects[i].timer -= deltaTime;
+        if (meleeEffects[i].timer <= 0) meleeEffects.splice(i, 1);
+      }
+    }
+    
+    function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+    
+    class Vector2 {
+      constructor(x, y) { this.x = x; this.y = y; }
+      add(v) { return new Vector2(this.x + v.x, this.y + v.y); }
+      subtract(v) { return new Vector2(this.x - v.x, this.y - v.y); }
+      scale(s) { return new Vector2(this.x * s, this.y * s); }
+      length() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+      normalize() { let len = this.length(); return new Vector2(this.x / (len || 1), this.y / (len || 1)); }
+    }
+    
+    class Camera {
+      constructor(screenWidth, screenHeight) {
+        this.position = new Vector2(0, 0);
+        this.zoom = 1.0;
+        this.screenWidth = screenWidth;
+        this.screenHeight = screenHeight;
+      }
+      worldToScreen(worldPos) {
+        return new Vector2(
+          (worldPos.x - this.position.x) * this.zoom + this.screenWidth / 2,
+          (worldPos.y - this.position.y) * this.zoom + this.screenHeight / 2
+        );
+      }
+      screenToWorld(screenPos) {
+        return new Vector2(
+          (screenPos.x - this.screenWidth / 2) / this.zoom + this.position.x,
+          (screenPos.y - this.screenHeight / 2) / this.zoom + this.position.y
+        );
+      }
+    }
+    
+    class Tile {
+      constructor(gridX, gridY, tileType, color) { this.gridX = gridX; this.gridY = gridY; this.tileType = tileType; this.color = color; }
+    }
+    class TileMap {
+      constructor(width, height, tileWidth, tileHeight) {
+        this.width = width; this.height = height;
+        this.tileWidth = tileWidth; this.tileHeight = tileHeight;
+        this.tiles = [];
+        for (let y = 0; y < height; y++) {
+          let row = [];
+          for (let x = 0; x < width; x++) { row.push(new Tile(x, y, 0, "#64dd64")); }
+          this.tiles.push(row);
+        }
+      }
+      gridToWorld(gridX, gridY) {
+        return new Vector2((gridX - gridY) * (this.tileWidth / 2), (gridX + gridY) * (this.tileHeight / 2));
+      }
+      render(ctx, camera) {
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            let worldPos = this.gridToWorld(x, y);
+            let screenPos = camera.worldToScreen(worldPos);
+            let halfW = this.tileWidth / 2, halfH = this.tileHeight / 2;
+            ctx.beginPath();
+            ctx.moveTo(screenPos.x, screenPos.y + halfH);
+            ctx.lineTo(screenPos.x + halfW, screenPos.y);
+            ctx.lineTo(screenPos.x + this.tileWidth, screenPos.y + halfH);
+            ctx.lineTo(screenPos.x + halfW, screenPos.y + this.tileHeight);
+            ctx.closePath();
+            ctx.fillStyle = this.tiles[y][x].color;
+            ctx.fill();
+            ctx.strokeStyle = "#000";
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    
+    class Particle {
+      constructor(position, velocity, life, color, size, acceleration) {
+        this.position = position; this.velocity = velocity;
+        this.acceleration = acceleration || new Vector2(0, 0);
+        this.life = life; this.maxLife = life; this.color = color; this.size = size;
+      }
+      update(deltaTime) {
+        this.velocity = this.velocity.add(this.acceleration.scale(deltaTime));
+        this.position = this.position.add(this.velocity.scale(deltaTime));
+        this.life -= deltaTime;
+      }
+      render(ctx, camera) {
+        let alpha = Math.max(this.life / this.maxLife, 0);
+        let screenPos = camera.worldToScreen(this.position);
+        ctx.fillStyle = this.color.replace("ALPHA", alpha);
+        ctx.beginPath();
+        ctx.arc(screenPos.x, screenPos.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    let effects = [];
+    function spawnPickupEffect(position) {
+      const count = 10;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 50 + 50;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 0.5 + 0.5;
+        let size = Math.random() * 2 + 2;
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(255,215,0,ALPHA)", size));
+      }
+    }
+    function spawnBloodEffect(position) {
+      const count = 20;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 100 + 50;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 0.5 + 0.5;
+        let size = Math.random() * 1 + 1;
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(200,0,0,ALPHA)", size));
+      }
+    }
+    function spawnExplosionEffect(position) {
+      const count = 30;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 80 + 40;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 0.5 + 0.5;
+        let size = Math.random() * 2 + 2;
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(255,165,0,ALPHA)", size));
+      }
+    }
+    function spawnEnemyExplosionEffect(position) {
+      const count = 50;
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 200 + 100;
+        let velocity = new Vector2(Math.cos(angle), Math.sin(angle)).scale(speed);
+        let life = Math.random() * 1 + 0.5;
+        let size = Math.random() * 3 + 2;
+        let color = Math.random() < 0.5 ? "rgba(255,105,180,ALPHA)" : "rgba(255,0,0,ALPHA)";
+        let acceleration = new Vector2(0, 300);
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration));
+      }
+    }
+    function updateEffects(deltaTime) {
+      for (let i = effects.length - 1; i >= 0; i--) {
+        effects[i].update(deltaTime);
+        if (effects[i].life <= 0) effects.splice(i, 1);
+      }
+    }
+    function renderEffects(ctx, camera) {
+      for (let eff of effects) { eff.render(ctx, camera); }
+    }
+    
+    class HealthPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("❤️", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    class BombPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("💣", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    class SwordPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("⚔️", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    class DefenseBoostPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("🛡️", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    class HealingCharmPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("🪬", 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    let pickups = [], baitBombs = [];
+    let pickupSpawnTimer = 0, pickupSpawnInterval = 10.0;
+    
+    class Bullet {
+      constructor(position, velocity, owner) {
+        this.position = new Vector2(position.x, position.y);
+        this.startPosition = new Vector2(position.x, position.y);
+        this.velocity = velocity;
+        this.radius = 5;
+        this.alive = true;
+        this.owner = owner;
+        this.maxDistance = Math.sqrt(Math.pow(tileMap.tileWidth / 2, 2) + Math.pow(tileMap.tileHeight / 2, 2));
+      }
+      update(deltaTime) {
+        this.position = this.position.add(this.velocity.scale(deltaTime));
+        if (this.position.subtract(this.startPosition).length() >= this.maxDistance)
+          this.alive = false;
+        if (this.position.x < -50 || this.position.x > canvas.width + 50 ||
+            this.position.y < -50 || this.position.y > canvas.height + 50)
+          this.alive = false;
+      }
+      render(ctx, camera) {
+        let screenPos = camera.worldToScreen(this.position);
+        ctx.beginPath();
+        ctx.arc(screenPos.x, screenPos.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "yellow";
+        ctx.fill();
+      }
+    }
+    
+    class Player {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap;
+        this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.pixelSize = PIXEL_SIZE * 0.5;
+        this.width = 32 * this.pixelSize;
+        this.height = 32 * this.pixelSize;
+        this.moving = false;
+        this.startPos = null;
+        this.targetPos = null;
+        this.moveDuration = 0.1;
+        this.moveTime = 0;
+        this.targetGridX = tileX; this.targetGridY = tileY;
+        this.direction = "down";
+        this.maxHP = 100; this.hp = 100;
+        this.normalStrikeRange = 50;
+        // Use strikeMeter for the current (depleting) meter value.
+        this.strikeMeter = 0;
+        this.maxStrikeMeter = strikeMeterCapacity;
+        this.knockback = new Vector2(0, 0);
+        this.isDead = false;
+        this.spriteSheet = new Image(); this.spriteLoaded = false;
+        this.spriteSheet.onload = () => { this.spriteLoaded = true; };
+        this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-SHIRMOND-SHEET.png";
+        this.frameCount = 4; this.currentFrame = 0; this.frameTime = 0; this.frameDelay = 0.1;
+      }
+      update(deltaTime) {
+        if (this.moving) {
+          this.moveTime += deltaTime;
+          let t = Math.min(this.moveTime / this.moveDuration, 1);
+          this.position = new Vector2(
+            this.startPos.x + (this.targetPos.x - this.startPos.x) * t,
+            this.startPos.y + (this.targetPos.y - this.startPos.y) * t
+          );
+          this.frameTime += deltaTime;
+          if (this.frameTime >= this.frameDelay) {
+            this.currentFrame = (this.currentFrame + 1) % this.frameCount;
+            this.frameTime = 0;
+          }
+          if (t >= 1) {
+            this.moving = false;
+            this.gridX = this.targetGridX; this.gridY = this.targetGridY;
+            this.currentFrame = 0;
+          }
+        } else { this.currentFrame = 0; }
+        this.knockback = this.knockback.scale(0.9);
+      }
+      render(ctx, camera) {
+        let pos = this.position.add(this.knockback);
+        let screenPos = camera.worldToScreen(pos);
+        if (this.spriteLoaded) {
+          let row = 0;
+          switch (this.direction) {
+            case "down": row = 0; break;
+            case "right": row = 1; break;
+            case "up": row = 2; break;
+            case "left": row = 3; break;
+            default: row = 0;
+          }
+          let srcX = this.currentFrame * 32, srcY = row * 32;
+          ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
+        } else {
+          ctx.fillStyle = "red";
+          ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
+        }
+      }
+      move(direction) {
+        if (this.moving) return;
+        let distance = 1;
+        let newGridX = this.gridX, newGridY = this.gridY;
+        if (direction === "up") newGridY -= distance;
+        else if (direction === "down") newGridY += distance;
+        else if (direction === "left") newGridX -= distance;
+        else if (direction === "right") newGridX += distance;
+        newGridX = Math.max(0, Math.min(newGridX, this.tileMap.width - 1));
+        newGridY = Math.max(0, Math.min(newGridY, this.tileMap.height - 1));
+        if (this.tileMap.tiles[newGridY][newGridX].tileType !== 0) return;
+        this.moving = true;
+        this.moveTime = 0;
+        this.startPos = this.position;
+        this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
+        this.targetGridX = newGridX; this.targetGridY = newGridY;
+        this.direction = direction;
+        this.frameTime = 0; this.currentFrame = 0;
+      }
+      shoot() {
+        let startPos = new Vector2(this.position.x + this.width / 2, this.position.y + this.height / 2);
+        let directionVector;
+        switch (this.direction) {
+          case "up": directionVector = new Vector2(0, -1); break;
+          case "down": directionVector = new Vector2(0, 1); break;
+          case "left": directionVector = new Vector2(-1, 0); break;
+          case "right": directionVector = new Vector2(1, 0); break;
+          default: directionVector = new Vector2(0, -1);
+        }
+        let bulletSpeed = 600, velocity = directionVector.scale(bulletSpeed);
+        bullets.push(new Bullet(new Vector2(this.position.x + this.width / 2, this.position.y + this.height / 2), velocity, "player"));
+      }
+      shootAt(target) {
+        let startPos = new Vector2(this.position.x + this.width / 2, this.position.y + this.height / 2);
+        let diff = target.subtract(startPos), norm = diff.normalize();
+        let bulletSpeed = 600, velocity = norm.scale(bulletSpeed);
+        bullets.push(new Bullet(startPos, velocity, "player"));
+      }
+      respawn() {
+        this.gridX = 5; this.gridY = 5;
+        this.position = this.tileMap.gridToWorld(this.gridX, this.gridY);
+        this.hp = this.maxHP; this.isDead = false;
+      }
+      strike(direction) {
+        let strikeRange;
+        if (strikeRangeTiles <= 1) {
+          strikeRange = this.normalStrikeRange;
+        } else {
+          // Use the current strikeMeter (which depletes over time)
+          if (this.strikeMeter >= 10) {
+            strikeRange = strikeRangeTiles * 50;
+            this.strikeMeter -= 10;
+          } else {
+            strikeRange = this.normalStrikeRange;
+          }
+        }
+        let offset;
+        switch(direction) {
+          case "up": offset = new Vector2(0, -strikeRange); break;
+          case "down": offset = new Vector2(0, strikeRange); break;
+          case "left": offset = new Vector2(-strikeRange, 0); break;
+          case "right": offset = new Vector2(strikeRange, 0); break;
+          default: offset = new Vector2(0, -strikeRange);
+        }
+        let playerCenter = new Vector2(this.position.x + this.width / 2, this.position.y + this.height / 2);
+        let strikeCenter = playerCenter.add(offset);
+        triggerHeadbutt();
+        enemies.forEach(enemy => {
+          let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+          if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
+            addSpriteFlash(enemy.position);
+            enemy.alive = false;
+            spawnEnemyExplosionEffect(enemy.position);
+            killCount++;
+            let angle = Math.atan2(enemyCenter.y - strikeCenter.y, enemyCenter.x - strikeCenter.x);
+            let effectX = strikeCenter.x + Math.cos(angle) * 20;
+            let effectY = strikeCenter.y + Math.sin(angle) * 20;
+            spawnMeleeEffect(effectX, effectY, angle);
+          }
+        });
+      }
+    }
+    
+    class Enemy {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.pixelSize = PIXEL_SIZE * 0.5;
+        this.width = 32 * this.pixelSize; this.height = 32 * this.pixelSize;
+        this.spriteSheet = new Image(); this.spriteLoaded = false;
+        this.spriteSheet.onload = () => { this.spriteLoaded = true; };
+        this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-BEAR-SHEET.png";
+        this.alive = true; this.maxHP = 40; this.hp = 40;
+        this.moving = false; this.startPos = null; this.targetPos = null;
+        this.moveDuration = 0.2; this.moveTime = 0;
+        this.targetGridX = tileX; this.targetGridY = tileY;
+        this.direction = "down";
+        this.frameCount = 4; this.currentFrame = 0; this.frameTime = 0; this.frameDelay = 0.15;
+        this.attackCooldown = 0; this.knockback = new Vector2(0, 0);
+      }
+      update(deltaTime) {
+        if (this.moving) {
+          this.moveTime += deltaTime;
+          let t = Math.min(this.moveTime / this.moveDuration, 1);
+          this.position = new Vector2(
+            this.startPos.x + (this.targetPos.x - this.startPos.x) * t,
+            this.startPos.y + (this.targetPos.y - this.startPos.y) * t
+          );
+          this.frameTime += deltaTime;
+          if (this.frameTime >= this.frameDelay) {
+            this.currentFrame = (this.currentFrame + 1) % this.frameCount;
+            this.frameTime = 0;
+          }
+          if (t >= 1) {
+            this.moving = false;
+            this.gridX = this.targetGridX; this.gridY = this.targetGridY;
+            this.currentFrame = 0;
+          }
+        } else {
+          let targetGridX, targetGridY;
+          if (baitBombs.length > 0) {
+            let targetBomb = baitBombs[0];
+            targetGridX = targetBomb.tileX; targetGridY = targetBomb.tileY;
+          } else {
+            targetGridX = player.gridX; targetGridY = player.gridY;
+            let dxP = player.gridX - this.gridX, dyP = player.gridY - this.gridY;
+            let manhattanP = Math.abs(dxP) + Math.abs(dyP);
+            if (manhattanP <= 1 && this.attackCooldown <= 0) {
+              this.shoot();
+              this.attackCooldown = 1.0;
+              return;
+            }
+          }
+          let dx = targetGridX - this.gridX, dy = targetGridY - this.gridY;
+          if (Math.abs(dx) + Math.abs(dy) > 0) {
+            let direction = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+            this.move(direction);
+          }
+          if (this.attackCooldown > 0) this.attackCooldown -= deltaTime;
+        }
+        this.knockback = this.knockback.scale(0.9);
+      }
+      render(ctx, camera) {
+        let pos = this.position.add(this.knockback);
+        let screenPos = camera.worldToScreen(pos);
+        if (this.spriteLoaded) {
+          let row = 0;
+          switch (this.direction) {
+            case "down": row = 0; break;
+            case "right": row = 1; break;
+            case "up": row = 2; break;
+            case "left": row = 3; break;
+            default: row = 0;
+          }
+          let srcX = this.currentFrame * 32, srcY = row * 32;
+          ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
+        } else {
+          ctx.fillStyle = "green";
+          ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
+        }
+      }
+      move(direction) {
+        if (this.moving) return;
+        let newGridX = this.gridX, newGridY = this.gridY;
+        if (direction === "up") newGridY -= 1;
+        else if (direction === "down") newGridY += 1;
+        else if (direction === "left") newGridX -= 1;
+        else if (direction === "right") newGridX += 1;
+        if (newGridX < 0 || newGridX >= this.tileMap.width ||
+            newGridY < 0 || newGridY >= this.tileMap.height) return;
+        if (this.tileMap.tiles[newGridY][newGridX].tileType !== 0) return;
+        this.moving = true;
+        this.moveTime = 0;
+        this.startPos = this.position;
+        this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
+        this.targetGridX = newGridX; this.targetGridY = newGridY;
+        this.direction = direction;
+        this.frameTime = 0; this.currentFrame = 0;
+      }
+      shoot() {
+        let startPos = new Vector2(this.position.x + this.width / 2, this.position.y + this.height / 2);
+        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+        let diff = playerCenter.subtract(startPos), norm = diff.normalize();
+        let bulletSpeed = 600, velocity = norm.scale(bulletSpeed);
+        bullets.push(new Bullet(startPos, velocity, "enemy"));
+      }
+    }
+    
+    let screenShakeTime = 0, screenShakeMagnitude = 0, shakeOffset = new Vector2(0, 0);
+    function resolveCollision(entityA, entityB) {
+      let ax = entityA.position.x + entityA.knockback.x,
+          ay = entityA.position.y + entityA.knockback.y,
+          aw = entityA.width, ah = entityA.height;
+      let bx = entityB.position.x + entityB.knockback.x,
+          by = entityB.position.y + entityB.knockback.y,
+          bw = entityB.width, bh = entityB.height;
+      if (ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by) {
+        let centerA = new Vector2(ax + aw / 2, ay + ah / 2);
+        let centerB = new Vector2(bx + bw / 2, by + bh / 2);
+        let diff = centerA.subtract(centerB);
+        let distance = diff.length();
+        if (distance === 0) { diff = new Vector2(1, 0); distance = 1; }
+        let minDistance = (aw + bw) / 4;
+        let overlap = minDistance - distance;
+        if (overlap > 0) {
+          let knock = diff.normalize().scale(overlap * 0.5);
+          entityA.knockback = entityA.knockback.add(knock);
+          entityB.knockback = entityB.knockback.subtract(knock);
+        }
+      }
+    }
+    
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const camera = new Camera(canvas.width, canvas.height);
+    const tileMap = new TileMap(20, 20, 64, 32);
+    let corners = [
+      tileMap.gridToWorld(0, 0),
+      tileMap.gridToWorld(tileMap.width - 1, 0),
+      tileMap.gridToWorld(0, tileMap.height - 1),
+      tileMap.gridToWorld(tileMap.width - 1, tileMap.height - 1)
+    ];
+    let worldMinX = Math.min(...corners.map(c => c.x));
+    let worldMaxX = Math.max(...corners.map(c => c.x)) + tileMap.tileWidth;
+    let worldMinY = Math.min(...corners.map(c => c.y));
+    let worldMaxY = Math.max(...corners.map(c => c.y)) + tileMap.tileHeight;
+    function updateCamera() {
+      let halfWidth = (canvas.width / camera.zoom) / 2;
+      let halfHeight = (canvas.height / camera.zoom) / 2;
+      let worldWidth = worldMaxX - worldMinX, worldHeight = worldMaxY - worldMinY;
+      let targetX = player.position.x, targetY = player.position.y;
+      if (worldWidth < canvas.width / camera.zoom) { targetX = worldMinX + worldWidth / 2; }
+      else { targetX = clamp(player.position.x, worldMinX + halfWidth, worldMaxX - halfWidth); }
+      if (worldHeight < canvas.height / camera.zoom) { targetY = worldMinY + worldHeight / 2; }
+      else { targetY = clamp(player.position.y, worldMinY + halfHeight, worldMaxY - halfHeight); }
+      camera.position = new Vector2(targetX, targetY);
+    }
+    
+    let player = new Player(5, 5, tileMap);
+    // Initialize current strike meter to 0.
+    player.strikeMeter = 0;
+    
+    const bullets = [], enemies = [];
+    let enemySpawnTimer = 0;
+    
+    function performAutoStrike() {
+      let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+      // Use current strikeMeter for checking available meter.
+      let effectiveRange = (strikeRangeTiles > 1 && player.strikeMeter >= 10) ? strikeRangeTiles * 50 : 50;
+      const offsetDistance = 20;
+      enemies.forEach(enemy => {
+        let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+        if (playerCenter.subtract(enemyCenter).length() < effectiveRange) {
+          triggerScreenFlash();
+          addSpriteFlash(enemy.position);
+          enemy.alive = false;
+          spawnEnemyExplosionEffect(enemy.position);
+          killCount++;
+          let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+          let effectX = playerCenter.x + Math.cos(angle) * offsetDistance;
+          let effectY = playerCenter.y + Math.sin(angle) * offsetDistance;
+          spawnMeleeEffect(effectX, effectY, angle);
+        }
+      });
+    }
+    
+    function performManualStrikeAt(tapX, tapY) {
+      let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
+      const offsetDistance = 20;
+      for (let enemy of enemies) {
+        let screenPos = camera.worldToScreen(enemy.position);
+        let rect = { x: screenPos.x, y: screenPos.y, width: enemy.width, height: enemy.height };
+        if (tapX >= rect.x && tapX <= rect.x + rect.width && tapY >= rect.y && tapY <= rect.y + rect.height) {
+          triggerScreenFlash();
+          addSpriteFlash(enemy.position);
+          enemy.alive = false;
+          spawnEnemyExplosionEffect(enemy.position);
+          killCount++;
+          let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+          let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+          let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+          let effectX = playerCenter.x + Math.cos(angle) * offsetDistance;
+          let effectY = playerCenter.y + Math.sin(angle) * offsetDistance;
+          spawnMeleeEffect(effectX, effectY, angle);
+          return true;
+        }
+      }
+      return false;
+    }
+    
+    let dragStart = null;
+    canvas.addEventListener("mousedown", (evt) => { dragStart = { x: evt.clientX, y: evt.clientY }; });
+    canvas.addEventListener("mousemove", (evt) => { });
+    canvas.addEventListener("mouseup", (evt) => {
+      if (!dragStart) return;
+      let dx = evt.clientX - dragStart.x;
+      let dy = evt.clientY - dragStart.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 10) {
+        let direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+        if (!player.moving) { player.strike(direction); }
+      } else { handleTap(evt); }
+      dragStart = null;
+    });
+    
+    function handleTap(evt) {
+      evt.preventDefault();
+      let rect = canvas.getBoundingClientRect();
+      let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
+      if (performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; }
+      let dir = computeDirection(evt.clientX, evt.clientY);
+      if (dir && !player.moving) { player.move(dir); }
+      else {
+        let playerScreenPos = camera.worldToScreen(player.position);
+        if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
+            tapY >= playerScreenPos.y && tapY <= playerScreenPos.y + player.height) { triggerHeadbutt(); }
+      }
+    }
+    
+    function computeDirection(clientX, clientY) {
+      let rect = canvas.getBoundingClientRect();
+      let tapX = clientX - rect.left, tapY = clientY - rect.top;
+      let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
+      let gridX = Math.floor((worldPos.x / 32 + worldPos.y / 16) / 2);
+      let gridY = Math.floor((worldPos.y / 16 - worldPos.x / 32) / 2);
+      if (gridX === player.gridX && gridY === player.gridY) return null;
+      let dx = gridX - player.gridX, dy = gridY - player.gridY;
+      let direction;
+      if (Math.abs(dx) + Math.abs(dy) === 1) { 
+        direction = dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up"; 
+      } else { 
+        direction = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); 
+      }
+      return direction;
+    }
+    
+    function rectIntersect(a, b) {
+      return a.x < b.x + b.width && a.x + a.width > b.x &&
+             a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+    
+    function triggerHeadbutt() {
+      let playerScreenPos = camera.worldToScreen(player.position);
+      let headbuttDiv = document.getElementById("headbuttEffect");
+      headbuttDiv.style.left = (playerScreenPos.x + player.width / 2 - 32) + "px";
+      headbuttDiv.style.top = (playerScreenPos.y + player.height / 2 - 32) + "px";
+      headbuttDiv.classList.remove("active");
+      void headbuttDiv.offsetWidth;
+      headbuttDiv.classList.add("active");
+      let playerBox = { x: playerScreenPos.x, y: playerScreenPos.y, width: player.width, height: player.height };
+      enemies.forEach((enemy) => {
+        let enemyScreenPos = camera.worldToScreen(enemy.position);
+        let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
+        if (rectIntersect(playerBox, enemyBox)) {
+          addSpriteFlash(enemy.position);
+          let playerCenter = new Vector2(playerBox.x + playerBox.width / 2, playerBox.y + playerBox.height / 2);
+          let enemyCenter = new Vector2(enemyBox.x + enemyBox.width / 2, enemyBox.y + enemyBox.height / 2);
+          let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
+          enemy.knockback = enemy.knockback.add(knockVec);
+        }
+      });
+    }
+    
+    function deployBomb() {
+      if (bombCount > 0) {
+        bombCount--;
+        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));
+      }
+    }
+    document.getElementById("bombBtn").addEventListener("touchstart", (evt) => { evt.preventDefault(); deployBomb(); });
+    document.getElementById("bombBtn").addEventListener("mousedown", (evt) => { evt.preventDefault(); deployBomb(); });
+    canvas.addEventListener("contextmenu", (evt) => { evt.preventDefault(); deployBomb(); });
+    
+    function updateExplosivesSlot() {
+      const explosivesSlot = document.getElementById("explosivesSlot");
+      explosivesSlot.innerHTML = "💣<div class='counter'>" + bombCount + "</div>";
+      if (bombCount > 0) {
+        explosivesSlot.style.opacity = "1";
+        explosivesSlot.style.cursor = "pointer";
+      } else {
+        explosivesSlot.style.opacity = "0.5";
+        explosivesSlot.style.cursor = "default";
+      }
+    }
+    
+    function updatePowerupTraySlots() {
+      const defenseSlot = document.getElementById("defenseSlot");
+      const charmsSlot = document.getElementById("charmsSlot");
+      if (defenseBoostActive) {
+        defenseSlot.classList.remove("dimmed");
+        defenseSlot.innerHTML = "🛡️<div class='timer'>" + Math.ceil(defenseBoostTimer) + "s</div>";
+      } else {
+        defenseSlot.classList.add("dimmed");
+        defenseSlot.innerHTML = "🛡️";
+      }
+      if (healingCharmActive) {
+        charmsSlot.classList.remove("dimmed");
+        charmsSlot.innerHTML = "🪬<div class='timer'>" + Math.ceil(healingCharmTimer) + "s</div>";
+      } else {
+        charmsSlot.classList.add("dimmed");
+        charmsSlot.innerHTML = "🪬";
+      }
+    }
+    
+    function updatePickups() {
+      for (let i = pickups.length - 1; i >= 0; i--) {
+        let pickup = pickups[i];
+        if (player.position.x < pickup.position.x + pickup.size &&
+            player.position.x + player.width > pickup.position.x &&
+            player.position.y < pickup.position.y + pickup.size &&
+            player.position.y + player.height > pickup.position.y) {
+          if (pickup instanceof BombPickup) {
+            bombCount++;
+            spawnPickupEffect(pickup.position);
+          } else if (pickup instanceof SwordPickup) {
+            if (strikeRangeTiles > 1) {
+              // Fill the current strike meter.
+              player.strikeMeter = strikeMeterCapacity;
+            }
+            spawnPickupEffect(pickup.position);
+          } else if (pickup instanceof HealthPickup) {
+            player.hp = Math.min(player.hp + 20, player.maxHP);
+            spawnPickupEffect(pickup.position);
+          } else if (pickup instanceof DefenseBoostPickup) {
+            defenseBoostActive = true;
+            defenseBoostTimer = baseDefenseBoostDuration;
+            spawnPickupEffect(pickup.position);
+          } else if (pickup instanceof HealingCharmPickup) {
+            healingCharmActive = true;
+            healingCharmTimer = baseHealingCharmDuration;
+            spawnPickupEffect(pickup.position);
+          }
+          pickups.splice(i, 1);
+        }
+      }
+    }
+    
+    function updateBaitBombs(deltaTime) {
+      for (let i = baitBombs.length - 1; i >= 0; i--) {
+        baitBombs[i].update(deltaTime);
+        if (baitBombs[i].timer <= 0) {
+          screenShakeTime = 0.5;
+          screenShakeMagnitude = 20;
+          spawnExplosionEffect(baitBombs[i].position);
+          let bx = baitBombs[i].tileX, by = baitBombs[i].tileY;
+          enemies.forEach((enemy) => {
+            if (enemy.gridX >= bx - 1 && enemy.gridX <= bx + 1 &&
+                enemy.gridY >= by - 1 && enemy.gridY <= by + 1) {
+              if (enemy.alive) {
+                let blastDir = enemy.position.subtract(baitBombs[i].position).normalize();
+                let blastForce = blastDir.scale(200);
+                enemy.knockback = enemy.knockback.add(blastForce);
+                enemy.alive = false;
+                spawnEnemyExplosionEffect(enemy.position);
+                killCount++;
+                triggerScreenFlash();
+                addSpriteFlash(enemy.position);
+              }
+            }
+          });
+          baitBombs.splice(i, 1);
+        }
+      }
+    }
+    
+    function drawHUD(ctx) {
+      // HP Bar
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 20, 200, 24);
+      ctx.fillStyle = "red";
+      let hpWidth = (player.hp / player.maxHP) * 100;
+      ctx.fillRect(22, 22, hpWidth, 20);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 20, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.fillText("HP: " + player.hp, 30, 38);
+      ctx.fillText("Kills: " + killCount, 130, 38);
+      
+      // Bombs
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 50, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 50, 200, 24);
+      ctx.fillText("Bombs: " + bombCount, 30, 68);
+      
+      // Points
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 80, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 80, 200, 24);
+      ctx.fillText("Points: " + Math.floor(points), 30, 98);
+      
+      // Auto Strike Timer and indicator
+      ctx.fillStyle = "black";
+      ctx.fillRect(20, 110, 200, 24);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 110, 200, 24);
+      ctx.fillStyle = "white";
+      ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
+      
+      // Strike Meter Bar using player.strikeMeter (current value)
+      let hudMeterWidth = Math.min(200, canvas.width - 40);
+      ctx.fillStyle = "#222";
+      ctx.fillRect(20, 140, hudMeterWidth, 24);
+      let fillWidth = (player.strikeMeter / strikeMeterCapacity) * hudMeterWidth;
+      fillWidth = Math.min(fillWidth, hudMeterWidth);
+      ctx.fillStyle = "rgba(255,215,0,0.8)";
+      ctx.fillRect(20, 140, fillWidth, 24);
+      ctx.strokeStyle = "white";
+      ctx.strokeRect(20, 140, hudMeterWidth, 24);
+      ctx.fillStyle = "white";
+      ctx.fillText("Strike: " + strikeRangeTiles + " tile(s)", 30, 158);
+      
+      // Auto Strike Indicator ❌✅
+      ctx.textAlign = "right";
+      ctx.font = "16px Arial";
+      ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 215, 128);
+      ctx.textAlign = "left";
+    }
+    
+    function showUpgradeMenu() {
+      isUpgradeMenuVisible = true;
+      document.getElementById("upgradeMenu").style.display = "flex";
+      document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      timeScale = 0;
+    }
+    function resumeGame() {
+      isUpgradeMenuVisible = false;
+      document.getElementById("upgradeMenu").style.display = "none";
+      enemies.length = 0; bullets.length = 0; pickups.length = 0; baitBombs.length = 0;
+      player.respawn();
+      autoStrikeTime = baseAutoStrikeTime;
+      timeScale = 1.0;
+    }
+    
+    document.getElementById("increaseHP").addEventListener("click", () => {
+      const cost = 50;
+      if (points >= cost) {
+        points -= cost;
+        player.maxHP += 20;
+        player.hp += 20;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseAutoRun").addEventListener("click", () => {
+      const cost = 200;
+      if (points >= cost) {
+        points -= cost;
+        baseAutoStrikeTime += 10;
+        autoStrikeTime += 10;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseDash").addEventListener("click", () => {
+      const cost = 300;
+      if (points >= cost && strikeRangeTiles < tileMap.width) {
+        points -= cost;
+        strikeRangeTiles++;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseStrikeMeter").addEventListener("click", () => {
+      const cost = 150;
+      if (points >= cost) {
+        points -= cost;
+        strikeMeterCapacity += 10;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseHealingCharmTime").addEventListener("click", () => {
+      const cost = 250;
+      if (points >= cost) {
+        points -= cost;
+        baseHealingCharmDuration += 2;
+        baseHealingCharmHeal += 0.5;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseShieldingTime").addEventListener("click", () => {
+      const cost = 250;
+      if (points >= cost) {
+        points -= cost;
+        baseDefenseBoostDuration += 2;
+        baseShieldDamageReduction = Math.min(baseShieldDamageReduction + 0.1, 0.9);
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("resumeGame").addEventListener("click", () => { resumeGame(); });
+    
+    let lastTime = performance.now();
+    function gameLoop() {
+      let currentTime = performance.now();
+      let deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+      globalTime += deltaTime;
+      
+      // Deplete the current strike meter over time
+      if (!player.isDead && !isUpgradeMenuVisible) {
+        player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
+      }
+      
+      let effectiveDelta = deltaTime * timeScale;
+      
+      if (!player.isDead && !isUpgradeMenuVisible) { points += effectiveDelta * 10; }
+      
+      if (!isUpgradeMenuVisible) {
+        player.update(effectiveDelta);
+        enemies.forEach(enemy => enemy.update(effectiveDelta));
+        bullets.forEach(bullet => bullet.update(effectiveDelta));
+        updateEffects(effectiveDelta);
+        updateMeleeEffects(effectiveDelta);
+        updatePickups();
+        updateBaitBombs(effectiveDelta);
+        
+        bullets.forEach(bullet => {
+          if (bullet.owner === "player") {
+            enemies.forEach(enemy => {
+              if (bullet.position.x >= enemy.position.x &&
+                  bullet.position.x <= enemy.position.x + enemy.width &&
+                  bullet.position.y >= enemy.position.y &&
+                  bullet.position.y <= enemy.position.y + enemy.height) {
+                bullet.alive = false;
+                let baseKnock = bullet.velocity.normalize().scale(20);
+                enemy.knockback = enemy.knockback.add(baseKnock);
+                screenShakeTime = 0.2;
+                screenShakeMagnitude = 10;
+              }
+            });
+          } else if (bullet.owner === "enemy") {
+            if (bullet.position.x >= player.position.x &&
+                bullet.position.x <= player.position.x + player.width &&
+                bullet.position.y >= player.position.y &&
+                bullet.position.y <= player.position.y + player.height) {
+              bullet.alive = false;
+              let damage = 20;
+              if (defenseBoostActive) {
+                damage *= (1 - baseShieldDamageReduction);
+              }
+              player.hp -= damage;
+              screenShakeTime = 0.2;
+              screenShakeMagnitude = 5;
+              if (player.hp <= 0 && !player.isDead) {
+                player.isDead = true;
+                spawnBloodEffect(player.position);
+                slowMotionTimer = 1.0;
+                timeScale = 0.2;
+                player.knockback = player.knockback.add(new Vector2(0, -50));
+                triggerScreenFlash();
+              }
+            }
+          }
+        });
+        
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          if (!bullets[i].alive) bullets.splice(i, 1);
+        }
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          if (!enemies[i].alive) enemies.splice(i, 1);
+        }
+        
+        let dynamicEnemySpawnInterval = Math.max(3.0 - (killCount * 0.05), 0.5);
+        enemySpawnTimer += effectiveDelta;
+        if (enemySpawnTimer >= dynamicEnemySpawnInterval) {
+          enemySpawnTimer = 0;
+          let edge = Math.floor(Math.random() * 4);
+          let gridX, gridY;
+          if (edge === 0) { gridX = 0; gridY = Math.floor(Math.random() * tileMap.height); }
+          else if (edge === 1) { gridX = tileMap.width - 1; gridY = Math.floor(Math.random() * tileMap.height); }
+          else if (edge === 2) { gridY = 0; gridX = Math.floor(Math.random() * tileMap.width); }
+          else { gridY = tileMap.height - 1; gridX = Math.floor(Math.random() * tileMap.width); }
+          enemies.push(new Enemy(gridX, gridY, tileMap));
+        }
+        
+        pickupSpawnTimer += effectiveDelta;
+        if (pickupSpawnTimer >= pickupSpawnInterval) {
+          pickupSpawnTimer = 0;
+          let gridX = Math.floor(Math.random() * tileMap.width);
+          let gridY = Math.floor(Math.random() * tileMap.height);
+          let rand = Math.random();
+          if (rand < 0.1) { pickups.push(new BombPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.2) { pickups.push(new SwordPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.3) { pickups.push(new HealthPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.4) { pickups.push(new DefenseBoostPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.5) { pickups.push(new HealingCharmPickup(gridX, gridY, tileMap)); }
+        }
+        
+        enemies.forEach(enemy => resolveCollision(player, enemy));
+        for (let i = 0; i < enemies.length; i++) {
+          for (let j = i + 1; j < enemies.length; j++) {
+            resolveCollision(enemies[i], enemies[j]);
+          }
+        }
+        
+        if (!player.isDead && autoStrikeTime > 0) {
+          autoStrikeTime -= deltaTime;
+          autoStrikeTimer -= deltaTime;
+          if (autoStrikeTimer <= 0) {
+            autoStrikeTimer = autoStrikeInterval;
+            performAutoStrike();
+          }
+          if (autoStrikeTime < 0) autoStrikeTime = 0;
+        }
+        
+        if (player.isDead && !isUpgradeMenuVisible) {
+          slowMotionTimer -= deltaTime;
+          if (slowMotionTimer <= 0) { showUpgradeMenu(); }
+        }
+        
+        updateCamera();
+      }
+      
+      ctx.fillStyle = "#505050";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      tileMap.render(ctx, camera);
+      enemies.forEach(enemy => enemy.render(ctx, camera));
+      pickups.forEach(pickup => pickup.render(ctx, camera, globalTime));
+      baitBombs.forEach(bomb => bomb.render(ctx, camera, globalTime));
+      bullets.forEach(bullet => bullet.render(ctx, camera));
+      renderEffects(ctx, camera);
+      renderMeleeEffects(ctx, camera);
+      player.render(ctx, camera);
+      drawHUD(ctx);
+      
+      if (screenFlashAlpha > 0) {
+        ctx.fillStyle = "rgba(255,0,0," + screenFlashAlpha + ")";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        screenFlashAlpha -= deltaTime * 2;
+        if (screenFlashAlpha < 0) screenFlashAlpha = 0;
+      }
+      
+      for (let i = spriteFlashes.length - 1; i >= 0; i--) {
+        let flash = spriteFlashes[i];
+        let playerBox = { x: player.position.x, y: player.position.y, width: player.width, height: player.height };
+        if (flash.position.x >= playerBox.x && flash.position.x <= playerBox.x + playerBox.width &&
+            flash.position.y >= playerBox.y && flash.position.y <= playerBox.y + playerBox.height) {
+          flash.timer -= deltaTime;
+          if (flash.timer <= 0) spriteFlashes.splice(i, 1);
+          continue;
+        }
+        let alpha = flash.timer / flash.duration;
+        ctx.fillStyle = "rgba(255,0,0," + alpha + ")";
+        let flashScreenPos = camera.worldToScreen(flash.position);
+        ctx.beginPath();
+        ctx.arc(flashScreenPos.x, flashScreenPos.y, 32, 0, Math.PI * 2);
+        ctx.fill();
+        flash.timer -= deltaTime;
+        if (flash.timer <= 0) spriteFlashes.splice(i, 1);
+      }
+      
+      updateExplosivesSlot();
+      updatePowerupTraySlots();
+      
+      let bombBtn = document.getElementById("bombBtn");
+      if (bombCount > 0) { bombBtn.style.opacity = "1"; bombBtn.disabled = false; bombBtn.classList.add("ready"); }
+      else { bombBtn.style.opacity = "0.5"; bombBtn.disabled = true; bombBtn.classList.remove("ready"); }
+      
+      requestAnimationFrame(gameLoop);
+    }
+    requestAnimationFrame(gameLoop);
+    
+  </script>
+</body>
+</html>
