@@ -183,7 +183,7 @@
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
-    // Strike-related
+    // Strike-related (using strikeMeter for current value)
     let strikeRangeTiles = 1;
     let strikeMeterCapacity = 100;
     
@@ -375,10 +375,12 @@
       for (let eff of effects) { eff.render(ctx, camera); }
     }
     
-    // Existing pickups
+    // Pickups
     class HealthPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -386,7 +388,7 @@
         let screenPos = camera.worldToScreen(this.position);
         let floatOffset = Math.sin(t * 2) * 5;
         ctx.save();
-        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
         ctx.rotate(t);
         ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
@@ -400,7 +402,9 @@
     
     class BombPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -408,7 +412,7 @@
         let screenPos = camera.worldToScreen(this.position);
         let floatOffset = Math.sin(t * 2) * 5;
         ctx.save();
-        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
         ctx.rotate(t);
         ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
@@ -422,7 +426,9 @@
     
     class SwordPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -430,7 +436,7 @@
         let screenPos = camera.worldToScreen(this.position);
         let floatOffset = Math.sin(t * 2) * 5;
         ctx.save();
-        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
         ctx.rotate(t);
         ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
@@ -442,10 +448,12 @@
       }
     }
     
-    // NEW: Defensive Boost Pickup (Shield)
+    // Defensive Boost Pickup (Shield)
     class DefenseBoostPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -453,7 +461,7 @@
         let screenPos = camera.worldToScreen(this.position);
         let floatOffset = Math.sin(t * 2) * 5;
         ctx.save();
-        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
         ctx.rotate(t);
         ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
@@ -465,10 +473,12 @@
       }
     }
     
-    // NEW: Healing Charm Pickup
+    // Healing Charm Pickup
     class HealingCharmPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -476,7 +486,7 @@
         let screenPos = camera.worldToScreen(this.position);
         let floatOffset = Math.sin(t * 2) * 5;
         ctx.save();
-        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.translate(screenPos.x, screenPos.y + this.size/2 + floatOffset);
         ctx.rotate(t);
         ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
@@ -538,7 +548,9 @@
         this.maxHP = 100;
         this.hp = 100;
         this.normalStrikeRange = 50;
-        this.maxStrikeMeter = 0;
+        // Use strikeMeter for the current (depleting) meter value
+        this.strikeMeter = 0;
+        this.maxStrikeMeter = strikeMeterCapacity;
         this.knockback = new Vector2(0, 0);
         this.isDead = false;
         this.spriteSheet = new Image();
@@ -645,9 +657,10 @@
         if (strikeRangeTiles <= 1) {
           strikeRange = this.normalStrikeRange;
         } else {
-          if (this.maxStrikeMeter >= 10) {
+          // Use the current strikeMeter for depletion.
+          if (this.strikeMeter >= 10) {
             strikeRange = strikeRangeTiles * 50;
-            this.maxStrikeMeter -= 10;
+            this.strikeMeter -= 10;
           } else {
             strikeRange = this.normalStrikeRange;
           }
@@ -856,12 +869,16 @@
     }
     
     let player = new Player(5, 5, tileMap);
+    // Initialize current strike meter to 0.
+    player.strikeMeter = 0;
+    
     const bullets = [], enemies = [];
     let enemySpawnTimer = 0;
     
     function performAutoStrike() {
       let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
-      let effectiveRange = (strikeRangeTiles > 1 && player.maxStrikeMeter >= 10) ? strikeRangeTiles * 50 : 50;
+      // Use current strikeMeter for checking available meter
+      let effectiveRange = (strikeRangeTiles > 1 && player.strikeMeter >= 10) ? strikeRangeTiles * 50 : 50;
       const offsetDistance = 20;
       enemies.forEach(enemy => {
         let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
@@ -940,8 +957,11 @@
       if (gridX === player.gridX && gridY === player.gridY) return null;
       let dx = gridX - player.gridX, dy = gridY - player.gridY;
       let direction;
-      if (Math.abs(dx) + Math.abs(dy) === 1) { direction = dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up"; }
-      else { direction = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); }
+      if (Math.abs(dx) + Math.abs(dy) === 1) { 
+        direction = dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up"; 
+      } else { 
+        direction = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); 
+      }
       return direction;
     }
     
@@ -1034,7 +1054,8 @@
             spawnPickupEffect(pickup.position);
           } else if (pickup instanceof SwordPickup) {
             if (strikeRangeTiles > 1) {
-              player.maxStrikeMeter = strikeMeterCapacity;
+              // Use strikeMeter here instead of maxStrikeMeter
+              player.strikeMeter = strikeMeterCapacity;
             }
             spawnPickupEffect(pickup.position);
           } else if (pickup instanceof HealthPickup) {
@@ -1082,7 +1103,7 @@
       }
     }
     
-    // Updated HUD: HP bar, Kills box, Points box, Strike Meter, Auto Strike timer.
+    // Updated HUD: now uses player.strikeMeter for display
     function drawHUD(ctx) {
       // Responsive HP Bar
       let hudWidth = Math.min(300, canvas.width - 40);
@@ -1113,10 +1134,10 @@
       ctx.strokeRect(130, 50, 100, 24);
       ctx.fillText("Pts: " + Math.floor(points), 135, 68);
       
-      // Strike Meter Bar
+      // Strike Meter Bar using player.strikeMeter
       ctx.fillStyle = "#222";
       ctx.fillRect(20, 80, hudWidth, 24);
-      let fillWidth = (player.maxStrikeMeter / strikeMeterCapacity) * hudWidth;
+      let fillWidth = (player.strikeMeter / strikeMeterCapacity) * hudWidth;
       fillWidth = Math.min(fillWidth, hudWidth);
       ctx.fillStyle = "rgba(255,215,0,0.8)";
       ctx.fillRect(20, 80, fillWidth, 24);
@@ -1187,7 +1208,6 @@
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
-    // New upgrade: Increase healing charm duration and heal rate
     document.getElementById("increaseHealingCharmTime").addEventListener("click", () => {
       const cost = 250;
       if (points >= cost) {
@@ -1197,7 +1217,6 @@
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
-    // New upgrade: Increase shield duration and damage reduction
     document.getElementById("increaseShieldingTime").addEventListener("click", () => {
       const cost = 250;
       if (points >= cost) {
@@ -1216,10 +1235,10 @@
       lastTime = currentTime;
       globalTime += deltaTime;
       
-      // Deplete strike meter over time
+      // Deplete strike meter over time using the current meter.
       if (!player.isDead && !isUpgradeMenuVisible) {
-  player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
-}
+        player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
+      }
       
       let effectiveDelta = deltaTime * timeScale;
       
