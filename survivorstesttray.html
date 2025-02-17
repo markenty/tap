@@ -78,7 +78,7 @@
       gap: 10px;
       margin: 20px 0;
     }
-    /* --- Item Tray Styling --- */
+    /* --- Tray Styling --- */
     #itemTray {
       position: absolute;
       bottom: 20px;
@@ -90,6 +90,7 @@
       z-index: 20;
     }
     .tray-slot {
+      position: relative;
       background: rgba(0, 0, 0, 0.5);
       border: 2px solid white;
       border-radius: 10px;
@@ -112,6 +113,14 @@
       opacity: 0.5;
       pointer-events: none;
     }
+    /* Countdown timer overlay in tray slots */
+    .tray-slot .timer {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 14px;
+      color: yellow;
+    }
     @media (max-width: 600px) {
       #itemTray {
         grid-template-columns: repeat(4, 50px);
@@ -122,6 +131,9 @@
         width: 50px;
         height: 50px;
         font-size: 28px;
+      }
+      .tray-slot .timer {
+        font-size: 12px;
       }
     }
   </style>
@@ -142,15 +154,18 @@
         <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
         <button id="increaseDash">➡️ Increase Strike Range (+1 tile) - Cost: 300</button>
         <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
+        <!-- New upgrade buttons -->
+        <button id="increaseHealingCharmTime">🪬 Increase Healing Charm Time (+2s) - Cost: 250</button>
+        <button id="increaseShieldingTime">🛡️ Increase Shielding Time (+2s) - Cost: 250</button>
       </div>
       <button id="resumeGame" style="margin-top: 20px;">▶️ Resume Game</button>
     </div>
   </div>
   
-  <!-- Item Tray (Replaces Bomb Button) -->
+  <!-- Item Tray (Attack, Defense, Charms, Explosives) -->
   <div id="itemTray">
     <div class="tray-slot" id="attackSlot">👊</div>
-    <div class="tray-slot dimmed" id="defenseSlot">🛡</div>
+    <div class="tray-slot dimmed" id="defenseSlot">🛡️</div>
     <div class="tray-slot dimmed" id="charmsSlot">🪬</div>
     <div class="tray-slot" id="explosivesSlot">💣</div>
   </div>
@@ -169,9 +184,17 @@
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
-    // Strike-related variables
+    // Strike-related
     let strikeRangeTiles = 1;
     let strikeMeterCapacity = 100;
+    
+    // New power-up state variables
+    let defenseBoostActive = false;
+    let defenseBoostTimer = 0;
+    let healingCharmActive = false;
+    let healingCharmTimer = 0;
+    let baseDefenseBoostDuration = 10;
+    let baseHealingCharmDuration = 10;
     
     let screenFlashAlpha = 0;
     let spriteFlashes = [];
@@ -350,6 +373,7 @@
       for (let eff of effects) { eff.render(ctx, camera); }
     }
     
+    // Existing pickups
     class HealthPickup {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
@@ -362,8 +386,11 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
-        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; 
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle";
         ctx.fillText("❤️", 0, 0);
         ctx.restore();
       }
@@ -381,8 +408,11 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
-        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; 
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle";
         ctx.fillText("💣", 0, 0);
         ctx.restore();
       }
@@ -400,38 +430,62 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; ctx.shadowColor = "rgba(255,255,255,0.8)";
-        ctx.font = `${this.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`; 
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle";
         ctx.fillText("⚔️", 0, 0);
         ctx.restore();
       }
     }
     
-    class BaitBomb {
+    // New pickups: Defensive Boost and Healing Charm
+    class DefenseBoostPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.tileX = tileX; this.tileY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
-        this.timer = 3.0;
+        this.size = tileMap.tileWidth / 2;
       }
-      update(deltaTime) { this.timer -= deltaTime; }
       render(ctx, camera, t) {
         let screenPos = camera.worldToScreen(this.position);
-        let pulse = 1 + 0.2 * Math.sin(t * 10);
-        let flash = Math.abs(Math.sin(t * 15));
+        let floatOffset = Math.sin(t * 2) * 5;
         ctx.save();
-        ctx.translate(screenPos.x, screenPos.y);
-        ctx.scale(pulse, pulse);
-        ctx.shadowBlur = 20 * flash;
-        ctx.shadowColor = `rgba(255,255,0,${flash})`;
-        ctx.font = `${this.tileMap.tileWidth / 2}px sans-serif`;
-        ctx.textAlign = "center";
+        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center"; 
         ctx.textBaseline = "middle";
-        ctx.fillStyle = flash > 0.5 ? "#FFFF00" : "#FFFFFF";
-        ctx.fillText("💣", 0, 0);
+        ctx.fillText("🛡️", 0, 0);
         ctx.restore();
-        ctx.font = "12px sans-serif";
-        ctx.fillStyle = "white";
-        ctx.fillText(this.timer.toFixed(1), screenPos.x, screenPos.y - 5);
+      }
+    }
+    
+    class HealingCharmPickup {
+      constructor(tileX, tileY, tileMap) {
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
+        this.position = tileMap.gridToWorld(tileX, tileY);
+        this.size = tileMap.tileWidth / 2;
+      }
+      render(ctx, camera, t) {
+        let screenPos = camera.worldToScreen(this.position);
+        let floatOffset = Math.sin(t * 2) * 5;
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
+        ctx.rotate(t);
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle";
+        ctx.fillText("🪬", 0, 0);
+        ctx.restore();
       }
     }
     
@@ -888,15 +942,13 @@
       }
     }
     
-    // Remove bomb button logic and add event listener for the explosives slot.
+    // Remove bomb button logic; use tray's explosives slot instead.
     const explosivesSlot = document.getElementById("explosivesSlot");
     explosivesSlot.addEventListener("click", (evt) => {
       if (bombCount > 0) {
         deployBomb();
         explosivesSlot.classList.add("active");
-        setTimeout(() => {
-          explosivesSlot.classList.remove("active");
-        }, 200);
+        setTimeout(() => { explosivesSlot.classList.remove("active"); }, 200);
       }
     });
     
@@ -908,6 +960,26 @@
       } else {
         explosivesSlot.style.opacity = "0.5";
         explosivesSlot.style.cursor = "default";
+      }
+    }
+    
+    // Update defense and healing charm tray slots based on active timers
+    function updatePowerupTraySlots() {
+      const defenseSlot = document.getElementById("defenseSlot");
+      const charmsSlot = document.getElementById("charmsSlot");
+      if (defenseBoostActive) {
+        defenseSlot.classList.remove("dimmed");
+        defenseSlot.innerHTML = "🛡️<div class='timer'>" + Math.ceil(defenseBoostTimer) + "s</div>";
+      } else {
+        defenseSlot.classList.add("dimmed");
+        defenseSlot.innerHTML = "🛡️";
+      }
+      if (healingCharmActive) {
+        charmsSlot.classList.remove("dimmed");
+        charmsSlot.innerHTML = "🪬<div class='timer'>" + Math.ceil(healingCharmTimer) + "s</div>";
+      } else {
+        charmsSlot.classList.add("dimmed");
+        charmsSlot.innerHTML = "🪬";
       }
     }
     
@@ -926,8 +998,16 @@
               player.maxStrikeMeter = strikeMeterCapacity;
             }
             spawnPickupEffect(pickup.position);
-          } else {
+          } else if (pickup instanceof HealthPickup) {
             player.hp = Math.min(player.hp + 20, player.maxHP);
+            spawnPickupEffect(pickup.position);
+          } else if (pickup instanceof DefenseBoostPickup) {
+            defenseBoostActive = true;
+            defenseBoostTimer = baseDefenseBoostDuration;
+            spawnPickupEffect(pickup.position);
+          } else if (pickup instanceof HealingCharmPickup) {
+            healingCharmActive = true;
+            healingCharmTimer = baseHealingCharmDuration;
             spawnPickupEffect(pickup.position);
           }
           pickups.splice(i, 1);
@@ -1037,6 +1117,7 @@
       timeScale = 1.0;
     }
     
+    // Existing upgrade buttons
     document.getElementById("increaseHP").addEventListener("click", () => {
       const cost = 50;
       if (points >= cost) {
@@ -1071,6 +1152,23 @@
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
+    // New upgrade buttons for power-up durations
+    document.getElementById("increaseHealingCharmTime").addEventListener("click", () => {
+      const cost = 250;
+      if (points >= cost) {
+        points -= cost;
+        baseHealingCharmDuration += 2;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseShieldingTime").addEventListener("click", () => {
+      const cost = 250;
+      if (points >= cost) {
+        points -= cost;
+        baseDefenseBoostDuration += 2;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
     document.getElementById("resumeGame").addEventListener("click", () => { resumeGame(); });
     
     let lastTime = performance.now();
@@ -1080,6 +1178,7 @@
       lastTime = currentTime;
       globalTime += deltaTime;
       
+      // Update strike meter
       if (!player.isDead && !isUpgradeMenuVisible) {
         player.maxStrikeMeter = Math.max(0, player.maxStrikeMeter - goldDecayRate * deltaTime);
       }
@@ -1087,6 +1186,20 @@
       let effectiveDelta = deltaTime * timeScale;
       
       if (!player.isDead && !isUpgradeMenuVisible) { points += effectiveDelta * 10; }
+      
+      // Update active power-ups (defense and healing charm)
+      if (defenseBoostActive) {
+        defenseBoostTimer -= effectiveDelta;
+        if (defenseBoostTimer <= 0) {
+          defenseBoostActive = false;
+        }
+      }
+      if (healingCharmActive) {
+        healingCharmTimer -= effectiveDelta;
+        if (healingCharmTimer <= 0) {
+          healingCharmActive = false;
+        }
+      }
       
       if (!isUpgradeMenuVisible) {
         player.update(effectiveDelta);
@@ -1160,7 +1273,9 @@
           let rand = Math.random();
           if (rand < 0.1) { pickups.push(new BombPickup(gridX, gridY, tileMap)); }
           else if (rand < 0.2) { pickups.push(new SwordPickup(gridX, gridY, tileMap)); }
-          else { pickups.push(new HealthPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.3) { pickups.push(new HealthPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.4) { pickups.push(new DefenseBoostPickup(gridX, gridY, tileMap)); }
+          else if (rand < 0.5) { pickups.push(new HealingCharmPickup(gridX, gridY, tileMap)); }
         }
         
         enemies.forEach(enemy => resolveCollision(player, enemy));
@@ -1226,8 +1341,8 @@
         if (flash.timer <= 0) spriteFlashes.splice(i, 1);
       }
       
-      // Update the explosives slot appearance based on bombCount.
       updateExplosivesSlot();
+      updatePowerupTraySlots();
       
       requestAnimationFrame(gameLoop);
     }
