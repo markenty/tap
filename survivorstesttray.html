@@ -308,9 +308,6 @@
         this.position = this.position.add(this.velocity.scale(deltaTime));
         this.life -= deltaTime;
       }
-     if (!player.isDead && !isUpgradeMenuVisible) {
-  player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
-} 
       render(ctx, camera) {
         let alpha = Math.max(this.life / this.maxLife, 0);
         let screenPos = camera.worldToScreen(this.position);
@@ -493,39 +490,6 @@
     
     let pickups = [], baitBombs = [];
     let pickupSpawnTimer = 0, pickupSpawnInterval = 10.0;
-    
-    // NEW: BaitBomb class (for bomb deployment)
-    class BaitBomb {
-      constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap;
-        this.tileX = tileX;
-        this.tileY = tileY;
-        this.position = tileMap.gridToWorld(tileX, tileY);
-        this.timer = 3.0;
-      }
-      update(deltaTime) {
-        this.timer -= deltaTime;
-      }
-      render(ctx, camera, t) {
-        let screenPos = camera.worldToScreen(this.position);
-        let pulse = 1 + 0.2 * Math.sin(t * 10);
-        let flash = Math.abs(Math.sin(t * 15));
-        ctx.save();
-        ctx.translate(screenPos.x, screenPos.y);
-        ctx.scale(pulse, pulse);
-        ctx.shadowBlur = 20 * flash;
-        ctx.shadowColor = `rgba(255,255,0,${flash})`;
-        ctx.font = `${this.tileMap.tileWidth / 2}px sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = flash > 0.5 ? "#FFFF00" : "#FFFFFF";
-        ctx.fillText("💣", 0, 0);
-        ctx.restore();
-        ctx.font = "12px sans-serif";
-        ctx.fillStyle = "white";
-        ctx.fillText(this.timer.toFixed(1), screenPos.x, screenPos.y - 5);
-      }
-    }
     
     class Bullet {
       constructor(position, velocity, owner) {
@@ -1008,7 +972,7 @@
       });
     }
     
-    // Bomb deployment triggered by tapping the bomb tile (explosives slot)
+    // Bomb deployment triggered by tapping the bomb tile
     function deployBomb() {
       if (bombCount > 0) {
         bombCount--;
@@ -1016,7 +980,7 @@
       }
     }
     
-    // Tapping the bomb tile drops a bomb
+    // Tapping the bomb tile (explosives slot) deploys a bomb
     const explosivesSlot = document.getElementById("explosivesSlot");
     explosivesSlot.addEventListener("click", (evt) => {
       if (bombCount > 0) {
@@ -1038,7 +1002,7 @@
       }
     }
     
-    // Update power-up tray slots (defense & healing charm)
+    // Update power-up tray slots for shield and healing charm
     function updatePowerupTraySlots() {
       const defenseSlot = document.getElementById("defenseSlot");
       const charmsSlot = document.getElementById("charmsSlot");
@@ -1118,7 +1082,7 @@
       }
     }
     
-    // Updated HUD: HP bar, Kills box, Points box, Strike Meter, and Auto Strike timer with status.
+    // Updated HUD: HP bar, Kills box, Points box, Strike Meter, Auto Strike timer.
     function drawHUD(ctx) {
       // Responsive HP Bar
       let hudWidth = Math.min(300, canvas.width - 40);
@@ -1161,16 +1125,13 @@
       ctx.fillStyle = "white";
       ctx.fillText("Strike: " + strikeRangeTiles + " tile(s)", 25, 98);
       
-      // Auto Strike Timer with status icon
+      // Auto Strike Timer
       ctx.fillStyle = "black";
       ctx.fillRect(20, 110, 100, 24);
       ctx.strokeStyle = "white";
       ctx.strokeRect(20, 110, 100, 24);
       ctx.fillStyle = "white";
       ctx.fillText("Auto: " + autoStrikeTime.toFixed(1) + "s", 25, 128);
-      ctx.textAlign = "right";
-      ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 115, 128);
-      ctx.textAlign = "left";
     }
     
     function showUpgradeMenu() {
@@ -1255,19 +1216,14 @@
       lastTime = currentTime;
       globalTime += deltaTime;
       
-      // Update auto-strike counters even if autoStrikeTime is 0
-      if (!player.isDead) {
-        autoStrikeTime = Math.max(autoStrikeTime - deltaTime, 0);
-        autoStrikeTimer -= deltaTime;
-        if (autoStrikeTime > 0 && autoStrikeTimer <= 0) {
-          autoStrikeTimer = autoStrikeInterval;
-          performAutoStrike();
-        }
+      // Deplete strike meter over time
+      if (!player.isDead && !isUpgradeMenuVisible) {
+        player.maxStrikeMeter = Math.max(0, player.maxStrikeMeter - goldDecayRate * deltaTime);
       }
       
-      if (!player.isDead && !isUpgradeMenuVisible) { points += deltaTime * timeScale * 10; }
-      
       let effectiveDelta = deltaTime * timeScale;
+      
+      if (!player.isDead && !isUpgradeMenuVisible) { points += effectiveDelta * 10; }
       
       // Update power-ups
       if (defenseBoostActive) {
@@ -1372,7 +1328,13 @@
         }
         
         if (!player.isDead && autoStrikeTime > 0) {
-          // (autoStrikeTime already updated above)
+          autoStrikeTime -= deltaTime;
+          autoStrikeTimer -= deltaTime;
+          if (autoStrikeTimer <= 0) {
+            autoStrikeTimer = autoStrikeInterval;
+            performAutoStrike();
+          }
+          if (autoStrikeTime < 0) autoStrikeTime = 0;
         }
         
         if (player.isDead && !isUpgradeMenuVisible) {
