@@ -112,7 +112,8 @@
       opacity: 0.5;
       pointer-events: none;
     }
-    /* Timer overlay for power-up slots */
+    /* Overlay for bomb count (and timers for power-ups) */
+    .tray-slot .counter, 
     .tray-slot .timer {
       position: absolute;
       bottom: 2px;
@@ -131,7 +132,7 @@
         height: 50px;
         font-size: 28px;
       }
-      .tray-slot .timer {
+      .tray-slot .counter, .tray-slot .timer {
         font-size: 12px;
       }
     }
@@ -153,7 +154,6 @@
         <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
         <button id="increaseDash">➡️ Increase Strike Range (+1 tile) - Cost: 300</button>
         <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
-        <!-- New upgrade buttons -->
         <button id="increaseHealingCharmTime">🪬 Increase Healing Charm (Duration & Heal) - Cost: 250</button>
         <button id="increaseShieldingTime">🛡️ Increase Shielding (Duration & Reduction) - Cost: 250</button>
       </div>
@@ -187,14 +187,14 @@
     let strikeRangeTiles = 1;
     let strikeMeterCapacity = 100;
     
-    // NEW: Power-up state variables
+    // Power-up state variables
     let defenseBoostActive = false;
     let defenseBoostTimer = 0;
     let healingCharmActive = false;
     let healingCharmTimer = 0;
     // Base durations and effects
     let baseDefenseBoostDuration = 10;  // seconds
-    let baseShieldDamageReduction = 0.5;  // 50% reduction
+    let baseShieldDamageReduction = 0.5;  // 50% damage reduction
     let baseHealingCharmDuration = 10;    // seconds
     let baseHealingCharmHeal = 1;         // HP per second
     
@@ -378,7 +378,9 @@
     // Existing pickups
     class HealthPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -400,7 +402,9 @@
     
     class BombPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -422,7 +426,9 @@
     
     class SwordPickup {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; this.gridX = tileX; this.gridY = tileY;
+        this.tileMap = tileMap; 
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.size = tileMap.tileWidth / 2;
       }
@@ -525,7 +531,8 @@
     class Player {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap;
-        this.gridX = tileX; this.gridY = tileY;
+        this.gridX = tileX; 
+        this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.pixelSize = PIXEL_SIZE * 0.5;
         this.width = 32 * this.pixelSize; 
@@ -993,8 +1000,9 @@
       }
     });
     
-    // Update the explosives slot appearance based on bombCount
+    // Update explosives slot to show bomb count overlay
     function updateExplosivesSlot() {
+      explosivesSlot.innerHTML = "💣<div class='counter'>" + bombCount + "</div>";
       if (bombCount > 0) {
         explosivesSlot.style.opacity = "1";
         explosivesSlot.style.cursor = "pointer";
@@ -1084,63 +1092,48 @@
       }
     }
     
+    // Modified HUD: Responsive HP bar, separate kills table.
     function drawHUD(ctx) {
-      // HP Bar
+      // Responsive HP Bar
+      let hudWidth = Math.min(300, canvas.width - 40);
       ctx.fillStyle = "black";
-      ctx.fillRect(20, 20, 200, 24);
+      ctx.fillRect(20, 20, hudWidth, 24);
+      let hpWidth = (player.hp / player.maxHP) * hudWidth;
       ctx.fillStyle = "red";
-      let hpWidth = (player.hp / player.maxHP) * 100;
-      ctx.fillRect(22, 22, hpWidth, 20);
+      ctx.fillRect(20, 20, hpWidth, 24);
       ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 20, 200, 24);
+      ctx.strokeRect(20, 20, hudWidth, 24);
       ctx.fillStyle = "white";
       ctx.font = "16px Arial";
-      ctx.fillText("HP: " + player.hp, 30, 38);
-      ctx.fillText("Kills: " + killCount, 130, 38);
+      ctx.fillText("HP", 25, 38);
       
-      // Bombs
+      // Kills Table
       ctx.fillStyle = "black";
-      ctx.fillRect(20, 50, 200, 24);
+      ctx.fillRect(20, 50, 100, 24);
       ctx.fillStyle = "white";
       ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 50, 200, 24);
-      ctx.fillText("Bombs: " + bombCount, 30, 68);
+      ctx.strokeRect(20, 50, 100, 24);
+      ctx.fillText("Kills: " + killCount, 25, 68);
       
-      // Points
-      ctx.fillStyle = "black";
-      ctx.fillRect(20, 80, 200, 24);
-      ctx.fillStyle = "white";
+      // Strike Meter Bar
+      ctx.fillStyle = "#222";
+      ctx.fillRect(20, 80, hudWidth, 24);
+      let fillWidth = (player.maxStrikeMeter / strikeMeterCapacity) * hudWidth;
+      fillWidth = Math.min(fillWidth, hudWidth);
+      ctx.fillStyle = "rgba(255,215,0,0.8)";
+      ctx.fillRect(20, 80, fillWidth, 24);
       ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 80, 200, 24);
-      ctx.fillText("Points: " + Math.floor(points), 30, 98);
+      ctx.strokeRect(20, 80, hudWidth, 24);
+      ctx.fillStyle = "white";
+      ctx.fillText("Strike Range: " + strikeRangeTiles + " tile(s)", 25, 98);
       
       // Auto Strike Time
       ctx.fillStyle = "black";
-      ctx.fillRect(20, 110, 200, 24);
+      ctx.fillRect(20, 110, 100, 24);
       ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 110, 200, 24);
+      ctx.strokeRect(20, 110, 100, 24);
       ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
-      
-      // Strike Meter Bar
-      let hudMeterWidth = Math.min(200, canvas.width - 40);
-      ctx.fillStyle = "#222";
-      ctx.fillRect(20, 140, hudMeterWidth, 24);
-      let fillWidth = (player.maxStrikeMeter / strikeMeterCapacity) * hudMeterWidth;
-      fillWidth = Math.min(fillWidth, hudMeterWidth);
-      ctx.fillStyle = "rgba(255,215,0,0.8)";
-      ctx.fillRect(20, 140, fillWidth, 24);
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(20, 140, hudMeterWidth, 24);
-      ctx.fillStyle = "white";
-      ctx.font = "16px Arial";
-      ctx.fillText("Strike Range: " + strikeRangeTiles + " tile(s)", 30, 158);
-      
-      ctx.textAlign = "right";
-      ctx.font = "16px Arial";
-      ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 215, 128);
-      ctx.textAlign = "left";
+      ctx.fillText("Auto: " + autoStrikeTime.toFixed(1) + "s", 25, 128);
     }
     
     function showUpgradeMenu() {
@@ -1225,7 +1218,7 @@
       lastTime = currentTime;
       globalTime += deltaTime;
       
-      // Auto-deplete strike meter
+      // Deplete strike meter over time
       if (!player.isDead && !isUpgradeMenuVisible) {
         player.maxStrikeMeter = Math.max(0, player.maxStrikeMeter - goldDecayRate * deltaTime);
       }
@@ -1243,7 +1236,7 @@
         healingCharmTimer -= effectiveDelta;
         if (healingCharmTimer <= 0) healingCharmActive = false;
         else {
-          // Auto-heal player when charm is active
+          // Auto-heal player while charm is active
           player.hp = Math.min(player.maxHP, player.hp + baseHealingCharmHeal * effectiveDelta);
         }
       }
@@ -1277,7 +1270,7 @@
                 bullet.position.y >= player.position.y &&
                 bullet.position.y <= player.position.y + player.height) {
               bullet.alive = false;
-              // If shield active, reduce damage by baseShieldDamageReduction percentage
+              // If shield active, reduce damage
               let damage = 20;
               if (defenseBoostActive) {
                 damage *= (1 - baseShieldDamageReduction);
