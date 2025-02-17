@@ -110,6 +110,12 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    #upgradeMenu .menu-content .menu-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
   </style>
 </head>
 <body>
@@ -121,18 +127,19 @@
   <div id="headbuttEffect"></div>
   
   <!-- Upgrade Menu Overlay -->
-  <div id="upgradeMenu">
-    <div class="menu-content">
-      <h1>Upgrade Menu</h1>
-      <p>You have <span id="pointsDisplay"></span> points.</p>
-      <button id="increaseHP">Increase Max HP (+20 HP) - Cost: 50</button>
-      <button id="increaseAutoRun">Increase Auto Strike Time (+10s) - Cost: 200</button>
-      <button id="increaseDash">Increase Strike Range (+1 tile) - Cost: 300</button>
-      <button id="increaseStrikeMeter">Increase Strike Meter Capacity (+10) - Cost: 150</button>
-      <br>
-      <button id="resumeGame">Resume Game</button>
+<div id="upgradeMenu">
+  <div class="menu-content">
+    <h1>Upgrade Menu</h1>
+    <p>You have <span id="pointsDisplay"></span> points.</p>
+    <div class="menu-buttons">
+      <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
+      <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
+      <button id="increaseDash">➡️ Increase Strike Range (+1 tile) - Cost: 300</button>
+      <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
     </div>
+    <button id="resumeGame" style="margin-top: 20px;">▶️ Resume Game</button>
   </div>
+</div>
   
   <script>
     "use strict";
