@@ -5,10 +5,10 @@
   <title>Bomb-A-Bear</title>
   <style>
     html, body {
-      -webkit-user-select: none; /* Chrome, Safari, Opera */
-      -moz-user-select: none;    /* Firefox */
-      -ms-user-select: none;     /* Internet Explorer/Edge */
-      user-select: none;         /* Standard */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -127,7 +127,7 @@
       <p>You have <span id="pointsDisplay"></span> points.</p>
       <button id="increaseHP">Increase Max HP (+20 HP) - Cost: 50</button>
       <button id="increaseAutoRun">Increase Auto Strike Time (+10s) - Cost: 200</button>
-      <button id="increaseDash">Increase Dash Range (+1 tile) - Cost: 300</button>
+      <button id="increaseDash">Increase Strike Range (+1 tile) - Cost: 300</button>
       <br>
       <button id="resumeGame">Resume Game</button>
     </div>
@@ -144,8 +144,8 @@
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
-    // Dash range (in tiles)
-    let dashTiles = 1;
+    // Replace dashTiles with strikeRangeTiles
+    let strikeRangeTiles = 1;
     
     // New flash effects
     let screenFlashAlpha = 0;
@@ -535,10 +535,10 @@
           ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
         }
       }
-      // useDash: if true, move dashTiles; otherwise, move 1 tile.
-      move(direction, useDash = false) {
+      // Now move() always moves one tile
+      move(direction) {
         if (this.moving) return;
-        let distance = useDash ? dashTiles : 1;
+        let distance = 1;
         let newGridX = this.gridX, newGridY = this.gridY;
         if (direction === "up") newGridY -= distance;
         else if (direction === "down") newGridY += distance;
@@ -582,6 +582,36 @@
         this.position = this.tileMap.gridToWorld(this.gridX, this.gridY);
         this.hp = this.maxHP;
         this.isDead = false;
+      }
+      // New strike method replaces dash functionality.
+      strike(direction) {
+        const strikeRange = strikeRangeTiles * 50; // strike radius in pixels
+        let offset;
+        switch(direction) {
+          case "up": offset = new Vector2(0, -strikeRange); break;
+          case "down": offset = new Vector2(0, strikeRange); break;
+          case "left": offset = new Vector2(-strikeRange, 0); break;
+          case "right": offset = new Vector2(strikeRange, 0); break;
+          default: offset = new Vector2(0, -strikeRange);
+        }
+        let playerCenter = new Vector2(this.position.x + this.width/2, this.position.y + this.height/2);
+        let strikeCenter = playerCenter.add(offset);
+        // Trigger the headbutt animation/effect
+        triggerHeadbutt();
+        // Check each enemy – if its center is within the strike radius, “hit” it.
+        enemies.forEach(enemy => {
+          let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
+          if(enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
+            addSpriteFlash(enemy.position);
+            enemy.alive = false;
+            spawnEnemyExplosionEffect(enemy.position);
+            killCount++;
+            let angle = Math.atan2(enemyCenter.y - strikeCenter.y, enemyCenter.x - strikeCenter.x);
+            let effectX = strikeCenter.x + Math.cos(angle) * 20;
+            let effectY = strikeCenter.y + Math.sin(angle) * 20;
+            spawnMeleeEffect(effectX, effectY, angle);
+          }
+        });
       }
     }
     
@@ -769,7 +799,7 @@
     
     function performAutoStrike() {
       let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
-      let meleeRange = 50;
+      let meleeRange = strikeRangeTiles * 50;
       const offsetDistance = 20;
       enemies.forEach(enemy => {
         let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
@@ -824,10 +854,10 @@
       let dx = evt.clientX - dragStart.x;
       let dy = evt.clientY - dragStart.y;
       if (Math.sqrt(dx * dx + dy * dy) > 10) {
-        // Drag detected: perform dash move.
+        // Drag detected: perform strike.
         let direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
         if (!player.moving) {
-          player.move(direction, true);
+          player.strike(direction);
         }
       } else {
         // Treat as a tap.
@@ -846,7 +876,7 @@
       }
       let dir = computeDirection(evt.clientX, evt.clientY);
       if (dir && !player.moving) {
-        player.move(dir, false);
+        player.move(dir);
       } else {
         let playerScreenPos = camera.worldToScreen(player.position);
         if (tapX >= playerScreenPos.x && tapX <= playerScreenPos.x + player.width &&
@@ -993,7 +1023,7 @@
       ctx.strokeRect(20, 140, 200, 24);
       ctx.fillStyle = "white";
       ctx.font = "16px Arial";
-      ctx.fillText("Dash Range: " + dashTiles + " tile(s)", 30, 158);
+      ctx.fillText("Strike Range: " + strikeRangeTiles + " tile(s)", 30, 158);
       
       ctx.textAlign = "right";
       ctx.font = "20px Arial";
@@ -1020,14 +1050,6 @@
     }
     
     // Upgrade listeners
-    document.getElementById("increaseDash").addEventListener("click", () => {
-      const cost = 300;
-      if (points >= cost && dashTiles < tileMap.width) {
-        points -= cost;
-        dashTiles++;
-        document.getElementById("pointsDisplay").textContent = Math.floor(points);
-      }
-    });
     document.getElementById("increaseHP").addEventListener("click", () => {
       const cost = 50;
       if (points >= cost) {
@@ -1043,6 +1065,14 @@
         points -= cost;
         baseAutoStrikeTime += 10;
         autoStrikeTime += 10;
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    document.getElementById("increaseDash").addEventListener("click", () => {
+      const cost = 300;
+      if (points >= cost && strikeRangeTiles < tileMap.width) {
+        points -= cost;
+        strikeRangeTiles++;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
@@ -1206,8 +1236,6 @@
       requestAnimationFrame(gameLoop);
     }
     requestAnimationFrame(gameLoop);
-    
-    // Remove previous click listener; we use mousedown/mousemove/mouseup for input.
     
   </script>
 </body>
