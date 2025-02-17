@@ -463,10 +463,10 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; 
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
         ctx.font = `${this.size}px sans-serif`;
-        ctx.textAlign = "center"; 
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("🛡️", 0, 0);
         ctx.restore();
@@ -488,10 +488,10 @@
         ctx.save();
         ctx.translate(screenPos.x, screenPos.y + this.size / 2 + floatOffset);
         ctx.rotate(t);
-        ctx.shadowBlur = 10; 
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "rgba(255,255,255,0.8)";
         ctx.font = `${this.size}px sans-serif`;
-        ctx.textAlign = "center"; 
+        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("🪬", 0, 0);
         ctx.restore();
@@ -506,8 +506,8 @@
         this.position = new Vector2(position.x, position.y);
         this.startPosition = new Vector2(position.x, position.y);
         this.velocity = velocity;
-        this.radius = 5; 
-        this.alive = true; 
+        this.radius = 5;
+        this.alive = true;
         this.owner = owner;
         this.maxDistance = Math.sqrt(Math.pow(tileMap.tileWidth / 2, 2) + Math.pow(tileMap.tileHeight / 2, 2));
       }
@@ -531,33 +531,33 @@
     class Player {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap;
-        this.gridX = tileX; 
+        this.gridX = tileX;
         this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.pixelSize = PIXEL_SIZE * 0.5;
-        this.width = 32 * this.pixelSize; 
+        this.width = 32 * this.pixelSize;
         this.height = 32 * this.pixelSize;
         this.moving = false;
-        this.startPos = null; 
+        this.startPos = null;
         this.targetPos = null;
-        this.moveDuration = 0.1; 
+        this.moveDuration = 0.1;
         this.moveTime = 0;
-        this.targetGridX = tileX; 
+        this.targetGridX = tileX;
         this.targetGridY = tileY;
         this.direction = "down";
-        this.maxHP = 100; 
+        this.maxHP = 100;
         this.hp = 100;
         this.normalStrikeRange = 50;
         this.maxStrikeMeter = 0;
         this.knockback = new Vector2(0, 0);
         this.isDead = false;
-        this.spriteSheet = new Image(); 
+        this.spriteSheet = new Image();
         this.spriteLoaded = false;
         this.spriteSheet.onload = () => { this.spriteLoaded = true; };
         this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-SHIRMOND-SHEET.png";
-        this.frameCount = 4; 
-        this.currentFrame = 0; 
-        this.frameTime = 0; 
+        this.frameCount = 4;
+        this.currentFrame = 0;
+        this.frameTime = 0;
         this.frameDelay = 0.1;
       }
       update(deltaTime) {
@@ -575,12 +575,12 @@
           }
           if (t >= 1) {
             this.moving = false;
-            this.gridX = this.targetGridX; 
+            this.gridX = this.targetGridX;
             this.gridY = this.targetGridY;
             this.currentFrame = 0;
           }
-        } else { 
-          this.currentFrame = 0; 
+        } else {
+          this.currentFrame = 0;
         }
         this.knockback = this.knockback.scale(0.9);
       }
@@ -618,10 +618,10 @@
         this.moveTime = 0;
         this.startPos = this.position;
         this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
-        this.targetGridX = newGridX; 
+        this.targetGridX = newGridX;
         this.targetGridY = newGridY;
         this.direction = direction;
-        this.frameTime = 0; 
+        this.frameTime = 0;
         this.currentFrame = 0;
       }
       shoot() {
@@ -644,10 +644,10 @@
         bullets.push(new Bullet(startPos, velocity, "player"));
       }
       respawn() {
-        this.gridX = 5; 
+        this.gridX = 5;
         this.gridY = 5;
         this.position = this.tileMap.gridToWorld(this.gridX, this.gridY);
-        this.hp = this.maxHP; 
+        this.hp = this.maxHP;
         this.isDead = false;
       }
       strike(direction) {
@@ -691,33 +691,33 @@
     
     class Enemy {
       constructor(tileX, tileY, tileMap) {
-        this.tileMap = tileMap; 
-        this.gridX = tileX; 
+        this.tileMap = tileMap;
+        this.gridX = tileX;
         this.gridY = tileY;
         this.position = tileMap.gridToWorld(tileX, tileY);
         this.pixelSize = PIXEL_SIZE * 0.5;
-        this.width = 32 * this.pixelSize; 
+        this.width = 32 * this.pixelSize;
         this.height = 32 * this.pixelSize;
-        this.spriteSheet = new Image(); 
+        this.spriteSheet = new Image();
         this.spriteLoaded = false;
         this.spriteSheet.onload = () => { this.spriteLoaded = true; };
         this.spriteSheet.src = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/WalkingDemo-BEAR-SHEET.png";
-        this.alive = true; 
-        this.maxHP = 40; 
+        this.alive = true;
+        this.maxHP = 40;
         this.hp = 40;
-        this.moving = false; 
-        this.startPos = null; 
+        this.moving = false;
+        this.startPos = null;
         this.targetPos = null;
-        this.moveDuration = 0.2; 
+        this.moveDuration = 0.2;
         this.moveTime = 0;
-        this.targetGridX = tileX; 
+        this.targetGridX = tileX;
         this.targetGridY = tileY;
         this.direction = "down";
-        this.frameCount = 4; 
-        this.currentFrame = 0; 
-        this.frameTime = 0; 
+        this.frameCount = 4;
+        this.currentFrame = 0;
+        this.frameTime = 0;
         this.frameDelay = 0.15;
-        this.attackCooldown = 0; 
+        this.attackCooldown = 0;
         this.knockback = new Vector2(0, 0);
       }
       update(deltaTime) {
@@ -735,7 +735,7 @@
           }
           if (t >= 1) {
             this.moving = false;
-            this.gridX = this.targetGridX; 
+            this.gridX = this.targetGridX;
             this.gridY = this.targetGridY;
             this.currentFrame = 0;
           }
@@ -743,10 +743,10 @@
           let targetGridX, targetGridY;
           if (baitBombs.length > 0) {
             let targetBomb = baitBombs[0];
-            targetGridX = targetBomb.tileX; 
+            targetGridX = targetBomb.tileX;
             targetGridY = targetBomb.tileY;
           } else {
-            targetGridX = player.gridX; 
+            targetGridX = player.gridX;
             targetGridY = player.gridY;
             let dxP = player.gridX - this.gridX, dyP = player.gridY - this.gridY;
             let manhattanP = Math.abs(dxP) + Math.abs(dyP);
@@ -798,10 +798,10 @@
         this.moveTime = 0;
         this.startPos = this.position;
         this.targetPos = this.tileMap.gridToWorld(newGridX, newGridY);
-        this.targetGridX = newGridX; 
+        this.targetGridX = newGridX;
         this.targetGridY = newGridY;
         this.direction = direction;
-        this.frameTime = 0; 
+        this.frameTime = 0;
         this.currentFrame = 0;
       }
       shoot() {
@@ -839,7 +839,7 @@
     
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth; 
+    canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const camera = new Camera(canvas.width, canvas.height);
     const tileMap = new TileMap(20, 20, 64, 32);
@@ -982,7 +982,7 @@
       });
     }
     
-    // Bomb deployment triggered by tapping the explosives slot
+    // Bomb deployment triggered by tapping the bomb tile (explosives slot)
     function deployBomb() {
       if (bombCount > 0) {
         bombCount--;
@@ -990,7 +990,7 @@
       }
     }
     
-    // Remove bomb button logic; use tray's explosives slot instead.
+    // Ensure tapping the bomb tile drops a bomb like the old bomb button.
     const explosivesSlot = document.getElementById("explosivesSlot");
     explosivesSlot.addEventListener("click", (evt) => {
       if (bombCount > 0) {
@@ -1012,7 +1012,7 @@
       }
     }
     
-    // Update defense and healing charm tray slots based on active timers
+    // Update power-up tray slots (defense & healing charm)
     function updatePowerupTraySlots() {
       const defenseSlot = document.getElementById("defenseSlot");
       const charmsSlot = document.getElementById("charmsSlot");
@@ -1092,7 +1092,7 @@
       }
     }
     
-    // Modified HUD: Responsive HP bar, separate kills table.
+    // Modified HUD: Responsive HP bar, separate kills table, strike meter.
     function drawHUD(ctx) {
       // Responsive HP Bar
       let hudWidth = Math.min(300, canvas.width - 40);
@@ -1145,9 +1145,9 @@
     function resumeGame() {
       isUpgradeMenuVisible = false;
       document.getElementById("upgradeMenu").style.display = "none";
-      enemies.length = 0; 
-      bullets.length = 0; 
-      pickups.length = 0; 
+      enemies.length = 0;
+      bullets.length = 0;
+      pickups.length = 0;
       baitBombs.length = 0;
       player.respawn();
       autoStrikeTime = baseAutoStrikeTime;
@@ -1218,7 +1218,7 @@
       lastTime = currentTime;
       globalTime += deltaTime;
       
-      // Deplete strike meter over time
+      // Deplete strike meter
       if (!player.isDead && !isUpgradeMenuVisible) {
         player.maxStrikeMeter = Math.max(0, player.maxStrikeMeter - goldDecayRate * deltaTime);
       }
@@ -1270,7 +1270,6 @@
                 bullet.position.y >= player.position.y &&
                 bullet.position.y <= player.position.y + player.height) {
               bullet.alive = false;
-              // If shield active, reduce damage
               let damage = 20;
               if (defenseBoostActive) {
                 damage *= (1 - baseShieldDamageReduction);
