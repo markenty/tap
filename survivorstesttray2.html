@@ -1121,11 +1121,11 @@
           if (pickup instanceof BombPickup) {
             bombCount++;
             spawnPickupEffect(pickup.position);
-          } else if (pickup instanceof SwordPickup) {
+          } else if (pickup instanceof SwordPickup) {  autoStrikeTime += autoStrikeBonus; // add bonus seconds from pickup
             if (strikeRangeTiles > 1) {
               // Use strikeMeter here instead of maxStrikeMeter
               player.strikeMeter = strikeMeterCapacity;
-              autoStrikeTime += autoStrikeBonus; // add bonus seconds from pickup
+            
             }
             spawnPickupEffect(pickup.position);
           } else if (pickup instanceof HealthPickup) {
