@@ -182,8 +182,7 @@
     let autoStrikeInterval = 0.3, autoStrikeTimer = 0;
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
-    
-    // Strike-related (using strikeMeter for current value)
+    let autoStrikeBonus = 10; // initial bonus seconds per sword pickup    // Strike-related (using strikeMeter for current value)
     let strikeRangeTiles = 1;
     let strikeMeterCapacity = 100;
     
@@ -896,29 +895,69 @@
       });
     }
     
-    function performManualStrikeAt(tapX, tapY) {
-      let worldPos = camera.screenToWorld(new Vector2(tapX, tapY));
-      const offsetDistance = 20;
-      for (let enemy of enemies) {
-        let screenPos = camera.worldToScreen(enemy.position);
-        let rect = { x: screenPos.x, y: screenPos.y, width: enemy.width, height: enemy.height };
-        if (tapX >= rect.x && tapX <= rect.x + rect.width && tapY >= rect.y && tapY <= rect.y + rect.height) {
-          triggerScreenFlash();
-          addSpriteFlash(enemy.position);
-          enemy.alive = false;
-          spawnEnemyExplosionEffect(enemy.position);
-          killCount++;
-          let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
-          let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
-          let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
-          let effectX = playerCenter.x + Math.cos(angle) * offsetDistance;
-          let effectY = playerCenter.y + Math.sin(angle) * offsetDistance;
+   function performManualStrikeAt(tapX, tapY) {
+  // Define the current melee range in pixels based on the player's strike range level.
+  const tileSize = 50; // each tile is 50px
+  // currentMeleeRange is computed as strikeRangeTiles * tileSize.
+  const currentMeleeRange = strikeRangeTiles * tileSize;
+  // Determine if this is a critical melee hit (only when strikeRangeTiles equals 4)
+  const isCritical = (strikeRangeTiles === 4);
+
+  // Loop over each enemy to see if the tap is on it.
+  for (let enemy of enemies) {
+    // Get enemy's on-screen bounding box
+    let enemyScreenPos = camera.worldToScreen(enemy.position);
+    let enemyRect = {
+      x: enemyScreenPos.x,
+      y: enemyScreenPos.y,
+      width: enemy.width,
+      height: enemy.height
+    };
+
+    // Check if the tap is inside the enemy's box.
+    if (tapX >= enemyRect.x && tapX <= enemyRect.x + enemyRect.width &&
+        tapY >= enemyRect.y && tapY <= enemyRect.y + enemyRect.height) {
+      // Get centers in world coordinates.
+      let playerCenter = new Vector2(
+        player.position.x + player.width / 2,
+        player.position.y + player.height / 2
+      );
+      let enemyCenter = new Vector2(
+        enemy.position.x + enemy.width / 2,
+        enemy.position.y + enemy.height / 2
+      );
+
+      // Check if enemy is within the current melee range.
+      if (playerCenter.subtract(enemyCenter).length() <= currentMeleeRange) {
+        // Hit registered! If it's a critical hit, you can add special effects.
+        triggerScreenFlash();
+        addSpriteFlash(enemy.position);
+        enemy.alive = false;
+        spawnEnemyExplosionEffect(enemy.position);
+        killCount++;
+
+        // Spawn a melee effect. If critical, you might change its parameters.
+        let angle = Math.atan2(
+          enemyCenter.y - playerCenter.y,
+          enemyCenter.x - playerCenter.x
+        );
+        let effectX = playerCenter.x + Math.cos(angle) * 20;
+        let effectY = playerCenter.y + Math.sin(angle) * 20;
+        // For a critical hit, you could modify the effect (for example, larger radius)
+        if (isCritical) {
+          // Optionally, you might add an extra effect or bonus here.
           spawnMeleeEffect(effectX, effectY, angle);
-          return true;
+          // Example: increment kill count extra, play a different sound, etc.
+        } else {
+          spawnMeleeEffect(effectX, effectY, angle);
         }
+        return true;
       }
-      return false;
     }
+  }
+  return false;
+}
+
     
     let dragStart = null;
     canvas.addEventListener("mousedown", (evt) => { dragStart = { x: evt.clientX, y: evt.clientY }; });
@@ -1086,6 +1125,7 @@
             if (strikeRangeTiles > 1) {
               // Use strikeMeter here instead of maxStrikeMeter
               player.strikeMeter = strikeMeterCapacity;
+              autoStrikeTime += autoStrikeBonus; // add bonus seconds from pickup
             }
             spawnPickupEffect(pickup.position);
           } else if (pickup instanceof HealthPickup) {
@@ -1230,15 +1270,16 @@
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
-    document.getElementById("increaseAutoRun").addEventListener("click", () => {
-      const cost = 200;
-      if (points >= cost) {
-        points -= cost;
-        baseAutoStrikeTime += 10;
-        autoStrikeTime += 10;
-        document.getElementById("pointsDisplay").textContent = Math.floor(points);
-      }
-    });
+document.getElementById("increaseAutoRun").addEventListener("click", () => {
+  const cost = 200;
+  if (points >= cost) {
+    points -= cost;
+    baseAutoStrikeTime += 10;  // Increase base auto-strike time
+    autoStrikeTime += 10;       // Increase current auto-strike timer
+    autoStrikeBonus += 5;       // Increase bonus seconds per sword pickup
+    document.getElementById("pointsDisplay").textContent = Math.floor(points);
+  }
+});
     document.getElementById("increaseDash").addEventListener("click", () => {
       const cost = 300;
       if (points >= cost && strikeRangeTiles < tileMap.width) {
