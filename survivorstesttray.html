@@ -78,7 +78,7 @@
       gap: 10px;
       margin: 20px 0;
     }
-    /* --- Responsive Item Tray Styling --- */
+    /* --- Item Tray Styling --- */
     #itemTray {
       position: absolute;
       bottom: 20px;
@@ -106,6 +106,11 @@
     .tray-slot.active {
       box-shadow: 0 0 15px 3px rgba(255,255,0,0.9);
       transform: scale(1.1);
+    }
+    /* Dim inactive slots */
+    .tray-slot.dimmed {
+      opacity: 0.5;
+      pointer-events: none;
     }
     @media (max-width: 600px) {
       #itemTray {
@@ -145,8 +150,8 @@
   <!-- Item Tray (Replaces Bomb Button) -->
   <div id="itemTray">
     <div class="tray-slot" id="attackSlot">👊</div>
-    <div class="tray-slot" id="defenseSlot">🛡</div>
-    <div class="tray-slot" id="charmsSlot">🪬</div>
+    <div class="tray-slot dimmed" id="defenseSlot">🛡</div>
+    <div class="tray-slot dimmed" id="charmsSlot">🪬</div>
     <div class="tray-slot" id="explosivesSlot">💣</div>
   </div>
   
@@ -164,6 +169,7 @@
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
     
+    // Strike-related variables
     let strikeRangeTiles = 1;
     let strikeMeterCapacity = 100;
     
@@ -874,7 +880,7 @@
       });
     }
     
-    // Bomb deployment: now triggered by tapping the explosives slot
+    // Bomb deployment triggered by tapping the explosives slot
     function deployBomb() {
       if (bombCount > 0) {
         bombCount--;
@@ -882,7 +888,7 @@
       }
     }
     
-    // Remove any bomb button logic and use the tray's explosives slot instead.
+    // Remove bomb button logic and add event listener for the explosives slot.
     const explosivesSlot = document.getElementById("explosivesSlot");
     explosivesSlot.addEventListener("click", (evt) => {
       if (bombCount > 0) {
@@ -958,6 +964,7 @@
     }
     
     function drawHUD(ctx) {
+      // HP Bar
       ctx.fillStyle = "black";
       ctx.fillRect(20, 20, 200, 24);
       ctx.fillStyle = "red";
@@ -970,6 +977,7 @@
       ctx.fillText("HP: " + player.hp, 30, 38);
       ctx.fillText("Kills: " + killCount, 130, 38);
       
+      // Bombs
       ctx.fillStyle = "black";
       ctx.fillRect(20, 50, 200, 24);
       ctx.fillStyle = "white";
@@ -977,6 +985,7 @@
       ctx.strokeRect(20, 50, 200, 24);
       ctx.fillText("Bombs: " + bombCount, 30, 68);
       
+      // Points
       ctx.fillStyle = "black";
       ctx.fillRect(20, 80, 200, 24);
       ctx.fillStyle = "white";
@@ -984,6 +993,7 @@
       ctx.strokeRect(20, 80, 200, 24);
       ctx.fillText("Points: " + Math.floor(points), 30, 98);
       
+      // Auto Strike Time
       ctx.fillStyle = "black";
       ctx.fillRect(20, 110, 200, 24);
       ctx.strokeStyle = "white";
@@ -992,6 +1002,7 @@
       ctx.font = "16px Arial";
       ctx.fillText("Auto Strike: " + autoStrikeTime.toFixed(1) + "s", 30, 128);
       
+      // Strike Meter Bar
       let hudMeterWidth = Math.min(200, canvas.width - 40);
       ctx.fillStyle = "#222";
       ctx.fillRect(20, 140, hudMeterWidth, 24);
@@ -1215,6 +1226,7 @@
         if (flash.timer <= 0) spriteFlashes.splice(i, 1);
       }
       
+      // Update the explosives slot appearance based on bombCount.
       updateExplosivesSlot();
       
       requestAnimationFrame(gameLoop);
