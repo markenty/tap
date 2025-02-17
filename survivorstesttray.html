@@ -308,6 +308,9 @@
         this.position = this.position.add(this.velocity.scale(deltaTime));
         this.life -= deltaTime;
       }
+     if (!player.isDead && !isUpgradeMenuVisible) {
+  player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
+} 
       render(ctx, camera) {
         let alpha = Math.max(this.life / this.maxLife, 0);
         let screenPos = camera.worldToScreen(this.position);
