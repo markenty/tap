@@ -186,7 +186,11 @@
 }
 .auto-strike-meter {
   background-color: orange;
+}.bomb-available {
+  border-color: red;
+  box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
 }
+
   </style>
 </head>
 <body>
@@ -1155,16 +1159,20 @@
     });
     
     // Update bomb tile to show bomb count overlay
-    function updateExplosivesSlot() {
-      explosivesSlot.innerHTML = "💣<div class='counter'>" + bombCount + "</div>";
-      if (bombCount > 0) {
-        explosivesSlot.style.opacity = "1";
-        explosivesSlot.style.cursor = "pointer";
-      } else {
-        explosivesSlot.style.opacity = "0.5";
-        explosivesSlot.style.cursor = "default";
-      }
-    }
+   function updateExplosivesSlot() {
+  const explosivesSlot = document.getElementById("explosivesSlot");
+  explosivesSlot.innerHTML = "💣<div class='counter'>" + bombCount + "</div>";
+  if (bombCount > 0) {
+    explosivesSlot.style.opacity = "1";
+    explosivesSlot.style.cursor = "pointer";
+    explosivesSlot.classList.add("bomb-available");
+  } else {
+    explosivesSlot.style.opacity = "0.5";
+    explosivesSlot.style.cursor = "default";
+    explosivesSlot.classList.remove("bomb-available");
+  }
+}
+
     
     // Update power-up tray slots for shield and healing charm
 function updatePowerupTraySlots() {
