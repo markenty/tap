@@ -1310,8 +1310,34 @@ function updateTrayHUD() {
   let strikeFraction = player.strikeMeter / strikeMeterCapacity;
   maxStrikeSlot.style.background = `linear-gradient(to top, rgba(255,215,0,0.8) ${strikeFraction * 100}%, transparent ${strikeFraction * 100}%)`;
   updateMaxStrikeTally();
+  
+  
+ // Update Power-Up Tray (Shield and Charm)
+  const defenseSlot = document.getElementById("defenseSlot");
+  const charmsSlot = document.getElementById("charmsSlot");
+  
+  if (defenseBoostActive) {
+    defenseSlot.classList.remove("dimmed");  // remove dimmed when active
+    const defRatio = defenseBoostTimer / baseDefenseBoostDuration;
+    defenseSlot.style.background = `linear-gradient(to top, blue ${defRatio * 100}%, transparent ${defRatio * 100}%)`;
+    defenseSlot.innerHTML = "🛡️<div class='timer'>" + Math.ceil(defenseBoostTimer) + "s</div>";
+  } else {
+    defenseSlot.classList.add("dimmed");  // add dimmed when not active
+    defenseSlot.style.background = "";
+    defenseSlot.innerHTML = "🛡️";
+  }
+  
+  if (healingCharmActive) {
+    charmsSlot.classList.remove("dimmed");  // remove dimmed when active
+    const charmRatio = healingCharmTimer / baseHealingCharmDuration;
+    charmsSlot.style.background = `linear-gradient(to top, purple ${charmRatio * 100}%, transparent ${charmRatio * 100}%)`;
+    charmsSlot.innerHTML = "🪬<div class='timer'>" + Math.ceil(healingCharmTimer) + "s</div>";
+  } else {
+    charmsSlot.classList.add("dimmed");  // add dimmed when not active
+    charmsSlot.style.background = "";
+    charmsSlot.innerHTML = "🪬";
+  }
 }
-
 
     function showUpgradeMenu() {
       isUpgradeMenuVisible = true;
