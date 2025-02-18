@@ -78,16 +78,26 @@
       gap: 10px;
       margin: 20px 0;
     }
-    /* --- Tray Styling --- */
+ /* --- Tray Styling --- */
     #itemTray {
       position: absolute;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      display: grid;
-      grid-template-columns: repeat(4, 60px);
-      gap: 10px;
+      display: flex;
+      align-items: center;
       z-index: 20;
+    }
+    #itemTray .tray-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .divider {
+      width: 1px;
+      background-color: white;
+      height: 40px;
+      margin: 0 10px;
     }
     .tray-slot {
       position: relative;
@@ -112,7 +122,7 @@
       opacity: 0.5;
       pointer-events: none;
     }
-    /* Overlay for bomb count and power-up timers */
+    /* Overlays for counters and indicators */
     .tray-slot .counter,
     .tray-slot .timer {
       position: absolute;
@@ -121,21 +131,56 @@
       font-size: 14px;
       color: yellow;
     }
+    .tray-slot .indicator {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      font-size: 14px;
+      color: yellow;
+    }
     @media (max-width: 600px) {
-      #itemTray {
-        grid-template-columns: repeat(4, 50px);
-        gap: 8px;
-        bottom: 15px;
-      }
-      .tray-slot {
+      #itemTray .tray-slot {
         width: 50px;
         height: 50px;
         font-size: 28px;
       }
-      .tray-slot .counter, .tray-slot .timer {
+      .tray-slot .counter, .tray-slot .timer, .tray-slot .indicator {
         font-size: 12px;
       }
     }
+    /* --- Tally Marks for Max Strike Distance (vertical) --- */
+#maxStrikeSlot .tally-container {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;  /* horizontal layout */
+  gap: 2px;
+}
+.tally {
+  width: 6px;   /* adjust as needed */
+  height: 10px; /* adjust as needed */
+  background: white;
+}
+
+.meter {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 5px;
+  background: gray;
+  border-radius: 0 0 10px 10px;
+}
+.shield-meter {
+  background-color: blue;
+}
+.charm-meter {
+  background-color: purple;
+}
+.auto-strike-meter {
+  background-color: orange;
+}
   </style>
 </head>
 <body>
@@ -161,12 +206,36 @@
     </div>
   </div>
   
-  <!-- Item Tray (Attack, Defense, Charms, Explosives) -->
+  <!-- Item Tray -->
   <div id="itemTray">
-    <div class="tray-slot" id="attackSlot">👊</div>
-    <div class="tray-slot dimmed" id="defenseSlot">🛡️</div>
-    <div class="tray-slot dimmed" id="charmsSlot">🪬</div>
-    <div class="tray-slot" id="explosivesSlot">💣</div>
+    <div class="tray-group passive">
+      <!-- New HUD tray slots -->
+      <div class="tray-slot" id="pointsSlot">💰<div class="counter">0</div></div>
+      <div class="tray-slot" id="killsSlot">💀<div class="counter">0</div></div>
+      <!-- Existing icons -->
+      <div class="tray-slot" id="attackSlot">👊</div>
+      <div class="tray-slot dimmed" id="defenseSlot">🛡️</div>
+      <div class="tray-slot dimmed" id="charmsSlot">🪬</div>
+      <div class="tray-slot" id="hpSlot">
+        ❤️
+        <div class="counter">100</div>
+      </div>
+      <div class="tray-slot" id="autoStrikeSlot">
+        <!-- Indicator now appears on the left -->
+        <div class="indicator">✅</div>
+        ⚔️
+        <div class="counter">10</div>
+      </div>
+      <!-- Max Strike Distance Slot with vertical tally -->
+      <div class="tray-slot" id="maxStrikeSlot">
+        🔱
+        <div class="tally-container"></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="tray-group active">
+      <div class="tray-slot" id="explosivesSlot">💣<div class="counter">0</div></div>
+    </div>
   </div>
   
   <script>
@@ -1092,25 +1161,32 @@
     }
     
     // Update power-up tray slots for shield and healing charm
-    function updatePowerupTraySlots() {
-      const defenseSlot = document.getElementById("defenseSlot");
-      const charmsSlot = document.getElementById("charmsSlot");
-      if (defenseBoostActive) {
-        defenseSlot.classList.remove("dimmed");
-        defenseSlot.innerHTML = "🛡️<div class='timer'>" + Math.ceil(defenseBoostTimer) + "s</div>";
-      } else {
-        defenseSlot.classList.add("dimmed");
-        defenseSlot.innerHTML = "🛡️";
-      }
-      if (healingCharmActive) {
-        charmsSlot.classList.remove("dimmed");
-        charmsSlot.innerHTML = "🪬<div class='timer'>" + Math.ceil(healingCharmTimer) + "s</div>";
-      } else {
-        charmsSlot.classList.add("dimmed");
-        charmsSlot.innerHTML = "🪬";
-      }
-    }
-    
+function updatePowerupTraySlots() {
+  const defenseSlot = document.getElementById("defenseSlot");
+  const charmsSlot = document.getElementById("charmsSlot");
+
+  if (defenseBoostActive) {
+    const ratio = defenseBoostTimer / baseDefenseBoostDuration;
+    // A blue gradient that fills from bottom up (draining from the top)
+    defenseSlot.style.background = `linear-gradient(to top, blue ${ratio * 100}%, transparent ${ratio * 100}%)`;
+    defenseSlot.innerHTML = "🛡️<div class='timer'>" + Math.ceil(defenseBoostTimer) + "s</div>";
+  } else {
+    defenseSlot.style.background = "";
+    defenseSlot.innerHTML = "🛡️";
+  }
+
+  if (healingCharmActive) {
+    const ratio = healingCharmTimer / baseHealingCharmDuration;
+    // A purple gradient that fills from bottom up
+    charmsSlot.style.background = `linear-gradient(to top, purple ${ratio * 100}%, transparent ${ratio * 100}%)`;
+    charmsSlot.innerHTML = "🪬<div class='timer'>" + Math.ceil(healingCharmTimer) + "s</div>";
+  } else {
+    charmsSlot.style.background = "";
+    charmsSlot.innerHTML = "🪬";
+  }
+}
+
+
     function updatePickups() {
       for (let i = pickups.length - 1; i >= 0; i--) {
         let pickup = pickups[i];
@@ -1172,76 +1248,58 @@
         }
       }
     }
-    
-   function drawHUD(ctx) {
-  // Define the full HUD width (up to a max of 300px, with 20px margins)
-  let hudWidth = Math.min(300, canvas.width - 40);
-
-  // --- Full Width Bars at the Top ---
-
-  // HP Bar (full width)
-  ctx.fillStyle = "black";
-  ctx.fillRect(20, 20, hudWidth, 24);
-  let hpWidth = (player.hp / player.maxHP) * hudWidth;
-  ctx.fillStyle = "red";
-  ctx.fillRect(20, 20, hpWidth, 24);
-  ctx.strokeStyle = "white";
-  ctx.strokeRect(20, 20, hudWidth, 24);
-  ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.fillText("HP", 25, 38);
-
-  // Strike Meter Bar (full width)
-  ctx.fillStyle = "#222";
-  ctx.fillRect(20, 50, hudWidth, 24);
-  let fillWidth = (player.strikeMeter / strikeMeterCapacity) * hudWidth;
-  fillWidth = Math.min(fillWidth, hudWidth);
-  ctx.fillStyle = "rgba(255,215,0,0.8)";
-  ctx.fillRect(20, 50, fillWidth, 24);
-  ctx.strokeStyle = "white";
-  ctx.strokeRect(20, 50, hudWidth, 24);
-  ctx.fillStyle = "white";
-  ctx.fillText("Max Strike-Range: " + strikeRangeTiles + " tile(s)", 25, 68);
-
-  // Auto Strike Timer (full width)
-  ctx.fillStyle = "black";
-  ctx.fillRect(20, 80, hudWidth, 24);
-  ctx.strokeStyle = "white";
-  ctx.strokeRect(20, 80, hudWidth, 24);
-  ctx.fillStyle = "white";
-  ctx.fillText("Auto-Strike: " + autoStrikeTime.toFixed(1) + "s", 25, 98);
-  
-  // Auto Strike Indicator (tray-based) - adjust position as needed
-  ctx.textAlign = "right";
-  ctx.font = "16px Arial";
-  ctx.fillText(autoStrikeTime > 0 ? "✅" : "❌", 20 + hudWidth, 98);
-  ctx.textAlign = "left";
-
-  // --- Below Full Width Bars: Half-Width Boxes for Points and Kills ---
-
-  // Calculate half the HUD width
-  let halfWidth = hudWidth / 2;
-  // Set a vertical offset below the previous bars (you can adjust this value)
-  let yOffset = 110;
-
-  // Points Box
-  ctx.fillStyle = "black";
-  ctx.fillRect(20, yOffset, halfWidth, 24);
-  ctx.strokeStyle = "white";
-  ctx.strokeRect(20, yOffset, halfWidth, 24);
-  ctx.fillStyle = "white";
-  ctx.fillText("Points: " + Math.floor(points), 25, yOffset + 18);
-
-  // Kills Box
-  ctx.fillStyle = "black";
-  ctx.fillRect(20 + halfWidth, yOffset, halfWidth, 24);
-  ctx.strokeStyle = "white";
-  ctx.strokeRect(20 + halfWidth, yOffset, halfWidth, 24);
-  ctx.fillStyle = "white";
-  ctx.fillText("Total Kills: " + killCount, 20 + halfWidth + 5, yOffset + 18);
+function updateMaxStrikeTally() {
+  const tallyContainer = document.querySelector('#maxStrikeSlot .tally-container');
+  const numTiles = strikeRangeTiles; // one tally per tile acquired
+  let tallyHTML = "";
+  let threshold = strikeMeterCapacity / strikeRangeTiles; // value required per tile
+  for (let i = 0; i < numTiles; i++) {
+    if (player.strikeMeter >= (i + 1) * threshold) {
+      // filled tally
+      tallyHTML += "<div class='tally'></div>";
+    } else {
+      // dimmed tally
+      tallyHTML += "<div class='tally' style='opacity:0.3;'></div>";
+    }
+  }
+  tallyContainer.innerHTML = tallyHTML;
 }
 
-    
+function updateTrayHUD() {
+  // Points and Kills remain the same
+  const pointsSlot = document.getElementById("pointsSlot");
+  const pointsCounter = pointsSlot.querySelector('.counter');
+  pointsCounter.textContent = Math.floor(points);
+  
+  const killsSlot = document.getElementById("killsSlot");
+  const killsCounter = killsSlot.querySelector('.counter');
+  killsCounter.textContent = killCount;
+  
+  // HP slot: using a linear gradient like before
+  const hpSlot = document.getElementById("hpSlot");
+  const hpCounter = hpSlot.querySelector('.counter');
+  hpCounter.textContent = Math.floor(player.hp);
+  let hpPercentage = player.hp / player.maxHP;
+  hpSlot.style.background = `linear-gradient(to top, rgba(255,0,0,0.7) ${hpPercentage * 100}%, transparent ${hpPercentage * 100}%)`;
+  
+  // Auto-Strike slot: update its background fully with an orange gradient
+  const autoStrikeSlot = document.getElementById("autoStrikeSlot");
+  const autoStrikeCounter = autoStrikeSlot.querySelector('.counter');
+  autoStrikeCounter.textContent = autoStrikeTime.toFixed(1);
+  const autoStrikeIndicator = autoStrikeSlot.querySelector('.indicator');
+  autoStrikeIndicator.textContent = autoStrikeTime > 0 ? "✅" : "❌";
+  
+  const ratio = autoStrikeTime / baseAutoStrikeTime;
+  autoStrikeSlot.style.background = `linear-gradient(to top, orange ${ratio * 100}%, transparent ${ratio * 100}%)`;
+
+  // Max Strike slot remains unchanged (using its gradient background)
+  const maxStrikeSlot = document.getElementById("maxStrikeSlot");
+  let strikeFraction = player.strikeMeter / strikeMeterCapacity;
+  maxStrikeSlot.style.background = `linear-gradient(to top, rgba(255,215,0,0.8) ${strikeFraction * 100}%, transparent ${strikeFraction * 100}%)`;
+  updateMaxStrikeTally();
+}
+
+
     function showUpgradeMenu() {
       isUpgradeMenuVisible = true;
       document.getElementById("upgradeMenu").style.display = "flex";
@@ -1470,7 +1528,7 @@ document.getElementById("increaseAutoRun").addEventListener("click", () => {
       renderEffects(ctx, camera);
       renderMeleeEffects(ctx, camera);
       player.render(ctx, camera);
-      drawHUD(ctx);
+  
       
       if (screenFlashAlpha > 0) {
         ctx.fillStyle = "rgba(255,0,0," + screenFlashAlpha + ")";
@@ -1500,9 +1558,10 @@ document.getElementById("increaseAutoRun").addEventListener("click", () => {
       
       updateExplosivesSlot();
       updatePowerupTraySlots();
-      
+        updateTrayHUD();
       requestAnimationFrame(gameLoop);
-    }
+    }  // Update tray HUD icons
+
     requestAnimationFrame(gameLoop);
     
   </script>
