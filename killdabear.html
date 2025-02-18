@@ -83,10 +83,11 @@
       position: absolute;
       bottom: 20px;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translateX(-50%);  justify-content: center;
       display: flex;
       align-items: center;
-      z-index: 20;
+      z-index: 20;width: 90%;           /* Use a percentage so it scales with the viewport */
+  max-width: 800px;     /* Limit its maximum width */
     }
     #itemTray .tray-group {
       display: flex;
@@ -151,18 +152,23 @@
     /* --- Tally Marks for Max Strike Distance (vertical) --- */
 #maxStrikeSlot .tally-container {
   position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
   display: flex;
-  flex-direction: row;  /* horizontal layout */
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
   gap: 2px;
 }
 .tally {
-  width: 6px;   /* adjust as needed */
-  height: 10px; /* adjust as needed */
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
   background: white;
 }
+
 
 .meter {
   position: absolute;
@@ -1250,20 +1256,19 @@ function updatePowerupTraySlots() {
     }
 function updateMaxStrikeTally() {
   const tallyContainer = document.querySelector('#maxStrikeSlot .tally-container');
-  const numTiles = strikeRangeTiles; // one tally per tile acquired
+  const numTiles = strikeRangeTiles; // number of tallies to display
   let tallyHTML = "";
-  let threshold = strikeMeterCapacity / strikeRangeTiles; // value required per tile
+  let threshold = strikeMeterCapacity / strikeRangeTiles;
   for (let i = 0; i < numTiles; i++) {
     if (player.strikeMeter >= (i + 1) * threshold) {
-      // filled tally
       tallyHTML += "<div class='tally'></div>";
     } else {
-      // dimmed tally
       tallyHTML += "<div class='tally' style='opacity:0.3;'></div>";
     }
   }
   tallyContainer.innerHTML = tallyHTML;
 }
+
 
 function updateTrayHUD() {
   // Points and Kills remain the same
