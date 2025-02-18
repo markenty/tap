@@ -997,10 +997,10 @@
       }
     });
     
-   function executeDashAttack() {
+function executeDashAttack() {
   const dashDistance = strikeRangeTiles * 50; // Use max strike distance
   let dashVector;
-
+  
   switch (player.direction) {
     case "up": dashVector = new Vector2(0, -dashDistance); break;
     case "down": dashVector = new Vector2(0, dashDistance); break;
@@ -1008,40 +1008,55 @@
     case "right": dashVector = new Vector2(dashDistance, 0); break;
     default: return;
   }
-
+  
   let dashEndPos = player.position.add(dashVector);
   createDashTrail(player.position, dashEndPos); // Generate trail effect
   player.position = dashEndPos; // Move the player instantly
   triggerScreenFlash();
   spawnMeleeEffect(player.position.x, player.position.y, 0);
-
+  spawnShockwave(dashEndPos); // Spawn shockwave effect
+  
   enemies.forEach(enemy => {
     let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
     let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
     if (enemyCenter.subtract(playerCenter).length() < dashDistance) {
-      enemy.alive = false;
-      spawnEnemyExplosionEffect(enemy.position);
-      killCount++;
+      knockbackEnemyToEdge(enemy);
     }
   });
-
-  // **Fix: Immediately Update Attack Slot**
-  player.strikeMeter = 0; // Deplete the strike meter
-  updateAttackSlot();  // No more delay
+  
+  setTimeout(() => updateAttackSlot(), 100); // Ensure the slot updates properly after the dash
 }
 
-    
-    function createDashTrail(startPos, endPos) {
-      let trailSteps = 10;
-      for (let i = 0; i < trailSteps; i++) {
-        let t = i / trailSteps;
-        let trailPos = new Vector2(
-          startPos.x + (endPos.x - startPos.x) * t,
-          startPos.y + (endPos.y - startPos.y) * t
-        );
-        spawnDashEffect(trailPos);
-      }
-    }
+function createDashTrail(startPos, endPos) {
+  let trailSteps = 10;
+  for (let i = 0; i < trailSteps; i++) {
+    let t = i / trailSteps;
+    let trailPos = new Vector2(
+      startPos.x + (endPos.x - startPos.x) * t,
+      startPos.y + (endPos.y - startPos.y) * t
+    );
+    spawnDashEffect(trailPos);
+  }
+}
+
+function spawnDashEffect(position) {
+  let effectDuration = 0.3;
+  spriteFlashes.push({ position: position, timer: effectDuration, duration: effectDuration });
+}
+
+function spawnShockwave(position) {
+  // Implement shockwave effect at the end of the dash attack
+  spriteFlashes.push({ position: position, timer: 0.5, duration: 0.5 });
+}
+
+function knockbackEnemyToEdge(enemy) {
+  let direction = new Vector2(enemy.position.x - player.position.x, enemy.position.y - player.position.y).normalize();
+  let knockbackDistance = Math.max(tileMap.width, tileMap.height) * 50;
+  let finalPos = enemy.position.add(direction.scale(knockbackDistance));
+  enemy.position = finalPos;
+  spawnEnemyExplosionEffect(enemy.position);
+  killCount++;
+}
     
     function spawnDashEffect(position) {
       let effectDuration = 0.3;
