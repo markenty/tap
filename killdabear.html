@@ -223,7 +223,7 @@
       <div class="tray-slot" id="pointsSlot">💰<div class="counter">0</div></div>
       <div class="tray-slot" id="killsSlot">💀<div class="counter">0</div></div>
       <!-- Existing icons -->
-      <div class="tray-slot" id="attackSlot">👊</div>
+      
       <div class="tray-slot dimmed" id="defenseSlot">🛡️</div>
       <div class="tray-slot dimmed" id="charmsSlot">🪬</div>
       <div class="tray-slot" id="hpSlot">
@@ -245,6 +245,7 @@
     <div class="divider"></div>
     <div class="tray-group active">
       <div class="tray-slot" id="explosivesSlot">💣<div class="counter">0</div></div>
+<div class="tray-slot" id="attackSlot">👊</div>
     </div>
   </div>
   
@@ -973,7 +974,76 @@
         }
       });
     }
+        const attackSlot = document.getElementById("attackSlot");
+    attackSlot.classList.add("dimmed"); // Start dimmed
     
+    function updateAttackSlot() {
+      if (player.strikeMeter > 0) {
+        attackSlot.classList.remove("dimmed");
+        attackSlot.style.borderColor = "red";
+        attackSlot.style.boxShadow = "0 0 10px 3px rgba(255, 0, 0, 0.8)";
+      } else {
+        attackSlot.classList.add("dimmed");
+        attackSlot.style.borderColor = "";
+        attackSlot.style.boxShadow = "";
+      }
+    }
+    
+    attackSlot.addEventListener("click", () => {
+      if (player.strikeMeter > 0) {
+        executeDashAttack();
+        player.strikeMeter = 0; // Deplete the strike meter
+        updateAttackSlot();
+      }
+    });
+    
+    function executeDashAttack() {
+      const dashDistance = strikeRangeTiles * 50; // Use max strike distance
+      let dashVector;
+      
+      switch (player.direction) {
+        case "up": dashVector = new Vector2(0, -dashDistance); break;
+        case "down": dashVector = new Vector2(0, dashDistance); break;
+        case "left": dashVector = new Vector2(-dashDistance, 0); break;
+        case "right": dashVector = new Vector2(dashDistance, 0); break;
+        default: return;
+      }
+      
+      let dashEndPos = player.position.add(dashVector);
+      createDashTrail(player.position, dashEndPos); // Generate trail effect
+      player.position = dashEndPos; // Move the player instantly
+      triggerScreenFlash();
+      spawnMeleeEffect(player.position.x, player.position.y, 0);
+      
+      enemies.forEach(enemy => {
+        let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+        if (enemyCenter.subtract(playerCenter).length() < dashDistance) {
+          enemy.alive = false;
+          spawnEnemyExplosionEffect(enemy.position);
+          killCount++;
+        }
+      });
+      
+      setTimeout(() => updateAttackSlot(), 100); // Ensure the slot updates properly after the dash
+    }
+    
+    function createDashTrail(startPos, endPos) {
+      let trailSteps = 10;
+      for (let i = 0; i < trailSteps; i++) {
+        let t = i / trailSteps;
+        let trailPos = new Vector2(
+          startPos.x + (endPos.x - startPos.x) * t,
+          startPos.y + (endPos.y - startPos.y) * t
+        );
+        spawnDashEffect(trailPos);
+      }
+    }
+    
+    function spawnDashEffect(position) {
+      let effectDuration = 0.3;
+      spriteFlashes.push({ position: position, timer: effectDuration, duration: effectDuration });
+    }
    function performManualStrikeAt(tapX, tapY) {
   // Define the current melee range in pixels based on the player's strike range level.
   const tileSize = 50; // each tile is 50px
@@ -1595,12 +1665,12 @@ document.getElementById("increaseAutoRun").addEventListener("click", () => {
         if (flash.timer <= 0) spriteFlashes.splice(i, 1);
       }
       
-      updateExplosivesSlot();
+      updateExplosivesSlot();updateAttackSlot();
       updatePowerupTraySlots();
         updateTrayHUD();
       requestAnimationFrame(gameLoop);
     }  // Update tray HUD icons
-
+  setInterval(updateAttackSlot, 100);
     requestAnimationFrame(gameLoop);
     
   </script>
