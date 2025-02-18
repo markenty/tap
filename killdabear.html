@@ -997,36 +997,39 @@
       }
     });
     
-    function executeDashAttack() {
-      const dashDistance = strikeRangeTiles * 50; // Use max strike distance
-      let dashVector;
-      
-      switch (player.direction) {
-        case "up": dashVector = new Vector2(0, -dashDistance); break;
-        case "down": dashVector = new Vector2(0, dashDistance); break;
-        case "left": dashVector = new Vector2(-dashDistance, 0); break;
-        case "right": dashVector = new Vector2(dashDistance, 0); break;
-        default: return;
-      }
-      
-      let dashEndPos = player.position.add(dashVector);
-      createDashTrail(player.position, dashEndPos); // Generate trail effect
-      player.position = dashEndPos; // Move the player instantly
-      triggerScreenFlash();
-      spawnMeleeEffect(player.position.x, player.position.y, 0);
-      
-      enemies.forEach(enemy => {
-        let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
-        let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
-        if (enemyCenter.subtract(playerCenter).length() < dashDistance) {
-          enemy.alive = false;
-          spawnEnemyExplosionEffect(enemy.position);
-          killCount++;
-        }
-      });
-      
-      setTimeout(() => updateAttackSlot(), 100); // Ensure the slot updates properly after the dash
+   function executeDashAttack() {
+  const dashDistance = strikeRangeTiles * 50; // Use max strike distance
+  let dashVector;
+
+  switch (player.direction) {
+    case "up": dashVector = new Vector2(0, -dashDistance); break;
+    case "down": dashVector = new Vector2(0, dashDistance); break;
+    case "left": dashVector = new Vector2(-dashDistance, 0); break;
+    case "right": dashVector = new Vector2(dashDistance, 0); break;
+    default: return;
+  }
+
+  let dashEndPos = player.position.add(dashVector);
+  createDashTrail(player.position, dashEndPos); // Generate trail effect
+  player.position = dashEndPos; // Move the player instantly
+  triggerScreenFlash();
+  spawnMeleeEffect(player.position.x, player.position.y, 0);
+
+  enemies.forEach(enemy => {
+    let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+    let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+    if (enemyCenter.subtract(playerCenter).length() < dashDistance) {
+      enemy.alive = false;
+      spawnEnemyExplosionEffect(enemy.position);
+      killCount++;
     }
+  });
+
+  // **Fix: Immediately Update Attack Slot**
+  player.strikeMeter = 0; // Deplete the strike meter
+  updateAttackSlot();  // No more delay
+}
+
     
     function createDashTrail(startPos, endPos) {
       let trailSteps = 10;
