@@ -45,7 +45,7 @@
         height: 48px;
       }
     }
-    /* --- Upgrade Menu Overlay Styling --- */
+       /* --- Upgrade Menu Overlay Styling --- */
     #upgradeMenu {
       position: fixed;
       top: 0;
@@ -63,20 +63,58 @@
       padding: 20px;
       border-radius: 10px;
       text-align: center;
+      width: 70%;
     }
-    #upgradeMenu button {
-      margin: 10px;
+    #upgradeMenu .menu-content h1 {
+      margin-top: 0;
+    }
+    #upgradeMenu .menu-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    #upgradeMenu .menu-buttons button:active {
+      border: 2px solid red;
+      box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
+      transition: box-shadow 0.1s ease;
+    }
+    #upgradeMenu .menu-buttons button {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid white;
+      border-radius: 10px;
+      width: 100px;
+      height: 100px;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    #upgradeMenu .menu-buttons button .icon {
+      font-size: 40px;
+      line-height: 1;
+    }
+    #upgradeMenu .menu-buttons button .label {
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    #upgradeMenu .menu-buttons button .cost {
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    #upgradeMenu button#resumeGame {
+      margin-top: 20px;
       padding: 10px 20px;
       font-size: 16px;
       border: none;
       border-radius: 5px;
       cursor: pointer;
-    }
-    #upgradeMenu .menu-content .menu-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 10px;
-      margin: 20px 0;
+      background: #ffebcd;
+      color: black;
     }
     /* --- Tray Styling --- */
     #itemTray {
@@ -204,6 +242,7 @@
     <div class="menu-content">
       <h1>Upgrade Menu</h1>
       <p>You have <span id="pointsDisplay"></span> points.</p>
+      <p>Your Rank: <span id="rankDisplay"></span></p>
       <div class="menu-buttons">
         <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
         <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
@@ -285,6 +324,30 @@
         ctx.restore();
       }
     }
+    // --- Ranking System Variables & Functions ---
+    const rankEmojis = ["🔰", "🥉", "🥈", "🥇", "🏆", "👑", "💎", "🔥", "🚀"];
+    const rankNames  = ["Beginner", "Novice", "Warrior", "Veteran", "Elite", "Master", "Champion", "Legend", "Mythic"];
+    
+    function calculateRank(kills) {
+      let rank = 0;
+      let threshold = 100;
+      let remainingKills = kills;
+      while (remainingKills >= threshold) {
+        rank++;
+        remainingKills -= threshold;
+        threshold = Math.floor(threshold * 1.5);
+      }
+      return rank;
+    }
+    
+    function updateRankDisplay() {
+      const rankDisplay = document.getElementById("rankDisplay");
+      const currentRank = calculateRank(killCount);
+      const emoji = rankEmojis[Math.min(currentRank, rankEmojis.length - 1)];
+      const name  = rankNames[Math.min(currentRank, rankNames.length - 1)];
+      rankDisplay.textContent = `${emoji} ${name}`;
+    }
+    
     function updateMeleeEffects(deltaTime) {
       for (let i = meleeEffects.length - 1; i >= 0; i--) {
         meleeEffects[i].timer -= deltaTime;
@@ -616,21 +679,19 @@
         this.currentFrame = 0;
         this.frameTime = 0;
         this.frameDelay = 0.1;
-        // Dash-related properties
         this.isDashing = false;
         this.dashStart = null;
         this.dashEnd = null;
         this.dashDuration = 0.2;
         this.dashElapsed = 0;
-        // Damage flash and vibration properties
         this.damageFlashTimer = 0;
         this.damageVibrateTimer = 0;
         this.vibrationMagnitude = 5;
       }
       
       flashDamage() {
-        this.damageFlashTimer = 0.3; // flash red for 0.3 sec
-        this.damageVibrateTimer = 0.3; // vibrate for 0.3 sec
+        this.damageFlashTimer = 0.3;
+        this.damageVibrateTimer = 0.3;
       }
       
       startDash(direction) {
@@ -727,9 +788,7 @@
           }
           srcX = this.currentFrame * 32;
           srcY = row * 32;
-          // Draw the normal sprite
           ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
-          // If damage flash is active, draw a red tinted duplicate
           if(this.damageFlashTimer > 0) {
             let offCanvas = document.createElement("canvas");
             offCanvas.width = this.width;
@@ -836,7 +895,6 @@
       }
     }
     
-    // --- Enemy Class with Damage Flash (similar to Player) ---
     class Enemy {
       constructor(tileX, tileY, tileMap) {
         this.tileMap = tileMap;
@@ -867,14 +925,7 @@
         this.frameDelay = 0.15;
         this.attackCooldown = 0;
         this.knockback = new Vector2(0, 0);
-        // Damage flash property for enemy
-        this.damageFlashTimer = 0;
       }
-      
-      flashDamage() {
-        this.damageFlashTimer = 0.3;
-      }
-      
       update(deltaTime) {
         if (this.moving) {
           this.moveTime += deltaTime;
@@ -918,13 +969,8 @@
           }
           if (this.attackCooldown > 0) this.attackCooldown -= deltaTime;
         }
-        if(this.damageFlashTimer > 0) {
-          this.damageFlashTimer -= deltaTime;
-          if(this.damageFlashTimer < 0) this.damageFlashTimer = 0;
-        }
         this.knockback = this.knockback.scale(0.9);
       }
-      
       render(ctx, camera) {
         let pos = this.position.add(this.knockback);
         let screenPos = camera.worldToScreen(pos);
@@ -939,23 +985,11 @@
           }
           let srcX = this.currentFrame * 32, srcY = row * 32;
           ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
-          if(this.damageFlashTimer > 0) {
-            let offCanvas = document.createElement("canvas");
-            offCanvas.width = this.width;
-            offCanvas.height = this.height;
-            let offCtx = offCanvas.getContext("2d");
-            offCtx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, 0, 0, this.width, this.height);
-            offCtx.globalCompositeOperation = "source-atop";
-            offCtx.fillStyle = "red";
-            offCtx.fillRect(0, 0, this.width, this.height);
-            ctx.drawImage(offCanvas, screenPos.x, screenPos.y);
-          }
         } else {
           ctx.fillStyle = "green";
           ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
         }
       }
-      
       move(direction) {
         if (this.moving) return;
         let newGridX = this.gridX, newGridY = this.gridY;
@@ -976,7 +1010,6 @@
         this.frameTime = 0;
         this.currentFrame = 0;
       }
-      
       shoot() {
         let startPos = new Vector2(this.position.x + this.width/2, this.position.y + this.height/2);
         let playerCenter = new Vector2(player.position.x + player.width/2, player.position.y + player.height/2);
@@ -1335,7 +1368,7 @@
       for(let i=baitBombs.length-1;i>=0;i--){
         baitBombs[i].update(deltaTime);
         if(baitBombs[i].timer<=0){
-          screenFlashAlpha = 0.5; screenShakeMagnitude = 20;
+          screenShakeTime = 0.5; screenShakeMagnitude = 20;
           spawnExplosionEffect(baitBombs[i].position);
           let bx = baitBombs[i].tileX, by = baitBombs[i].tileY;
           enemies.forEach(enemy=>{
@@ -1419,7 +1452,8 @@
         charmsSlot.classList.add("dimmed");
         charmsSlot.style.background = "";
         charmsSlot.innerHTML = "🪬";
-      }
+      }  
+      updateRankDisplay();
     }
     
     function showUpgradeMenu() {
@@ -1495,6 +1529,41 @@
     });
     document.getElementById("resumeGame").addEventListener("click", ()=>{ resumeGame(); });
     
+    // --- Added Keyboard Controls ---
+    document.addEventListener("keydown", function(e) {
+      if(isUpgradeMenuVisible) return;
+      switch(e.code) {
+        case "KeyW":
+        case "ArrowUp":
+          if(!player.moving && !player.isDashing) player.move("up");
+          break;
+        case "KeyA":
+        case "ArrowLeft":
+          if(!player.moving && !player.isDashing) player.move("left");
+          break;
+        case "KeyS":
+        case "ArrowDown":
+          if(!player.moving && !player.isDashing) player.move("down");
+          break;
+        case "KeyD":
+        case "ArrowRight":
+          if(!player.moving && !player.isDashing) player.move("right");
+          break;
+        case "Space":
+          e.preventDefault();
+          if(!player.moving && !player.isDashing) player.strike(player.direction);
+          break;
+        case "KeyB":  // "B" to deploy bomb
+          e.preventDefault();
+          if(!player.moving && !player.isDashing) deployBomb();
+          break;
+        case "KeyM":  // "M" to execute dash attack
+          e.preventDefault();
+          if(!player.moving && !player.isDashing) executeDashAttack();
+          break;
+      }
+    });
+    
     let lastTime = performance.now();
     function gameLoop() {
       let currentTime = performance.now();
@@ -1543,7 +1612,6 @@
                 enemy.knockback = enemy.knockback.add(baseKnock);
                 screenShakeTime = 0.2;
                 screenShakeMagnitude = 10;
-                // (Optionally, call enemy.flashDamage() here if you wish)
               }
             });
           } else if(bullet.owner==="enemy"){
@@ -1641,7 +1709,7 @@
       
       if(screenFlashAlpha>0){
         ctx.fillStyle = "rgba(255,0,0,"+screenFlashAlpha+")";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0,0,canvas.width,canvas.height);
         screenFlashAlpha -= deltaTime*2;
         if(screenFlashAlpha<0) screenFlashAlpha = 0;
       }
