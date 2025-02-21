@@ -81,23 +81,32 @@
   font-size: 1.8rem;
   margin: 0.5rem 0;
 }
-    /* --- Tab Headers --- */
-    .tabs {
-      display: flex;
-      justify-content: center;
-      margin: 15px 0;
-    }
-    .tabs button {
-      background: #ddd;
-      border: none;
-      padding: 10px 20px;
-      margin: 0 5px;
-      cursor: pointer;
-      border-radius: 5px;
-      transition: background 0.2s;
-      font-weight: bold;
-    }
-    .tabs button.active { background: #ffebcd; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+ /* Tabs styling */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.tabs button {
+  background: #ddd;
+  border: none;
+  padding: 1rem 2rem;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.2s;
+  font-size: 1.8rem;
+  font-weight: bold;
+  flex: 1;
+}
+
+.tabs button.active {
+  background: #ffebcd;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+   
     /* --- Section Containers --- */
     .section { display: none; }
     /* Responsive grid for upgrade/shop buttons */
