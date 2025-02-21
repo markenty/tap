@@ -45,83 +45,129 @@
         height: 48px;
       }
     }
-        /* --- Upgrade Menu Overlay with Tabs --- */
-    #upgradeMenu {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      display: none;
-      align-items: center; justify-content: center;
-      z-index: 100;
-    }
-    .menu-content {
-      background: #ffebcd;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      width: 70%;
-      max-width: 800px;
-    }
-    .menu-content h1 { margin-top: 0; }
-    .menu-content p { margin: 5px 0; }
-    /* --- Tab Headers --- */
-    .tabs {
-      display: flex;
-      justify-content: center;
-      margin: 15px 0;
-    }
-    .tabs button {
-      background: #ddd;
-      border: none;
-      padding: 10px 20px;
-      margin: 0 5px;
-      cursor: pointer;
-      border-radius: 5px;
-      transition: background 0.2s;
-      font-weight: bold;
-    }
-    .tabs button.active { background: #ffebcd; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
-    /* --- Section Containers --- */
-    .section { display: none; }
-    /* --- Upgrade/Shop Buttons --- */
-    .menu-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 10px;
-      margin: 20px 0;
-    }
-    .menu-buttons button {
-      background: rgba(0,0,0,0.5);
-      border: 2px solid white;
-      border-radius: 10px;
-      width: 100px; height: 100px;
-      color: white;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    .menu-buttons button:active {
-      border: 2px solid red;
-      box-shadow: 0 0 10px 3px rgba(255,0,0,0.8);
-    }
-    .menu-buttons button .icon { font-size: 40px; }
-    .menu-buttons button .label { font-size: 14px; margin-top: 5px; }
-    .menu-buttons button .cost { font-size: 12px; margin-top: 2px; }
-    #resumeGame {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      background: #ffebcd;
-      color: black;
-    }
+     /* Fullscreen overlay for the upgrade menu */
+#upgradeMenu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.85);
+  display: none; /* Toggle via JS */
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+/* Expanded menu content that fills the screen */
+.menu-content {
+  background: #ffebcd;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  overflow-y: auto;
+}
+
+/* Headings and text scale up for readability */
+.menu-content h1 {
+  font-size: 3rem;
+  margin: 0.5rem 0;
+}
+
+.menu-content p {
+  font-size: 1.8rem;
+  margin: 0.5rem 0;
+}
+
+/* Tabs styling */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.tabs button {
+  background: #ddd;
+  border: none;
+  padding: 1rem 2rem;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.2s;
+  font-size: 1.8rem;
+  font-weight: bold;
+  flex: 1;
+}
+
+.tabs button.active {
+  background: #ffebcd;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Responsive grid for upgrade/shop buttons */
+.menu-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Enlarged buttons for easier touch interaction */
+.menu-buttons button {
+  background: rgba(0,0,0,0.5);
+  border: 2px solid white;
+  border-radius: 10px;
+  width: 100%;
+  aspect-ratio: 1;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  padding: 1rem;
+}
+
+.menu-buttons button:active {
+  border: 2px solid red;
+  box-shadow: 0 0 10px 3px rgba(255,0,0,0.8);
+}
+
+/* Resume Game Button */
+#resumeGame {
+  margin-top: 1rem;
+  padding: 1rem 2rem;
+  font-size: 2rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background: #ffebcd;
+  color: black;
+  width: 90%;
+  max-width: 400px;
+}
+
+/* Optional: Further adjustments for very small screens */
+@media (max-width: 480px) {
+  .menu-content h1 {
+    font-size: 2.5rem;
+  }
+  .menu-content p, .tabs button, .menu-buttons button, #resumeGame {
+    font-size: 1.6rem;
+    padding: 0.8rem;
+  }
+}
+
     /* --- Item Tray (Unchanged) --- */
     #itemTray {
       position: absolute;
@@ -276,7 +322,8 @@
         <button id="increaseShieldingTime">🛡️ Increase Shielding (Duration & Reduction) - Cost: 250</button>
   </div>
       </div>
-      <div id="shopSection" class="section">
+   <div id="shopSection" class="section" style="display: none;">
+
         <div class="menu-buttons">
           <button id="buyBomb">
             <div class="icon">💣</div>
