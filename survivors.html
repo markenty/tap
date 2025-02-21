@@ -45,46 +45,57 @@
         height: 48px;
       }
     }
-       /* --- Upgrade Menu Overlay Styling --- */
+        /* --- Upgrade Menu Overlay with Tabs --- */
     #upgradeMenu {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: rgba(0,0,0,0.7);
       display: none;
-      align-items: center;
-      justify-content: center;
+      align-items: center; justify-content: center;
       z-index: 100;
     }
-    #upgradeMenu .menu-content {
+    .menu-content {
       background: #ffebcd;
       padding: 20px;
       border-radius: 10px;
       text-align: center;
       width: 70%;
+      max-width: 800px;
     }
-    #upgradeMenu .menu-content h1 {
-      margin-top: 0;
+    .menu-content h1 { margin-top: 0; }
+    .menu-content p { margin: 5px 0; }
+    /* --- Tab Headers --- */
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin: 15px 0;
     }
-    #upgradeMenu .menu-buttons {
+    .tabs button {
+      background: #ddd;
+      border: none;
+      padding: 10px 20px;
+      margin: 0 5px;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background 0.2s;
+      font-weight: bold;
+    }
+    .tabs button.active { background: #ffebcd; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+    /* --- Section Containers --- */
+    .section { display: none; }
+    /* --- Upgrade/Shop Buttons --- */
+    .menu-buttons {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       gap: 10px;
       margin: 20px 0;
     }
-    #upgradeMenu .menu-buttons button:active {
-      border: 2px solid red;
-      box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
-      transition: box-shadow 0.1s ease;
-    }
-    #upgradeMenu .menu-buttons button {
+    .menu-buttons button {
       background: rgba(0,0,0,0.5);
       border: 2px solid white;
       border-radius: 10px;
-      width: 100px;
-      height: 100px;
+      width: 100px; height: 100px;
       color: white;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
@@ -94,19 +105,14 @@
       justify-content: center;
       text-align: center;
     }
-    #upgradeMenu .menu-buttons button .icon {
-      font-size: 40px;
-      line-height: 1;
+    .menu-buttons button:active {
+      border: 2px solid red;
+      box-shadow: 0 0 10px 3px rgba(255,0,0,0.8);
     }
-    #upgradeMenu .menu-buttons button .label {
-      font-size: 14px;
-      margin-top: 5px;
-    }
-    #upgradeMenu .menu-buttons button .cost {
-      font-size: 12px;
-      margin-top: 2px;
-    }
-    #upgradeMenu button#resumeGame {
+    .menu-buttons button .icon { font-size: 40px; }
+    .menu-buttons button .label { font-size: 14px; margin-top: 5px; }
+    .menu-buttons button .cost { font-size: 12px; margin-top: 2px; }
+    #resumeGame {
       margin-top: 20px;
       padding: 10px 20px;
       font-size: 16px;
@@ -115,6 +121,19 @@
       cursor: pointer;
       background: #ffebcd;
       color: black;
+    }
+    /* --- Item Tray (Unchanged) --- */
+    #itemTray {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      width: 90%;
+      max-width: 800px;
     }
     /* --- Tray Styling --- */
     #itemTray {
@@ -237,12 +256,17 @@
   <!-- Headbutt Effect Overlay -->
   <div id="headbuttEffect"></div>
   
-  <!-- Upgrade Menu Overlay -->
+  <!-- Upgrade Menu with Tabs -->
   <div id="upgradeMenu">
     <div class="menu-content">
       <h1>Upgrade Menu</h1>
-      <p>You have <span id="pointsDisplay"></span> points.</p>
-      <p>Your Rank: <span id="rankDisplay"></span></p>
+      <p>You have <span id="pointsDisplay">0</span> points.</p>
+      <p>Your Rank: <span id="rankDisplay">🔰 Beginner</span></p>
+      <div class="tabs">
+        <button id="upgradesTab" class="active">Upgrades</button>
+        <button id="shopTab">Shop</button>
+      </div>
+      <div id="upgradesSection" class="section" style="display:block;">
       <div class="menu-buttons">
         <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
         <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
@@ -250,8 +274,18 @@
         <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
         <button id="increaseHealingCharmTime">🪬 Increase Healing Charm (Duration & Heal) - Cost: 250</button>
         <button id="increaseShieldingTime">🛡️ Increase Shielding (Duration & Reduction) - Cost: 250</button>
+  </div>
       </div>
-      <button id="resumeGame" style="margin-top: 20px;">▶️ Resume Game</button>
+      <div id="shopSection" class="section">
+        <div class="menu-buttons">
+          <button id="buyBomb">
+            <div class="icon">💣</div>
+            <div class="label">Bomb</div>
+            <div class="cost" id="bombCostDisplay"></div>
+          </button>
+        </div>
+      </div>
+      <button id="resumeGame">▶️ Resume Game</button>
     </div>
   </div>
   
@@ -324,6 +358,49 @@
         ctx.restore();
       }
     }
+    // -------------------------
+    // Shop & Upgrade Menu Logic
+    // -------------------------
+    function getBombCost() {
+      // Cost scales with rank: cost = 50 × (rank + 1)
+      return Math.floor(50 * (calculateRank(killCount) + 1));
+    }
+    function updateBombCostDisplay() {
+      document.getElementById("bombCostDisplay").innerText = "Cost: " + getBombCost();
+    }
+    
+document.getElementById("buyBomb").addEventListener("click", function() {
+  let cost = getBombCost();
+  if(points >= cost) {
+    points -= cost;
+    bombCount++;
+    updateBombCostDisplay();
+    document.getElementById("pointsDisplay").textContent = Math.floor(points); // Update points UI
+  }
+});
+
+    // Tab switching for upgrade menu
+    document.getElementById("upgradesTab").addEventListener("click", function() {
+      document.getElementById("upgradesSection").style.display = "block";
+      document.getElementById("shopSection").style.display = "none";
+      this.classList.add("active");
+      document.getElementById("shopTab").classList.remove("active");
+    });
+    document.getElementById("shopTab").addEventListener("click", function() {
+      document.getElementById("shopSection").style.display = "block";
+      document.getElementById("upgradesSection").style.display = "none";
+      this.classList.add("active");
+      document.getElementById("upgradesTab").classList.remove("active");
+      updateBombCostDisplay();
+    });
+    
+    document.getElementById("resumeGame").addEventListener("click", function() {
+      isUpgradeMenuVisible = false;
+      document.getElementById("upgradeMenu").style.display = "none";
+      // Reset game state if necessary
+      timeScale = 1.0;
+      // (Other reset actions as needed)
+    });
     // --- Ranking System Variables & Functions ---
     const rankEmojis = ["🔰", "🥉", "🥈", "🥇", "🏆", "👑", "💎", "🔥", "🚀"];
     const rankNames  = ["Beginner", "Novice", "Warrior", "Veteran", "Elite", "Master", "Champion", "Legend", "Mythic"];
@@ -1531,38 +1608,39 @@
     
     // --- Added Keyboard Controls ---
     document.addEventListener("keydown", function(e) {
-      if(isUpgradeMenuVisible) return;
-      switch(e.code) {
-        case "KeyW":
-        case "ArrowUp":
-          if(!player.moving && !player.isDashing) player.move("up");
-          break;
-        case "KeyA":
-        case "ArrowLeft":
-          if(!player.moving && !player.isDashing) player.move("left");
-          break;
-        case "KeyS":
-        case "ArrowDown":
-          if(!player.moving && !player.isDashing) player.move("down");
-          break;
-        case "KeyD":
-        case "ArrowRight":
-          if(!player.moving && !player.isDashing) player.move("right");
-          break;
-        case "Space":
-          e.preventDefault();
-          if(!player.moving && !player.isDashing) player.strike(player.direction);
-          break;
-        case "KeyB":  // "B" to deploy bomb
-          e.preventDefault();
-          if(!player.moving && !player.isDashing) deployBomb();
-          break;
-        case "KeyM":  // "M" to execute dash attack
-          e.preventDefault();
-          if(!player.moving && !player.isDashing) executeDashAttack();
-          break;
-      }
-    });
+  if (isUpgradeMenuVisible || e.repeat) return; // Prevent auto-repeat actions
+  switch(e.code) {
+    case "KeyW":
+    case "ArrowUp":
+      if(!player.moving && !player.isDashing) player.move("up");
+      break;
+    case "KeyA":
+    case "ArrowLeft":
+      if(!player.moving && !player.isDashing) player.move("left");
+      break;
+    case "KeyS":
+    case "ArrowDown":
+      if(!player.moving && !player.isDashing) player.move("down");
+      break;
+    case "KeyD":
+    case "ArrowRight":
+      if(!player.moving && !player.isDashing) player.move("right");
+      break;
+    case "Space":
+      e.preventDefault();
+      if(!player.moving && !player.isDashing) player.strike(player.direction);
+      break;
+    case "KeyB":  // "B" to deploy bomb
+      e.preventDefault();
+      if(!player.moving && !player.isDashing) deployBomb();
+      break;
+    case "KeyM":  // "M" to execute dash attack
+      e.preventDefault();
+      if(!player.moving && !player.isDashing) executeDashAttack();
+      break;
+  }
+});
+
     
     let lastTime = performance.now();
     function gameLoop() {
