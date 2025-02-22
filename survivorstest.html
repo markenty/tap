@@ -1488,7 +1488,9 @@
             if(strikeRangeTiles>1){ player.strikeMeter = strikeMeterCapacity; }
             spawnPickupEffect(pickup.position);
           } else if(pickup instanceof HealthPickup){
-            player.hp = Math.min(player.hp+20, player.maxHP);
+             // Heal 20% of the player's max HP.
+  const healAmount = Math.floor(player.maxHP * 0.2);
+  player.hp = Math.min(player.hp + healAmount, player.maxHP);
             spawnPickupEffect(pickup.position);
           } else if(pickup instanceof DefenseBoostPickup){
             defenseBoostActive = true;
