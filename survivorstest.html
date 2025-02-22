@@ -1425,17 +1425,18 @@ addSpriteFlash(enemy.position);
           let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
           let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
           if(playerCenter.subtract(enemyCenter).length()<=currentMeleeRange){
-            triggerScreenFlash();
-            addSpriteFlash(enemy.position);
+           
             
             let angle = Math.atan2(enemyCenter.y-playerCenter.y, enemyCenter.x-playerCenter.x);
             let effectX = playerCenter.x+Math.cos(angle)*20;
             let effectY = playerCenter.y+Math.sin(angle)*20;
-            spawnMeleeEffect(effectX, effectY, angle);
+           
             // Create a sword effect for manual strike.
-            swordEffects.push(new SwordEffect(playerCenter, enemyCenter));enemy.alive = false;
-            spawnEnemyExplosionEffect(enemy.position);
-            killCount++;
+            swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+              triggerScreenFlash();
+            addSpriteFlash(enemy.position);spawnMeleeEffect(effectX, effectY, angle);
+spawnEnemyExplosionEffect(enemy.position);
+           enemy.alive = false; killCount++;
             return true;
           }
         }
