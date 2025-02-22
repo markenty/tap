@@ -865,6 +865,8 @@
             if (playerCenter.subtract(enemyCenter).length() < 50 && enemy.alive) {
            if (enemy.deathTimer === undefined) {
   enemy.deathTimer = 0.5; // Delay
+  enemy.damageFlashTimer = 0.3;
+  enemy.damageVibrateTimer = 0.3;
   swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
 }
 addSpriteFlash(enemy.position);
@@ -1031,6 +1033,8 @@ addSpriteFlash(enemy.position);
   // Set a death timer if not already set
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
+      enemy.damageFlashTimer = 0.3;
+  enemy.damageVibrateTimer = 0.3;
     swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
   }
   addSpriteFlash(enemy.position);
@@ -1050,6 +1054,8 @@ addSpriteFlash(enemy.position);
     
     class Enemy {
       constructor(tileX, tileY, tileMap) {
+        this.damageFlashTimer = 0;
+    this.damageVibrateTimer = 0;
         this.tileMap = tileMap;
         this.gridX = tileX;
         this.gridY = tileY;
@@ -1089,7 +1095,15 @@ addSpriteFlash(enemy.position);
         killCount++;
         this.alive = false;
         return; // Skip the rest of the update once dead.
-      }
+      }  // Decrement flash and vibrate timers
+  if (this.damageFlashTimer > 0) {
+    this.damageFlashTimer -= deltaTime;
+    if (this.damageFlashTimer < 0) this.damageFlashTimer = 0;
+  }
+  if (this.damageVibrateTimer > 0) {
+    this.damageVibrateTimer -= deltaTime;
+    if (this.damageVibrateTimer < 0) this.damageVibrateTimer = 0;
+  }
     }
         if (this.moving) {
           this.moveTime += deltaTime;
@@ -1135,25 +1149,54 @@ addSpriteFlash(enemy.position);
         }
         this.knockback = this.knockback.scale(0.9);
       }
-      render(ctx, camera) {
-        let pos = this.position.add(this.knockback);
-        let screenPos = camera.worldToScreen(pos);
-        if (this.spriteLoaded) {
-          let row = 0;
-          switch (this.direction) {
-            case "down": row = 0; break;
-            case "right": row = 1; break;
-            case "up": row = 2; break;
-            case "left": row = 3; break;
-            default: row = 0;
-          }
-          let srcX = this.currentFrame * 32, srcY = row * 32;
-          ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
-        } else {
-          ctx.fillStyle = "green";
-          ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
-        }
-      }
+    render(ctx, camera) {
+  let pos = this.position.add(this.knockback);
+  let screenPos = camera.worldToScreen(pos);
+
+  // Apply vibration if damageVibrateTimer is active:
+  let offsetX = 0, offsetY = 0;
+  if(this.damageVibrateTimer > 0) {
+    offsetX = (Math.random()*2 - 1) * 5; // adjust magnitude as needed
+    offsetY = (Math.random()*2 - 1) * 5;
+  }
+  screenPos.x += offsetX;
+  screenPos.y += offsetY;
+
+  if (this.spriteLoaded) {
+    let row = 0;
+    switch (this.direction) {
+      case "down": row = 0; break;
+      case "right": row = 1; break;
+      case "up": row = 2; break;
+      case "left": row = 3; break;
+      default: row = 0;
+    }
+    let srcX = this.currentFrame * 32;
+    let srcY = row * 32;
+
+    // Draw the enemy normally
+    ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
+
+    // If damage flash is active, overlay a red tint.
+    if (this.damageFlashTimer > 0) {
+      // Create an offscreen canvas if not already done (or reuse one)
+      let offCanvas = document.createElement("canvas");
+      offCanvas.width = this.width;
+      offCanvas.height = this.height;
+      let offCtx = offCanvas.getContext("2d");
+      offCtx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, 0, 0, this.width, this.height);
+      offCtx.globalCompositeOperation = "source-atop";
+      offCtx.fillStyle = "rgba(255, 0, 0, 0.5)"; // 50% red tint; adjust alpha as needed
+      offCtx.fillRect(0, 0, this.width, this.height);
+      ctx.drawImage(offCanvas, screenPos.x, screenPos.y);
+    }
+  } else {
+    // Fallback if sprite not loaded
+    ctx.fillStyle = "green";
+    ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
+  }
+}
+
       move(direction) {
         if (this.moving) return;
         let newGridX = this.gridX, newGridY = this.gridY;
@@ -1251,6 +1294,8 @@ addSpriteFlash(enemy.position);
   // Set a delay if not already set:
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
+  enemy.damageFlashTimer = 0.3;
+  enemy.damageVibrateTimer = 0.3;
     swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
   }
   addSpriteFlash(enemy.position);
