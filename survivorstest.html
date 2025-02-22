@@ -403,7 +403,53 @@
     }
     // Global array to hold active sword effects
     let swordEffects = [];
+     // -------------------------
+    // Shop & Upgrade Menu Logic
+    // -------------------------
+    function getBombCost() {
+      // Cost scales with rank: cost = 50 × (rank + 1)
+      return Math.floor(50 * (calculateRank(killCount) + 1));
+    }
+    function updateBombCostDisplay() {
+      document.getElementById("bombCostDisplay").innerText = "Cost: " + getBombCost();
+    }
     
+    document.getElementById("buyBomb").addEventListener("click", function() {
+      let cost = getBombCost();
+      if(points >= cost) {
+        points -= cost;
+        bombCount++;
+        updateBombCostDisplay();
+        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+      }
+    });
+    
+    // Tab switching for upgrade menu
+    document.getElementById("upgradesTab").addEventListener("click", function() {
+      document.getElementById("upgradesSection").style.display = "block";
+      document.getElementById("shopSection").style.display = "none";
+      this.classList.add("active");
+      document.getElementById("shopTab").classList.remove("active");
+    });
+    document.getElementById("shopTab").addEventListener("click", function() {
+      document.getElementById("shopSection").style.display = "block";
+      document.getElementById("upgradesSection").style.display = "none";
+      this.classList.add("active");
+      document.getElementById("upgradesTab").classList.remove("active");
+      updateBombCostDisplay();
+    });
+    
+    document.getElementById("resumeGame").addEventListener("click", function() {
+      isUpgradeMenuVisible = false;
+      document.getElementById("upgradeMenu").style.display = "none";
+      enemies.length = 0;
+      bullets.length = 0;
+      pickups.length = 0;
+      baitBombs.length = 0;
+      player.respawn();
+      autoStrikeTime = baseAutoStrikeTime;
+      timeScale = 1.0;
+    });
     // --- Ranking System Variables & Functions ---
     const rankEmojis = ["🔰", "🥉", "🥈", "🥇", "🏆", "👑", "💎", "🔥", "🚀"];
     const rankNames  = ["Beginner", "Novice", "Warrior", "Veteran", "Elite", "Master", "Champion", "Legend", "Mythic"];
@@ -1959,7 +2005,8 @@ renderSwordEffects(ctx, camera);
         flash.timer -= deltaTime;
         if(flash.timer<=0) spriteFlashes.splice(i,1);
       }
-      
+     
+
       updateExplosivesSlot();
       updateAttackSlot();
       updatePowerupTraySlots();
