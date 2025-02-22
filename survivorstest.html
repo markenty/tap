@@ -1426,18 +1426,25 @@ addSpriteFlash(enemy.position);
           let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
           if(playerCenter.subtract(enemyCenter).length()<=currentMeleeRange){
            
-            
-            let angle = Math.atan2(enemyCenter.y-playerCenter.y, enemyCenter.x-playerCenter.x);
-            let effectX = playerCenter.x+Math.cos(angle)*20;
-            let effectY = playerCenter.y+Math.sin(angle)*20;
-           
-            // Create a sword effect for manual strike.
-            swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
-              triggerScreenFlash();
-            addSpriteFlash(enemy.position);spawnMeleeEffect(effectX, effectY, angle);
-spawnEnemyExplosionEffect(enemy.position);
-           enemy.alive = false; killCount++;
-            return true;
+         swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+let effectX = playerCenter.x + Math.cos(angle) * 20;
+let effectY = playerCenter.y + Math.sin(angle) * 20;
+triggerScreenFlash();
+addSpriteFlash(enemy.position);
+spawnMeleeEffect(effectX, effectY, angle);
+
+// Instead of killing immediately, set a death timer (if not already set)
+if (enemy.deathTimer === undefined) {
+  enemy.deathTimer = 0.5; // delay in seconds before enemy dies
+}
+
+// Optionally, store additional info if needed (e.g., for a "dying" state)
+// The enemy's update() function should then check if deathTimer <= 0,
+// and if so, call spawnEnemyExplosionEffect(enemy.position), mark enemy.alive = false,
+// and increment killCount.
+return true;
+
           }
         }
       }
@@ -1502,8 +1509,7 @@ spawnEnemyExplosionEffect(enemy.position);
       void headbuttDiv.offsetWidth;
       headbuttDiv.classList.add("active");
       let playerBox = { x: playerScreenPos.x, y: playerScreenPos.y, width: player.width, height: player.height };
-      enemies.forEach(enemy=>{
-        let enemyScreenPos = camera.worldToScreen(enemy.position);
+      enemies.forEach(enemy=>{    let enemyScreenPos = camera.worldToScreen(enemy.position);
         let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
         if(rectIntersect(playerBox, enemyBox)){
           addSpriteFlash(enemy.position);
