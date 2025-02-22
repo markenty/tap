@@ -1863,10 +1863,10 @@
       ctx.fillStyle = "#505050";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       tileMap.render(ctx, camera);
+renderSwordEffects(ctx, camera);
       enemies.forEach(enemy=> enemy.render(ctx, camera));
       pickups.forEach(pickup=> pickup.render(ctx, camera, globalTime));
       baitBombs.forEach(bomb=> bomb.render(ctx, camera, globalTime));
-      renderSwordEffects(ctx, camera);
       bullets.forEach(bullet=> bullet.render(ctx, camera));
       renderEffects(ctx, camera);
       renderMeleeEffects(ctx, camera);
