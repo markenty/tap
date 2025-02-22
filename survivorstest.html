@@ -1138,6 +1138,7 @@ addSpriteFlash(enemy.position);
       this.deathTimer -= deltaTime;
       if (this.deathTimer <= 0) {
         spawnEnemyExplosionEffect(this.position);
+triggerScreenFlash(); 
         killCount++;
         this.alive = false;
         return; // Skip the rest of the update once dead.
@@ -1430,7 +1431,7 @@ addSpriteFlash(enemy.position);
 let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
 let effectX = playerCenter.x + Math.cos(angle) * 20;
 let effectY = playerCenter.y + Math.sin(angle) * 20;
-triggerScreenFlash();
+
 addSpriteFlash(enemy.position);
 spawnMeleeEffect(effectX, effectY, angle);
 
