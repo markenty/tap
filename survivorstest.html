@@ -39,12 +39,6 @@
       50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
       100% { transform: scale(0); opacity: 0; }
     }
-    @media (max-width: 600px) {
-      #headbuttEffect {
-        width: 48px;
-        height: 48px;
-      }
-    }
     /* Fullscreen overlay for the upgrade menu */
     #upgradeMenu {
       position: fixed;
@@ -366,53 +360,49 @@
       }
     }
     
-    // -------------------------
-    // Shop & Upgrade Menu Logic
-    // -------------------------
-    function getBombCost() {
-      // Cost scales with rank: cost = 50 × (rank + 1)
-      return Math.floor(50 * (calculateRank(killCount) + 1));
-    }
-    function updateBombCostDisplay() {
-      document.getElementById("bombCostDisplay").innerText = "Cost: " + getBombCost();
-    }
-    
-    document.getElementById("buyBomb").addEventListener("click", function() {
-      let cost = getBombCost();
-      if(points >= cost) {
-        points -= cost;
-        bombCount++;
-        updateBombCostDisplay();
-        document.getElementById("pointsDisplay").textContent = Math.floor(points);
+    // --- Sword Effect for Max Strike ---
+    // This effect draws a spinning sword emoji from the player to each struck enemy.
+    class SwordEffect {
+      constructor(startPos, targetPos, duration = 0.5) {
+        this.startPos = startPos;   // Starting position (Vector2)
+        this.targetPos = targetPos; // Target position (Vector2)
+        this.duration = duration;   // Duration in seconds for the effect
+        this.elapsed = 0;           // Time elapsed so far
+        this.complete = false;      // Flag for completion
       }
-    });
-    
-    // Tab switching for upgrade menu
-    document.getElementById("upgradesTab").addEventListener("click", function() {
-      document.getElementById("upgradesSection").style.display = "block";
-      document.getElementById("shopSection").style.display = "none";
-      this.classList.add("active");
-      document.getElementById("shopTab").classList.remove("active");
-    });
-    document.getElementById("shopTab").addEventListener("click", function() {
-      document.getElementById("shopSection").style.display = "block";
-      document.getElementById("upgradesSection").style.display = "none";
-      this.classList.add("active");
-      document.getElementById("upgradesTab").classList.remove("active");
-      updateBombCostDisplay();
-    });
-    
-    document.getElementById("resumeGame").addEventListener("click", function() {
-      isUpgradeMenuVisible = false;
-      document.getElementById("upgradeMenu").style.display = "none";
-      enemies.length = 0;
-      bullets.length = 0;
-      pickups.length = 0;
-      baitBombs.length = 0;
-      player.respawn();
-      autoStrikeTime = baseAutoStrikeTime;
-      timeScale = 1.0;
-    });
+      
+      update(dt) {
+        this.elapsed += dt;
+        if (this.elapsed >= this.duration) {
+          this.elapsed = this.duration;
+          this.complete = true;
+        }
+      }
+      
+      render(ctx, camera) {
+        // Calculate progress (0 to 1)
+        let t = this.elapsed / this.duration;
+        // Linear interpolation between start and target positions
+        let currentX = this.startPos.x + (this.targetPos.x - this.startPos.x) * t;
+        let currentY = this.startPos.y + (this.targetPos.y - this.startPos.y) * t;
+        let currentPos = new Vector2(currentX, currentY);
+        // Spin the sword: one full rotation over the duration
+        let angle = t * 2 * Math.PI;
+        // Convert world coordinates to screen coordinates
+        let screenPos = camera.worldToScreen(currentPos);
+        
+        ctx.save();
+        ctx.translate(screenPos.x, screenPos.y);
+        ctx.rotate(angle);
+        ctx.font = "32px sans-serif"; // Adjust size as needed
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🗡 ", 0, 0);
+        ctx.restore();
+      }
+    }
+    // Global array to hold active sword effects
+    let swordEffects = [];
     
     // --- Ranking System Variables & Functions ---
     const rankEmojis = ["🔰", "🥉", "🥈", "🥇", "🏆", "👑", "💎", "🔥", "🚀"];
@@ -440,6 +430,19 @@
       for (let i = meleeEffects.length - 1; i >= 0; i--) {
         meleeEffects[i].timer -= deltaTime;
         if (meleeEffects[i].timer <= 0) meleeEffects.splice(i, 1);
+      }
+    }
+    
+    function updateSwordEffects(dt) {
+      for (let i = swordEffects.length - 1; i >= 0; i--) {
+        swordEffects[i].update(dt);
+        if (swordEffects[i].complete) swordEffects.splice(i, 1);
+      }
+    }
+    
+    function renderSwordEffects(ctx, camera) {
+      for (let effect of swordEffects) {
+        effect.render(ctx, camera);
       }
     }
     
@@ -863,6 +866,8 @@
               enemy.alive = false;
               killCount++;
               spawnEnemyExplosionEffect(enemy.position);
+              // Create sword effect when enemy is struck during dash.
+              swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
             }
           });
           createDashTrail(this.position, this.dashEnd);
@@ -1026,6 +1031,10 @@
             enemy.alive = false;
             spawnEnemyExplosionEffect(enemy.position);
             killCount++;
+            // When max strike is active, create a sword effect for each enemy
+            if(this.strikeMeter === 0) { // You can adjust this condition based on your logic
+              swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+            }
             let angle = Math.atan2(enemyCenter.y - strikeCenter.y, enemyCenter.x - strikeCenter.x);
             let effectX = strikeCenter.x + Math.cos(angle) * 20;
             let effectY = strikeCenter.y + Math.sin(angle) * 20;
@@ -1229,6 +1238,8 @@
           enemy.alive = false;
           spawnEnemyExplosionEffect(enemy.position);
           killCount++;
+          // Create sword effect for auto strike as well.
+          swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
           let angle = Math.atan2(enemyCenter.y-playerCenter.y, enemyCenter.x-playerCenter.x);
           let effectX = playerCenter.x + Math.cos(angle)*offsetDistance;
           let effectY = playerCenter.y + Math.sin(angle)*offsetDistance;
@@ -1315,6 +1326,8 @@
             let effectX = playerCenter.x+Math.cos(angle)*20;
             let effectY = playerCenter.y+Math.sin(angle)*20;
             spawnMeleeEffect(effectX, effectY, angle);
+            // Create a sword effect for manual strike.
+            swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
             return true;
           }
         }
@@ -1471,7 +1484,8 @@
         charmsSlot.classList.add("dimmed");
         charmsSlot.style.background = "";
         charmsSlot.innerHTML = "🪬";
-      }
+      }  
+      updateRankDisplay();
     }
     
     function updatePickups() {
@@ -1488,9 +1502,9 @@
             if(strikeRangeTiles>1){ player.strikeMeter = strikeMeterCapacity; }
             spawnPickupEffect(pickup.position);
           } else if(pickup instanceof HealthPickup){
-             // Heal 20% of the player's max HP.
-  const healAmount = Math.floor(player.maxHP * 0.2);
-  player.hp = Math.min(player.hp + healAmount, player.maxHP);
+            // Scale healing with player's max HP (e.g., heal 20% of max HP)
+            const healAmount = Math.floor(player.maxHP * 0.2);
+            player.hp = Math.min(player.hp + healAmount, player.maxHP);
             spawnPickupEffect(pickup.position);
           } else if(pickup instanceof DefenseBoostPickup){
             defenseBoostActive = true;
@@ -1739,6 +1753,7 @@
         bullets.forEach(bullet=> bullet.update(effectiveDelta));
         updateEffects(effectiveDelta);
         updateMeleeEffects(effectiveDelta);
+        updateSwordEffects(effectiveDelta);
         updatePickups();
         updateBaitBombs(effectiveDelta);
         
@@ -1854,6 +1869,7 @@
       bullets.forEach(bullet=> bullet.render(ctx, camera));
       renderEffects(ctx, camera);
       renderMeleeEffects(ctx, camera);
+      renderSwordEffects(ctx, camera);
       player.render(ctx, camera);
       
       if(screenFlashAlpha>0){
