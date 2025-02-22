@@ -1250,21 +1250,20 @@
         attackSlot.style.boxShadow = "";
       }
     }
-    attackSlot.addEventListener("click",()=>{
-      if(player.strikeMeter>0){
-        executeDashAttack();
-        player.strikeMeter = 0;
-        updateAttackSlot();
-      }
-    });
-    
+    // Modified dash attack: It no longer depletes the strike meter.
     function executeDashAttack() {
-      if(player.strikeMeter>0) {
+      if(player.strikeMeter > 0) {
         player.startDash(player.direction);
-        player.strikeMeter = 0;
         updateAttackSlot();
       }
     }
+    
+    // Updated event listener: removed meter depletion after dash attack.
+    attackSlot.addEventListener("click",()=>{
+      if(player.strikeMeter>0){
+        executeDashAttack();
+      }
+    });
     
     function createDashTrail(startPos, endPos) {
       const trailSteps = 10;
