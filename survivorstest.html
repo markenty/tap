@@ -863,12 +863,12 @@
           enemies.forEach(enemy => {
             let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
             if (playerCenter.subtract(enemyCenter).length() < 50 && enemy.alive) {
-                   // Create sword effect when enemy is struck during dash.
-              swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
-              enemy.alive = false;
-              killCount++;
-              spawnEnemyExplosionEffect(enemy.position);
-         
+           if (enemy.deathTimer === undefined) {
+  enemy.deathTimer = 0.5; // Delay
+  swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+}
+addSpriteFlash(enemy.position);
+
             }
           });
           createDashTrail(this.position, this.dashEnd);
@@ -1027,20 +1027,23 @@
         triggerHeadbutt();
         enemies.forEach(enemy => {
           let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
-          if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
-            addSpriteFlash(enemy.position);
-            enemy.alive = false;
-            spawnEnemyExplosionEffect(enemy.position);
-            killCount++;
-            // When max strike is active, create a sword effect for each enemy
-            if(this.strikeMeter === 0) { // You can adjust this condition based on your logic
-              swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
-            }
-            let angle = Math.atan2(enemyCenter.y - strikeCenter.y, enemyCenter.x - strikeCenter.x);
-            let effectX = strikeCenter.x + Math.cos(angle) * 20;
-            let effectY = strikeCenter.y + Math.sin(angle) * 20;
-            spawnMeleeEffect(effectX, effectY, angle);
-          }
+       if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
+  // Set a death timer if not already set
+  if (enemy.deathTimer === undefined) {
+    enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
+    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+  }
+  addSpriteFlash(enemy.position);
+  
+  // Remove immediate explosion and kill actions.
+  // The enemy.update() method will handle the explosion and marking as dead.
+  
+  let angle = Math.atan2(enemyCenter.y - strikeCenter.y, enemyCenter.x - strikeCenter.x);
+  let effectX = strikeCenter.x + Math.cos(angle) * 20;
+  let effectY = strikeCenter.y + Math.sin(angle) * 20;
+  spawnMeleeEffect(effectX, effectY, angle);
+}
+
         });
       }
     }
@@ -1075,8 +1078,19 @@
         this.frameDelay = 0.15;
         this.attackCooldown = 0;
         this.knockback = new Vector2(0, 0);
+        this.deathTimer = undefined;
       }
       update(deltaTime) {
+       // If the enemy has been struck, decrement the death timer.
+    if (this.deathTimer !== undefined) {
+      this.deathTimer -= deltaTime;
+      if (this.deathTimer <= 0) {
+        spawnEnemyExplosionEffect(this.position);
+        killCount++;
+        this.alive = false;
+        return; // Skip the rest of the update once dead.
+      }
+    }
         if (this.moving) {
           this.moveTime += deltaTime;
           let t = Math.min(this.moveTime / this.moveDuration, 1);
@@ -1234,18 +1248,20 @@
       enemies.forEach(enemy=>{
         let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
         if(playerCenter.subtract(enemyCenter).length() < effectiveRange) {
-          triggerScreenFlash();
-          addSpriteFlash(enemy.position);
-          enemy.alive = false;
-          spawnEnemyExplosionEffect(enemy.position);
-          killCount++;
-          // Create sword effect for auto strike as well.
-          swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
-          let angle = Math.atan2(enemyCenter.y-playerCenter.y, enemyCenter.x-playerCenter.x);
-          let effectX = playerCenter.x + Math.cos(angle)*offsetDistance;
-          let effectY = playerCenter.y + Math.sin(angle)*offsetDistance;
-          spawnMeleeEffect(effectX, effectY, angle);
-        }
+  // Set a delay if not already set:
+  if (enemy.deathTimer === undefined) {
+    enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
+    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+  }
+  addSpriteFlash(enemy.position);
+  // Optionally, you can also spawn melee effects:
+  let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+  let effectX = playerCenter.x + Math.cos(angle)*offsetDistance;
+  let effectY = playerCenter.y + Math.sin(angle)*offsetDistance;   
+  spawnMeleeEffect(effectX, effectY, angle);
+  // Do not immediately kill the enemy here.
+}
+
       });
     }
     
@@ -1320,15 +1336,15 @@
           if(playerCenter.subtract(enemyCenter).length()<=currentMeleeRange){
             triggerScreenFlash();
             addSpriteFlash(enemy.position);
-            enemy.alive = false;
-            spawnEnemyExplosionEffect(enemy.position);
-            killCount++;
+            
             let angle = Math.atan2(enemyCenter.y-playerCenter.y, enemyCenter.x-playerCenter.x);
             let effectX = playerCenter.x+Math.cos(angle)*20;
             let effectY = playerCenter.y+Math.sin(angle)*20;
             spawnMeleeEffect(effectX, effectY, angle);
             // Create a sword effect for manual strike.
-            swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+            swordEffects.push(new SwordEffect(playerCenter, enemyCenter));enemy.alive = false;
+            spawnEnemyExplosionEffect(enemy.position);
+            killCount++;
             return true;
           }
         }
