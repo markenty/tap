@@ -1866,9 +1866,9 @@
       enemies.forEach(enemy=> enemy.render(ctx, camera));
       pickups.forEach(pickup=> pickup.render(ctx, camera, globalTime));
       baitBombs.forEach(bomb=> bomb.render(ctx, camera, globalTime));
+      renderSwordEffects(ctx, camera);
       bullets.forEach(bullet=> bullet.render(ctx, camera));
       renderEffects(ctx, camera);
-      renderSwordEffects(ctx, camera);
       renderMeleeEffects(ctx, camera);
       player.render(ctx, camera);
       
