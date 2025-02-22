@@ -1868,8 +1868,8 @@
       baitBombs.forEach(bomb=> bomb.render(ctx, camera, globalTime));
       bullets.forEach(bullet=> bullet.render(ctx, camera));
       renderEffects(ctx, camera);
-      renderMeleeEffects(ctx, camera);
       renderSwordEffects(ctx, camera);
+      renderMeleeEffects(ctx, camera);
       player.render(ctx, camera);
       
       if(screenFlashAlpha>0){
