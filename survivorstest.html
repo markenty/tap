@@ -863,11 +863,12 @@
           enemies.forEach(enemy => {
             let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
             if (playerCenter.subtract(enemyCenter).length() < 50 && enemy.alive) {
+                   // Create sword effect when enemy is struck during dash.
+              swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
               enemy.alive = false;
               killCount++;
               spawnEnemyExplosionEffect(enemy.position);
-              // Create sword effect when enemy is struck during dash.
-              swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+         
             }
           });
           createDashTrail(this.position, this.dashEnd);
