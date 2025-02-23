@@ -328,8 +328,11 @@
     
     let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
     let bombCount = 1, points = 0;
-    let baseAutoStrikeTime = 10;
-    let autoStrikeTime = baseAutoStrikeTime;
+    let hasReflexAmulet = true; 
+    
+   let baseAutoStrikeTime = 10;
+let autoStrikeTime = hasReflexAmulet ? baseAutoStrikeTime : 0;
+    
     let autoStrikeInterval = 0.3, autoStrikeTimer = 0;
     let globalTime = 0;
     let isUpgradeMenuVisible = false;
@@ -499,7 +502,16 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
       </button>
     `;
   }
-  
+   // Show Reflex Amulet if the player has it
+  if (hasReflexAmulet) {
+    html += `
+      <button class="inventory-item">
+        <div class="icon">🧿</div>
+        <div class="label">Reflex Amulet (10s)</div>
+      </button>
+    `;
+  }
+   
   // Add similar blocks for other items if needed.
   
   inventoryContainer.innerHTML = html;
@@ -532,16 +544,7 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
         effect.render(ctx, camera);
       }
     }
-    function updateInventoryDisplay() {
-  const inventoryContainer = document.getElementById("inventoryItems");
-  let html = `
-    <button class="inventory-item">
-      <div class="icon">💣</div>
-      <div class="count">${bombCount}</div>
-    </button>
-  `;
-  inventoryContainer.innerHTML = html;
-}
+
  
     function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
     
