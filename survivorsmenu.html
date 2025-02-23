@@ -39,6 +39,22 @@
       50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
       100% { transform: scale(0); opacity: 0; }
     }
+    
+  #upgradeButton {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 101;
+  padding: 10px 20px;
+  font-size: 1.5rem;
+  background-color: #ffebcd;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+
     /* Fullscreen overlay for the upgrade menu */
     #upgradeMenu {
       position: fixed;
@@ -322,7 +338,9 @@
   
   <script>
     "use strict";
-    
+    let preservedAutoStrikeTime = 0;
+let preservedStrikeMeter = 0;
+
     // Constants and global state
     const PIXEL_SIZE = 4;
     const goldDecayRate = 5;
@@ -1916,23 +1934,34 @@ if (player.strikeMeter > 0) {
     }
     
     function showUpgradeMenu() {
+  // Preserve the current meter values
+  preservedAutoStrikeTime = autoStrikeTime;
+  preservedStrikeMeter = player.strikeMeter;
       isUpgradeMenuVisible = true;
       document.getElementById("upgradeMenu").style.display = "flex";
       document.getElementById("pointsDisplay").textContent = Math.floor(points);
       timeScale = 0;
     }
-    function resumeGame() {
-      isUpgradeMenuVisible = false;
-      document.getElementById("upgradeMenu").style.display = "none";
-      enemies.length = 0;
-      bullets.length = 0;
-      pickups.length = 0;
-      baitBombs.length = 0;
-      player.respawn();
-      autoStrikeTime = baseAutoStrikeTime;
-      timeScale = 1.0;
-    }
-    
+function resumeGame() {
+  isUpgradeMenuVisible = false;
+  document.getElementById("upgradeMenu").style.display = "none";
+  
+  // Clear game elements as needed
+  enemies.length = 0;
+  bullets.length = 0;
+  pickups.length = 0;
+  baitBombs.length = 0;
+  player.respawn();
+  
+  // Remove meter resets to preserve existing values
+// Restore the preserved meter values
+  autoStrikeTime = preservedAutoStrikeTime;
+  player.strikeMeter = preservedStrikeMeter;
+  // autoStrikeTime = baseAutoStrikeTime; // Don't reset auto‑strike meter
+  timeScale = 1.0; // You might still need to reset the game speed
+  
+  document.getElementById("upgradeButton").style.display = "block";
+}  
     document.getElementById("increaseHP").addEventListener("click", ()=>{
       const cost = 50;
       if(points>=cost){
@@ -2201,6 +2230,16 @@ renderSwordEffects(ctx, camera);
         if(flash.timer<=0) spriteFlashes.splice(i,1);
       }
      
+const upgradeButton = document.getElementById("upgradeButton");
+
+// When clicking the upgrade button, open the menu and hide the button
+upgradeButton.addEventListener("click", function() {
+  showUpgradeMenu();
+  upgradeButton.style.display = "none";
+});
+
+
+
 
       updateExplosivesSlot();
       updateAttackSlot();
@@ -2211,5 +2250,6 @@ renderSwordEffects(ctx, camera);
     setInterval(updateAttackSlot, 100);
     requestAnimationFrame(gameLoop);
   </script>
+  <button id="upgradeButton">Upgrade Menu</button>
 </body>
 </html>
