@@ -483,17 +483,10 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
 });
 
     
-    document.getElementById("resumeGame").addEventListener("click", function() {
-      isUpgradeMenuVisible = false;
-      document.getElementById("upgradeMenu").style.display = "none";
-      enemies.length = 0;
-      bullets.length = 0;
-      pickups.length = 0;
-      baitBombs.length = 0;
-      player.respawn();
-      autoStrikeTime = baseAutoStrikeTime;
-      timeScale = 1.0;
-    });
+    document.getElementById("resumeGame").addEventListener("click", () => { 
+  resumeGame(); 
+});
+
     // --- Ranking System Variables & Functions ---
     const rankEmojis = ["🔰", "🥉", "🥈", "🥇", "🏆", "👑", "💎", "🔥", "🚀"];
     const rankNames  = ["Beginner", "Novice", "Warrior", "Veteran", "Elite", "Master", "Champion", "Legend", "Mythic"];
@@ -1933,37 +1926,40 @@ if (player.strikeMeter > 0) {
       updateRankDisplay();
     }
     
-    function showUpgradeMenu() {
-  // Preserve the current meter values
+  // Add a flag to indicate if the upgrade menu was triggered by death.
+let deathTriggeredMenu = false;
+
+// Modify showUpgradeMenu to accept a flag.
+function showUpgradeMenu(triggeredByDeath = false) {
+  deathTriggeredMenu = triggeredByDeath;
+  // Preserve the current meter values.
   preservedAutoStrikeTime = autoStrikeTime;
   preservedStrikeMeter = player.strikeMeter;
-      isUpgradeMenuVisible = true;
-      document.getElementById("upgradeMenu").style.display = "flex";
-      document.getElementById("pointsDisplay").textContent = Math.floor(points);
-      timeScale = 0;
- // Hide the upgrade toggle button
+  isUpgradeMenuVisible = true;
+  document.getElementById("upgradeMenu").style.display = "flex";
+  document.getElementById("pointsDisplay").textContent = Math.floor(points);
+  timeScale = 0;
   document.getElementById("upgradeButton").style.display = "none";
-    }
+}
+
+// Update resumeGame so that resets occur only if triggered by death.
 function resumeGame() {
   isUpgradeMenuVisible = false;
   document.getElementById("upgradeMenu").style.display = "none";
   
-  // Clear game elements as needed
-  enemies.length = 0;
-  bullets.length = 0;
-  pickups.length = 0;
-  baitBombs.length = 0;
-  player.respawn();
+  // Only reset game elements if the menu was triggered by death.
+  if (deathTriggeredMenu) {
+    enemies.length = 0;
+    bullets.length = 0;
+    pickups.length = 0;
+    baitBombs.length = 0;
+    player.respawn();
+    autoStrikeTime = baseAutoStrikeTime;
+  }
   
-  // Remove meter resets to preserve existing values
-// Restore the preserved meter values
-  autoStrikeTime = preservedAutoStrikeTime;
-  player.strikeMeter = preservedStrikeMeter;
-  // autoStrikeTime = baseAutoStrikeTime; // Don't reset auto‑strike meter
-  timeScale = 1.0; // You might still need to reset the game speed
-  
+  timeScale = 1.0;
   document.getElementById("upgradeButton").style.display = "block";
-}  
+}
     document.getElementById("increaseHP").addEventListener("click", ()=>{
       const cost = 50;
       if(points>=cost){
@@ -2186,10 +2182,12 @@ function resumeGame() {
           if(autoStrikeTime<0) autoStrikeTime = 0;
         }
         
-        if(player.isDead && !isUpgradeMenuVisible){
-          slowMotionTimer -= deltaTime;
-          if(slowMotionTimer<=0){ showUpgradeMenu(); }
-        }
+      if(player.isDead && !isUpgradeMenuVisible){
+  slowMotionTimer -= deltaTime;
+  if(slowMotionTimer <= 0){
+    showUpgradeMenu(true); // Menu triggered by death.
+  }
+}
         
         updateCamera();
       }
@@ -2236,7 +2234,7 @@ const upgradeButton = document.getElementById("upgradeButton");
 
 // When clicking the upgrade button, open the menu and hide the button
 upgradeButton.addEventListener("click", function() {
-  showUpgradeMenu();
+  showUpgradeMenu(false); // Not death-triggered
   upgradeButton.style.display = "none";
 });
 
