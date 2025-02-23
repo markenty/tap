@@ -101,7 +101,7 @@
     /* Responsive grid for upgrade/shop buttons */
     .menu-buttons {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 1rem;
       width: 100%;
       padding: 1rem;
@@ -113,7 +113,9 @@
       border: 2px solid white;
       border-radius: 10px;
       width: 100%;
-      aspect-ratio: 1;
+  aspect-ratio: 1;
+  font-size: 1.5rem;
+  padding: 1rem;
       color: white;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
@@ -327,7 +329,7 @@
     const goldDecayRate = 5;
     
     let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
-    let bombCount = 0, points = 0;
+    let bombCount = 1, points = 0;
     let hasReflexAmulet = true; 
     
    let baseAutoStrikeTime = 10;
