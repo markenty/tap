@@ -264,7 +264,33 @@
     .bomb-available {
       border-color: red;
       box-shadow: 0 0 10px 3px rgba(255,0,0,0.8);
-    }
+      
+    }/* Ensure the button keeps its width while the text scrolls */
+.marquee {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+/* Force the inner span to start offscreen and animate */
+.marquee span {
+  display: inline-block;
+  /* Add padding so the text always moves from right offscreen to left offscreen */
+  padding-left: 100%;
+  animation: marquee 10s linear infinite;
+}
+
+/* Define the marquee keyframes */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 </head>
@@ -287,20 +313,47 @@
     </div>
     <div id="upgradesSection" class="section" style="display:block;">
       <div class="menu-buttons">
-          <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
-          <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
-          <button id="increaseDash">➡️ Increase Strike Range (+1 tile) - Cost: 300</button>
-          <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
-          <button id="increaseHealingCharmTime">🪬 Increase Healing Charm (Duration & Heal) - Cost: 250</button>
-          <button id="increaseShieldingTime">🛡️ Increase Shielding (Duration & Reduction) - Cost: 250</button>
+          <button id="increaseHP">
+  <div class="marquee"><p class="icon" style="font-size:3rem">❤️+</p> 
+<div class="label"><b><i>HP</i></b></div>  
+<br>
+   
+<span>Increase Max HP (+20 HP) - Cost: 50</span>
+  </div>
+</button>
+          <button id="increaseAutoRun">
+  <div class="marquee"><p class="icon" style="font-size:3rem">⚔️+⏱</p>
+<div class="label"><b><i>Autostrike</i></b></div>  
+<br>
+    <span> Increase Auto Strike Time (+10s) - Cost: 200</span>
+  </div>
+</button>
+          <button id="increaseDash">
+<div class="marquee"><p class="icon" style="font-size:3rem">⚔️+➡️</p>
+<div class="label"><b><i>Strike Range</i></b></div>   <br>
+    <span> Increase Strike Range (+1 tile) - Cost: 300</span>
+  </div>
+</button>
+          <button id="increaseStrikeMeter"><div class="marquee"><p class="icon" style="font-size:3rem">⚔️+🔋</p>
+<div class="label"><b><i>Endurance</i></b></div> 
+ <br>
+    <span> Increase Strike Meter Capacity (+10) - Cost: 150</span></div></button>
+          <button id="increaseHealingCharmTime"><div class="marquee"><p class="icon" style="font-size:3rem">🪬+</p>
+<div class="label"><b><i>Auto-Heal</i></b></div> 
+ <br>
+    <span>  Increase Healing Charm (Duration & Heal) - Cost: 250</span></div></button>
+          <button id="increaseShieldingTime"><div class="marquee"><p class="icon" style="font-size:3rem">🛡️+</p>
+<div class="label"><b><i>Shielding</i></b></div> 
+ <br>
+    <span>  Increase Shielding (Duration & Reduction) - Cost: 250</span></div></button>
         </div>
       </div>
         <div id="shopSection" class="section">
       <div class="menu-buttons">
-        <button class="inventory-item" id="buyBomb">
+        <button id="buyBomb"><div class="marquee">
           <div class="icon" style="font-size:3rem">💣</div>
-          <div class="label">Buy a Bomb</div>
-          <div class="cost" id="bombCostDisplay"></div>
+         <div class="label"><b><i>Buy a Bomb</i></b></div>
+           <span><div class="cost" id="bombCostDisplay"></div></span></div>
         </button>
       </div>
     </div>
@@ -508,8 +561,9 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
   // Example: display bomb count as an inventory item if there are any bombs.
   if (bombCount > 0) {
     html += `
-      <button class="inventory-item">
+      <button class="inventory-item"><div class="marquee">
         <div class="icon" style="font-size:3rem">💣</div>
+ <div class="label"><b><i>Bombs</i></b></div>
         <div class="count">${bombCount}</div>
       </button>
     `;
@@ -517,9 +571,10 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
    // Show Reflex Amulet if the player has it
   if (hasReflexAmulet) {
     html += `
-      <button class="inventory-item">
+      <button class="inventory-item"><div class="marquee">
         <div class="icon" style="font-size:3rem">🧿</div>
-        <div class="label">Reflex Amulet (Auto-Strike for 10s)</div>
+        <div class="label"><b><i>Reflex Amulet</i></b><br>
+<span> (Auto-Strike for 10s)</span></div>
       </button>
     `;
   }
