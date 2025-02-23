@@ -2084,7 +2084,7 @@ if (player.strikeMeter > 0) {
               player.flashDamage();
               screenShakeTime = 0.2;
               screenShakeMagnitude = 5;
-              if(player.hp<=0 && !player.isDead){
+              if(player.hp<=0 && !player.isDead){updateInventoryDisplay();
                 player.isDead = true;
                 spawnBloodEffect(player.position);
                 slowMotionTimer = 1.0;
