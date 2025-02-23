@@ -277,7 +277,7 @@
   <!-- Upgrade Menu with Tabs -->
 <div id="upgradeMenu">
   <div class="menu-content">
-    <h1>Upgrade Menu</h1>
+    <h1>Player Menu</h1>
     <p>You have <span id="pointsDisplay">0</span> points.</p>
     <p>Your Rank: <span id="rankDisplay">🔰 Beginner</span></p>
     <div class="tabs">
@@ -2250,6 +2250,13 @@ upgradeButton.addEventListener("click", function() {
     setInterval(updateAttackSlot, 100);
     requestAnimationFrame(gameLoop);
   </script>
-  <button id="upgradeButton">Upgrade Menu</button>
+  <button id="upgradeButton"><i><u><b>Player Menu</b></u></i>
+  <div class="button-content">
+    <div class="rank-info">
+      <span id="buttonRankIcon">🔰</span>
+      <span id="buttonRankText">Beginner</span>
+    </div>
+  </div>
+</button>
 </body>
 </html>
