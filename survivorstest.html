@@ -1784,7 +1784,7 @@ if(healingCharmActive){
     
     function updateMaxStrikeTally() {
       const tallyContainer = document.querySelector('#maxStrikeSlot .tally-container');
-      const numTiles = strikeRangeTiles;
+  const numTiles = Math.min(strikeRangeTiles, 20);  // cap at 20 tiles
       let tallyHTML = "";
       let threshold = strikeMeterCapacity/strikeRangeTiles;
       for(let i=0;i<numTiles;i++){
