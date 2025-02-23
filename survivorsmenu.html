@@ -78,7 +78,7 @@
       flex-direction: column;
       justify-content: space-around;
       align-items: center;
-      overflow-y: auto;
+      overflow-y: auto; z-index: 10000;
     }
     /* Headings and text scale up for readability */
     .menu-content h1 {
@@ -1941,6 +1941,8 @@ if (player.strikeMeter > 0) {
       document.getElementById("upgradeMenu").style.display = "flex";
       document.getElementById("pointsDisplay").textContent = Math.floor(points);
       timeScale = 0;
+ // Hide the upgrade toggle button
+  document.getElementById("upgradeButton").style.display = "none";
     }
 function resumeGame() {
   isUpgradeMenuVisible = false;
