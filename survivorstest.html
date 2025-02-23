@@ -1110,7 +1110,7 @@ _getRowForDirection() {
   
   // Set the movement duration.
   // If the tile is a mountain (tileType 3), slow down movement further.
-  const baseMoveDuration = 0.25;  // increased from 0.1 so the animation is visible
+  const baseMoveDuration = 0.24;  // increased from 0.1 so the animation is visible
   let speedMultiplier = (targetTile.tileType === 3) ? 2 : 1;
   this.moveDuration = baseMoveDuration * speedMultiplier;
   
