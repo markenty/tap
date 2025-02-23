@@ -956,46 +956,106 @@ addSpriteFlash(enemy.position);
         this.knockback = this.knockback.scale(0.9);
       }
       
-      render(ctx, camera) {
-        let offsetX = 0, offsetY = 0;
-        if(this.damageVibrateTimer > 0) {
-          offsetX = (Math.random()*2 - 1) * this.vibrationMagnitude;
-          offsetY = (Math.random()*2 - 1) * this.vibrationMagnitude;
-        }
-        let pos = this.position.add(this.knockback);
-        let screenPos = camera.worldToScreen(new Vector2(pos.x + offsetX, pos.y + offsetY));
-        ctx.save();
-        if (this.isDashing) { ctx.globalAlpha = 0.7; }
-        let srcX = 0, srcY = 0;
-        if (this.spriteLoaded) {
-          let row = 0;
-          switch (this.direction) {
-            case "down": row = 0; break;
-            case "right": row = 1; break;
-            case "up": row = 2; break;
-            case "left": row = 3; break;
-            default: row = 0;
-          }
-          srcX = this.currentFrame * 32;
-          srcY = row * 32;
-          ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
-          if(this.damageFlashTimer > 0) {
-            let offCanvas = document.createElement("canvas");
-            offCanvas.width = this.width;
-            offCanvas.height = this.height;
-            let offCtx = offCanvas.getContext("2d");
-            offCtx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, 0, 0, this.width, this.height);
-            offCtx.globalCompositeOperation = "source-atop";
-            offCtx.fillStyle = "red";
-            offCtx.fillRect(0, 0, this.width, this.height);
-            ctx.drawImage(offCanvas, screenPos.x, screenPos.y);
-          }
-        } else {
-          ctx.fillStyle = "red";
-          ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
-        }
-        ctx.restore();
-      }
+render(ctx, camera) {
+  let offsetX = 0, offsetY = 0;
+  if (this.damageVibrateTimer > 0) {
+    offsetX = (Math.random() * 2 - 1) * this.vibrationMagnitude;
+    offsetY = (Math.random() * 2 - 1) * this.vibrationMagnitude;
+  }
+  let pos = this.position.add(this.knockback);
+  let screenPos = camera.worldToScreen(new Vector2(pos.x + offsetX, pos.y + offsetY));
+
+  // Save the context so we can reset shadow settings later.
+  ctx.save();
+
+  // If the player is dashing, reduce opacity.
+  if (this.isDashing) { ctx.globalAlpha = 0.7; }
+
+  // Draw a blue glow if the shield is active.
+  if (defenseBoostActive) {
+    ctx.save();
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "rgba(0,0,255,0.8)"; // Blue glow for shield
+    ctx.drawImage(
+      this.spriteSheet,
+      this.currentFrame * 32,
+      this._getRowForDirection() * 32,
+      32,
+      32,
+      screenPos.x,
+      screenPos.y,
+      this.width,
+      this.height
+    );
+    ctx.restore();
+  }
+
+  // Draw a purple glow if the healing charm is active.
+  if (healingCharmActive) {
+    ctx.save();
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "rgba(128,0,128,0.8)"; // Purple glow for healing
+    ctx.drawImage(
+      this.spriteSheet,
+      this.currentFrame * 32,
+      this._getRowForDirection() * 32,
+      32,
+      32,
+      screenPos.x,
+      screenPos.y,
+      this.width,
+      this.height
+    );
+    ctx.restore();
+  }
+
+  // Draw an orange glow if auto‑strike is active.
+  if (autoStrikeTime > 0) {
+    ctx.save();
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "rgba(255,165,0,0.8)"; // Orange glow for auto‑strike
+    ctx.drawImage(
+      this.spriteSheet,
+      this.currentFrame * 32,
+      this._getRowForDirection() * 32,
+      32,
+      32,
+      screenPos.x,
+      screenPos.y,
+      this.width,
+      this.height
+    );
+    ctx.restore();
+  }
+
+  // Finally, draw the player sprite normally (without any glow).
+  ctx.drawImage(
+    this.spriteSheet,
+    this.currentFrame * 32,
+    this._getRowForDirection() * 32,
+    32,
+    32,
+    screenPos.x,
+    screenPos.y,
+    this.width,
+    this.height
+  );
+
+  ctx.restore();
+}
+
+// Helper method (you can add this to the Player class) to get the row for the current direction.
+_getRowForDirection() {
+  switch (this.direction) {
+    case "down": return 0;
+    case "right": return 1;
+    case "up": return 2;
+    case "left": return 3;
+    default: return 0;
+  }
+}
+
+
       
       move(direction) {
         if (this.moving || this.isDashing) return;
@@ -1581,26 +1641,34 @@ return true;
     function updatePowerupTraySlots() {
       const defenseSlot = document.getElementById("defenseSlot");
       const charmsSlot = document.getElementById("charmsSlot");
-      if(defenseBoostActive){
-        defenseSlot.classList.remove("dimmed");
-        const defRatio = defenseBoostTimer / baseDefenseBoostDuration;
-        defenseSlot.style.background = `linear-gradient(to top, blue ${defRatio*100}%, transparent ${defRatio*100}%)`;
-        defenseSlot.innerHTML = "🛡️<div class='timer'>"+Math.ceil(defenseBoostTimer)+"s</div>";
-      } else {
-        defenseSlot.classList.add("dimmed");
-        defenseSlot.style.background = "";
-        defenseSlot.innerHTML = "🛡️";
-      }
-      if(healingCharmActive){
-        charmsSlot.classList.remove("dimmed");
-        const charmRatio = healingCharmTimer / baseHealingCharmDuration;
-        charmsSlot.style.background = `linear-gradient(to top, purple ${charmRatio*100}%, transparent ${charmRatio*100}%)`;
-        charmsSlot.innerHTML = "🪬<div class='timer'>"+Math.ceil(healingCharmTimer)+"s</div>";
-      } else {
-        charmsSlot.classList.add("dimmed");
-        charmsSlot.style.background = "";
-        charmsSlot.innerHTML = "🪬";
-      }  
+   if(defenseBoostActive){
+  defenseSlot.classList.remove("dimmed");
+  const defRatio = defenseBoostTimer / baseDefenseBoostDuration;
+  defenseSlot.style.background = `linear-gradient(to top, blue ${defRatio*100}%, transparent ${defRatio*100}%)`;
+  // Add a subtle blue glow:
+  defenseSlot.style.boxShadow = `0 0 8px 2px rgba(0, 0, 255, 0.6)`;
+  defenseSlot.innerHTML = "🛡️<div class='timer'>"+Math.ceil(defenseBoostTimer)+"s</div>";
+} else {
+  defenseSlot.classList.add("dimmed");
+  defenseSlot.style.background = "";
+  defenseSlot.style.boxShadow = "";
+  defenseSlot.innerHTML = "🛡️";
+}
+
+if(healingCharmActive){
+  charmsSlot.classList.remove("dimmed");
+  const charmRatio = healingCharmTimer / baseHealingCharmDuration;
+  charmsSlot.style.background = `linear-gradient(to top, purple ${charmRatio*100}%, transparent ${charmRatio*100}%)`;
+  // Add a subtle purple glow:
+  charmsSlot.style.boxShadow = `0 0 8px 2px rgba(128, 0, 128, 0.6)`;
+  charmsSlot.innerHTML = "🪬<div class='timer'>"+Math.ceil(healingCharmTimer)+"s</div>";
+} else {
+  charmsSlot.classList.add("dimmed");
+  charmsSlot.style.background = "";
+  charmsSlot.style.boxShadow = "";
+  charmsSlot.innerHTML = "🪬";
+}
+
       updateRankDisplay();
     }
     
@@ -1697,12 +1765,22 @@ return true;
       autoStrikeIndicator.textContent = autoStrikeTime > 0 ? "✅" : "❌";
       const ratio = autoStrikeTime / baseAutoStrikeTime;
       autoStrikeSlot.style.background = `linear-gradient(to top, orange ${ratio*100}%, transparent ${ratio*100}%)`;
-      
+      // Add a glow effect when auto‑strike is active
+if (autoStrikeTime > 0) {
+  autoStrikeSlot.style.boxShadow = "0 0 10px 3px rgba(255,165,0,0.8)";
+} else {
+  autoStrikeSlot.style.boxShadow = "";
+}
       const maxStrikeSlot = document.getElementById("maxStrikeSlot");
       let strikeFraction = player.strikeMeter / strikeMeterCapacity;
       maxStrikeSlot.style.background = `linear-gradient(to top, rgba(255,215,0,0.8) ${strikeFraction*100}%, transparent ${strikeFraction*100}%)`;
       updateMaxStrikeTally();
-      
+      // Add a glow effect when the strike meter is active
+if (player.strikeMeter > 0) {
+  maxStrikeSlot.style.boxShadow = "0 0 10px 3px rgba(255,215,0,0.8)";
+} else {
+  maxStrikeSlot.style.boxShadow = "";
+}
       const defenseSlot = document.getElementById("defenseSlot");
       const charmsSlot = document.getElementById("charmsSlot");
       if(defenseBoostActive){
