@@ -257,7 +257,7 @@
   <!-- Headbutt Effect Overlay -->
   <div id="headbuttEffect"></div>
   
- <!-- Upgrade Menu with Tabs -->
+  <!-- Upgrade Menu with Tabs -->
 <div id="upgradeMenu">
   <div class="menu-content">
     <h1>Upgrade Menu</h1>
@@ -270,12 +270,15 @@
     </div>
     <div id="upgradesSection" class="section" style="display:block;">
       <div class="menu-buttons">
-        <!-- Your upgrade buttons here -->
-        <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
-        <!-- ... other upgrade buttons ... -->
+          <button id="increaseHP">❤️ Increase Max HP (+20 HP) - Cost: 50</button>
+          <button id="increaseAutoRun">⏱ Increase Auto Strike Time (+10s) - Cost: 200</button>
+          <button id="increaseDash">➡️ Increase Strike Range (+1 tile) - Cost: 300</button>
+          <button id="increaseStrikeMeter">🔋 Increase Strike Meter Capacity (+10) - Cost: 150</button>
+          <button id="increaseHealingCharmTime">🪬 Increase Healing Charm (Duration & Heal) - Cost: 250</button>
+          <button id="increaseShieldingTime">🛡️ Increase Shielding (Duration & Reduction) - Cost: 250</button>
+        </div>
       </div>
-    </div>
-    <div id="shopSection" class="section">
+        <div id="shopSection" class="section">
       <div class="menu-buttons">
         <button id="buyBomb">
           <div class="icon">💣</div>
@@ -292,7 +295,6 @@
     <button id="resumeGame">▶️ Resume Game</button>
   </div>
 </div>
-
   
   <!-- Item Tray -->
   <div id="itemTray">
@@ -325,7 +327,7 @@
     const goldDecayRate = 5;
     
     let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
-    let bombCount = 0, points = 0;
+    let bombCount = 1, points = 0;
     let baseAutoStrikeTime = 10;
     let autoStrikeTime = baseAutoStrikeTime;
     let autoStrikeInterval = 0.3, autoStrikeTimer = 0;
@@ -429,7 +431,7 @@
     });
     
     // Tab switching for upgrade menu
-   document.getElementById("upgradesTab").addEventListener("click", function() {
+document.getElementById("upgradesTab").addEventListener("click", function() {
   document.getElementById("upgradesSection").style.display = "block";
   document.getElementById("shopSection").style.display = "none";
   document.getElementById("inventorySection").style.display = "none";
@@ -457,6 +459,7 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
   document.getElementById("shopTab").classList.remove("active");
   updateInventoryDisplay(); // Refresh the inventory view
 });
+
     
     document.getElementById("resumeGame").addEventListener("click", function() {
       isUpgradeMenuVisible = false;
@@ -469,9 +472,6 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
       autoStrikeTime = baseAutoStrikeTime;
       timeScale = 1.0;
     });
-
-
-
     // --- Ranking System Variables & Functions ---
     const rankEmojis = ["🔰", "🥉", "🥈", "🥇", "🏆", "👑", "💎", "🔥", "🚀"];
     const rankNames  = ["Beginner", "Novice", "Warrior", "Veteran", "Elite", "Master", "Champion", "Legend", "Mythic"];
@@ -486,6 +486,25 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
       }
       return rank;
     }
+    function updateInventoryDisplay() {
+  const inventoryContainer = document.getElementById("inventoryItems");
+  let html = "";
+  
+  // Example: display bomb count as an inventory item if there are any bombs.
+  if (bombCount > 0) {
+    html += `
+      <button class="inventory-item">
+        <div class="icon">💣</div>
+        <div class="count">${bombCount}</div>
+      </button>
+    `;
+  }
+  
+  // Add similar blocks for other items if needed.
+  
+  inventoryContainer.innerHTML = html;
+}
+
     function updateRankDisplay() {
       const rankDisplay = document.getElementById("rankDisplay");
       const currentRank = calculateRank(killCount);
@@ -513,7 +532,17 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
         effect.render(ctx, camera);
       }
     }
-    
+    function updateInventoryDisplay() {
+  const inventoryContainer = document.getElementById("inventoryItems");
+  let html = `
+    <button class="inventory-item">
+      <div class="icon">💣</div>
+      <div class="count">${bombCount}</div>
+    </button>
+  `;
+  inventoryContainer.innerHTML = html;
+}
+ 
     function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
     
     class Vector2 {
@@ -1887,17 +1916,6 @@ if (player.strikeMeter > 0) {
       document.getElementById("pointsDisplay").textContent = Math.floor(points);
       timeScale = 0;
     }
-    function updateInventoryDisplay() {
-  const inventoryContainer = document.getElementById("inventoryItems");
-  let html = `
-    <button class="inventory-item">
-      <div class="icon">💣</div>
-      <div class="count">${bombCount}</div>
-    </button>
-  `;
-  inventoryContainer.innerHTML = html;
-}
-
     function resumeGame() {
       isUpgradeMenuVisible = false;
       document.getElementById("upgradeMenu").style.display = "none";
