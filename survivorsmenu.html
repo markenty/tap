@@ -282,8 +282,8 @@
         <div id="shopSection" class="section">
       <div class="menu-buttons">
         <button class="inventory-item" id="buyBomb">
-          <div class="icon">💣</div>
-          <div class="label">Bomb</div>
+          <div class="icon" style="font-size:3rem">💣</div>
+          <div class="label">Buy a Bomb</div>
           <div class="cost" id="bombCostDisplay"></div>
         </button>
       </div>
@@ -498,7 +498,7 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
   if (bombCount > 0) {
     html += `
       <button class="inventory-item">
-        <div class="icon">💣</div>
+        <div class="icon" style="font-size:3rem">💣</div>
         <div class="count">${bombCount}</div>
       </button>
     `;
@@ -507,7 +507,7 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
   if (hasReflexAmulet) {
     html += `
       <button class="inventory-item">
-        <div class="icon">🧿</div>
+        <div class="icon" style="font-size:3rem">🧿</div>
         <div class="label">Reflex Amulet (Auto-Strike for 10s)</div>
       </button>
     `;
