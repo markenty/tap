@@ -327,7 +327,7 @@
     const goldDecayRate = 5;
     
     let timeScale = 1.0, slowMotionTimer = 0, killCount = 0;
-    let bombCount = 1, points = 0;
+    let bombCount = 0, points = 0;
     let hasReflexAmulet = true; 
     
    let baseAutoStrikeTime = 10;
@@ -507,7 +507,7 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
     html += `
       <button class="inventory-item">
         <div class="icon">🧿</div>
-        <div class="label">Reflex Amulet (10s)</div>
+        <div class="label">Reflex Amulet (Auto-Strike for 10s)</div>
       </button>
     `;
   }
@@ -1693,7 +1693,8 @@ return true;
       if(bombCount>0){
         bombCount--;
         baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));
-      }
+        
+      }updateInventoryDisplay();
     }
     class BaitBomb {
       constructor(tileX, tileY, tileMap) {
@@ -1808,7 +1809,7 @@ if(healingCharmActive){
           }
           pickups.splice(i,1);
         }
-      }
+      }updateInventoryDisplay();
     }
     
     function updateBaitBombs(deltaTime) {
