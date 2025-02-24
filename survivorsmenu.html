@@ -1968,26 +1968,38 @@ if(healingCharmActive){
         }
       }
     }
-    function showUpgradeAlert(message) {
+// Global toggle to alternate sides.
+let alertToggle = false;
+
+function showUpgradeAlert(message) {
   const alertDiv = document.createElement('div');
   alertDiv.className = 'upgrade-alert';
   alertDiv.textContent = message;
+
+  // Generate a random vertical position between 10% and 90% of the viewport height.
+  const topPercent = Math.random() * 80 + 10; // value between 10 and 90
   
-  // Check if the upgrade menu is visible
-  const upgradeMenu = document.getElementById("upgradeMenu");
-  const isMenuVisible = window.getComputedStyle(upgradeMenu).display !== 'none';
+  // Alternate between the left and right side.
+  // When alertToggle is false, put the alert on the left side; when true, on the right.
+  const baseLeftPercent = alertToggle ? 80 : 10;
+  alertToggle = !alertToggle; // flip for next alert
+
+  // Add a small random offset (in pixels) to both top and left.
+  const offsetX = Math.floor(Math.random() * 20) - 10; // random between -10 and +10 pixels
+  const offsetY = Math.floor(Math.random() * 20) - 10;
   
-  // Position the alert depending on upgrade menu visibility.
-  // For example, if the menu covers the top half, show alert in the bottom half.
-  alertDiv.style.top = isMenuVisible ? "60%" : "10%";
+  // Set the position using CSS calc().
+  alertDiv.style.top = `calc(${topPercent}% + ${offsetY}px)`;
+  alertDiv.style.left = `calc(${baseLeftPercent}% + ${offsetX}px)`;
   
   document.body.appendChild(alertDiv);
   
-  // Remove the alert after 2 seconds (match the animation duration)
+  // Remove the alert after 2 seconds.
   setTimeout(() => {
     alertDiv.remove();
   }, 2000);
 }
+
 
     function updateMaxStrikeTally() {
       const tallyContainer = document.querySelector('#maxStrikeSlot .tally-container');
