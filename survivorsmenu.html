@@ -141,7 +141,7 @@
     /* Responsive grid for upgrade/shop buttons */
 .menu-buttons {
   display: grid;
-  grid-template-columns: repeat(3, minmax(144px, 1fr));
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 1rem;
   width: 100%;
   padding: 1rem;
@@ -376,17 +376,18 @@
       </div>
 
 <div id="shopSection" class="section">
-  <div class="menu-buttons" >
-    <button style="width:135%; align:center;" class="menu-buttons" id="buyBomb">
+  <div class="menu-buttons">
+    <button id="buyBomb">
       <div class="marquee">
         <div class="icon" style="font-size:3.0rem">💣</div>
         <b><i><div class="cost" id="bombCostDisplay"></div></i></b>
         <span><div class="label">Buy a Bomb</div></span>
       </div>
     </button>
-    <!-- Add additional shop buttons here -->
+    <!-- Add additional shop buttons here as needed -->
   </div>
 </div>
+
     <div id="inventorySection" class="section">
       <div class="menu-buttons" id="inventoryItems">
         <!-- Inventory items (tiles) will be injected here -->
