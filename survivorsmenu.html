@@ -2420,33 +2420,43 @@ document.addEventListener("keydown", function(e) {
     setInterval(updateAttackSlot, 100);
     requestAnimationFrame(gameLoop);
 
-    // Define your playlist (replace with your own audio file URLs)
-const playlist = [
-  "Baggy.mp3",
-  "citiphex_untitled.mp3",
-  "frontiers.mp3"
-];
+    
+ // Define your playlist
+  const playlist = [
+    "Baggy.mp3",
+    "citiphex_untitled.mp3",
+    "frontiers.mp3"
+  ];
 
-let currentTrackIndex = 0;
-const backgroundAudio = new Audio();
-backgroundAudio.src = playlist[currentTrackIndex];
-backgroundAudio.volume = 0.5; // Adjust volume as needed
-backgroundAudio.loop = false; // We'll handle looping the playlist manually
-
-// When a track ends, move to the next one
-backgroundAudio.addEventListener("ended", () => {
-  currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+  let currentTrackIndex = 0;
+  const backgroundAudio = new Audio();
   backgroundAudio.src = playlist[currentTrackIndex];
-  backgroundAudio.play();
-});
+  backgroundAudio.volume = 0.5;
+  backgroundAudio.loop = false; // We'll handle looping manually
 
-// Optionally, start playing when the page loads
-window.addEventListener("load", () => {
-  backgroundAudio.play().catch(err => {
-    // Some browsers block auto-play until user interaction.
-    console.log("Auto-play was prevented. Start playback via user interaction.", err);
+  backgroundAudio.addEventListener("ended", () => {
+    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+    backgroundAudio.src = playlist[currentTrackIndex];
+    backgroundAudio.play().catch(err => console.log("Play error:", err));
   });
-});
+
+  // Attempt to start playing on window load (may be blocked by autoplay policies)
+  window.addEventListener("load", () => {
+    backgroundAudio.play().catch(err => {
+      console.log("Auto-play was prevented. Awaiting user interaction...", err);
+    });
+  });
+
+  // Ensure music starts when the user clicks anywhere
+  window.addEventListener("click", () => {
+    if (backgroundAudio.paused) {
+      backgroundAudio.play().then(() => {
+        console.log("Music started on user click.");
+      }).catch(err => {
+        console.log("Error starting music on click:", err);
+      });
+    }
+  });
   </script>
  <button id="upgradeButton">
   <i><u><b>Player Menu</b></u></i>
