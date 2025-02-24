@@ -1784,7 +1784,7 @@ return true;
     function deployBomb() {
       if(bombCount>0){
         bombCount--;
-        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));
+        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));showUpgradeAlert("Bomb deployed!");
         
       }updateInventoryDisplay();
     }
@@ -1879,22 +1879,22 @@ if(healingCharmActive){
            player.position.x+player.width > pickup.position.x &&
            player.position.y < pickup.position.y+pickup.size &&
            player.position.y+player.height > pickup.position.y){
-          if(pickup instanceof BombPickup){
+          if(pickup instanceof BombPickup){showUpgradeAlert("Bomb collected!");
             bombCount++; spawnPickupEffect(pickup.position);
-          } else if(pickup instanceof SwordPickup){
+          } else if(pickup instanceof SwordPickup){showUpgradeAlert("Max-Strike collected!");
             autoStrikeTime += autoStrikeBonus;
             if(strikeRangeTiles>1){ player.strikeMeter = strikeMeterCapacity; }
             spawnPickupEffect(pickup.position);
-          } else if(pickup instanceof HealthPickup){
+          } else if(pickup instanceof HealthPickup){showUpgradeAlert("Health collected!");
             // Scale healing with player's max HP (e.g., heal 20% of max HP)
             const healAmount = Math.floor(player.maxHP * 0.2);
             player.hp = Math.min(player.hp + healAmount, player.maxHP);
             spawnPickupEffect(pickup.position);
-          } else if(pickup instanceof DefenseBoostPickup){
+          } else if(pickup instanceof DefenseBoostPickup){showUpgradeAlert("Shield collected!");
             defenseBoostActive = true;
             defenseBoostTimer = baseDefenseBoostDuration;
             spawnPickupEffect(pickup.position);
-          } else if(pickup instanceof HealingCharmPickup){
+          } else if(pickup instanceof HealingCharmPickup){showUpgradeAlert("Healing Charm collected!");
             healingCharmActive = true;
             healingCharmTimer = baseHealingCharmDuration;
             spawnPickupEffect(pickup.position);
