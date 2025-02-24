@@ -141,7 +141,7 @@
     /* Responsive grid for upgrade/shop buttons */
 .menu-buttons {
   display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
   gap: 1rem;
   width: 100%;
   padding: 1rem;
@@ -314,6 +314,9 @@
     transform: translateX(-100%);
   }
 }
+#shopSection .menu-buttons {
+  justify-items: center;
+}
 
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
@@ -375,7 +378,7 @@
   <div class="menu-buttons">
     <button id="buyBomb">
       <div class="marquee">
-        <div class="icon" style="font-size:3.8rem">💣</div>
+        <div class="icon" style="font-size:3.0rem">💣</div>
         <b><i><div class="cost" id="bombCostDisplay"></div></i></b>
         <span><div class="label">Buy a Bomb</div></span>
       </div>
