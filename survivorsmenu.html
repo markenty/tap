@@ -609,14 +609,23 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
   inventoryContainer.innerHTML = html;
 }
 
-    function updateRankDisplay() {
-      const rankDisplay = document.getElementById("rankDisplay");
-      const currentRank = calculateRank(killCount);
-      const emoji = rankEmojis[Math.min(currentRank, rankEmojis.length - 1)];
-      const name  = rankNames[Math.min(currentRank, rankNames.length - 1)];
-      rankDisplay.textContent = `${emoji} ${name}`;
-    }
-    
+function updateRankDisplay() {
+  const currentRank = calculateRank(killCount);
+  const emoji = rankEmojis[Math.min(currentRank, rankEmojis.length - 1)];
+  const name  = rankNames[Math.min(currentRank, rankNames.length - 1)];
+  
+  // Update both elements.
+  const menuRankDisplay = document.getElementById("menuRankDisplay");
+  if (menuRankDisplay) {
+    menuRankDisplay.textContent = `${emoji} ${name}`;
+  }
+  
+  const buttonRankDisplay = document.getElementById("buttonRankDisplay");
+  if (buttonRankDisplay) {
+    buttonRankDisplay.textContent = `${emoji} ${name}`;
+  }
+}
+
     function updateMeleeEffects(deltaTime) {
       for (let i = meleeEffects.length - 1; i >= 0; i--) {
         meleeEffects[i].timer -= deltaTime;
@@ -744,9 +753,9 @@ document.getElementById("inventoryTab").addEventListener("click", function() {
     }
     
     // Helper: Only allow tiles with type 0 (grass) or 2 (sand) to be passed
- function isTilePassable(tile) {
-  // Allow grass (0), sand (2), and mountains (3)
-  return tile.tileType === 0 || tile.tileType === 2 || tile.tileType === 3;
+function isTilePassable(tile) {
+  // Allow grass (0), water (1), sand (2), and mountains (3)
+  return tile.tileType === 0 || tile.tileType === 1 || tile.tileType === 2 || tile.tileType === 3;
 }
 
     class Particle {
@@ -1141,7 +1150,13 @@ render(ctx, camera) {
 
   // Save the context so we can restore later
   ctx.save();
-
+ // If on water, clip the drawing to the top half only.
+  if (this.tileMap.tiles[this.gridY][this.gridX].tileType === 1) {
+    ctx.beginPath();
+    ctx.rect(screenPos.x, screenPos.y, this.width, this.height / 2);
+    ctx.clip();
+  }
+  
   // If dashing, reduce opacity
   if (this.isDashing) {
     ctx.globalAlpha = 0.7;
@@ -1255,10 +1270,18 @@ _getRowForDirection() {
   if (!isTilePassable(targetTile)) return;
   
   // Set the movement duration.
+     
   // If the tile is a mountain (tileType 3), slow down movement further.
-  const baseMoveDuration = 0.24;  // increased from 0.1 so the animation is visible
-  let speedMultiplier = (targetTile.tileType === 3) ? 2 : 1;
-  this.moveDuration = baseMoveDuration * speedMultiplier;
+const baseMoveDuration = 0.24;  // Base duration for normal tiles
+let speedMultiplier;
+if (targetTile.tileType === 3) {       // mountain: slower
+  speedMultiplier = 2;
+} else if (targetTile.tileType === 1) {  // water: even slower than mountain
+  speedMultiplier = 3;
+} else {
+  speedMultiplier = 1;
+}
+this.moveDuration = baseMoveDuration * speedMultiplier;
   
   // Set up the movement as usual
   this.moving = true;
@@ -1448,52 +1471,69 @@ triggerScreenFlash();
         }
         this.knockback = this.knockback.scale(0.9);
       }
-    render(ctx, camera) {
+   render(ctx, camera) {
+  // Calculate screen position (and add any shake offsets)
   let pos = this.position.add(this.knockback);
   let screenPos = camera.worldToScreen(pos);
-
-  // Apply vibration if damageVibrateTimer is active:
   let offsetX = 0, offsetY = 0;
-  if(this.damageVibrateTimer > 0) {
-    offsetX = (Math.random()*2 - 1) * 5; // adjust magnitude as needed
-    offsetY = (Math.random()*2 - 1) * 5;
+  if (this.damageVibrateTimer > 0) {
+    offsetX = (Math.random() * 2 - 1) * 5;
+    offsetY = (Math.random() * 2 - 1) * 5;
   }
   screenPos.x += offsetX;
   screenPos.y += offsetY;
+  
+  // Save the context so any clipping we do here won’t affect later drawings
+  ctx.save();
 
+  // If this enemy is on a water tile, clip to only the top half of its sprite.
+  if (
+    this.tileMap.tiles[this.gridY] &&
+    this.tileMap.tiles[this.gridY][this.gridX] &&
+    this.tileMap.tiles[this.gridY][this.gridX].tileType === 1
+  ) {
+    ctx.beginPath();
+    ctx.rect(screenPos.x, screenPos.y, this.width, this.height / 2);
+    ctx.clip();
+  }
+  
+  // Draw the enemy sprite (and any red tint for damage)
   if (this.spriteLoaded) {
-    let row = 0;
+    let row;
     switch (this.direction) {
-      case "down": row = 0; break;
+      case "down":  row = 0; break;
       case "right": row = 1; break;
-      case "up": row = 2; break;
-      case "left": row = 3; break;
-      default: row = 0;
+      case "up":    row = 2; break;
+      case "left":  row = 3; break;
+      default:      row = 0;
     }
     let srcX = this.currentFrame * 32;
     let srcY = row * 32;
-
-    // Draw the enemy normally
-    ctx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, screenPos.x, screenPos.y, this.width, this.height);
-
-    // If damage flash is active, overlay a red tint.
+    ctx.drawImage(
+      this.spriteSheet,
+      srcX, srcY, 32, 32,
+      screenPos.x, screenPos.y, this.width, this.height
+    );
+    
     if (this.damageFlashTimer > 0) {
-      // Create an offscreen canvas if not already done (or reuse one)
       let offCanvas = document.createElement("canvas");
       offCanvas.width = this.width;
       offCanvas.height = this.height;
       let offCtx = offCanvas.getContext("2d");
       offCtx.drawImage(this.spriteSheet, srcX, srcY, 32, 32, 0, 0, this.width, this.height);
       offCtx.globalCompositeOperation = "source-atop";
-      offCtx.fillStyle = "rgba(255, 0, 0, 0.5)"; // 50% red tint; adjust alpha as needed
+      offCtx.fillStyle = "rgba(255, 0, 0, 0.5)";
       offCtx.fillRect(0, 0, this.width, this.height);
       ctx.drawImage(offCanvas, screenPos.x, screenPos.y);
     }
   } else {
-    // Fallback if sprite not loaded
     ctx.fillStyle = "green";
     ctx.fillRect(screenPos.x, screenPos.y, this.width, this.height);
   }
+  
+  // Restore the context so that the clip doesn't affect other drawings (like the player)
+  ctx.restore();
+     
 }
 
   move(direction) {
@@ -1633,7 +1673,7 @@ triggerScreenFlash();
     function executeDashAttack() {
       if(player.strikeMeter > 0) {
         player.startDash(player.direction);
-        updateAttackSlot();
+        updateAttackSlot();   showUpgradeAlert("Dash attack executed!");
       }
     }
     
@@ -2370,11 +2410,11 @@ document.addEventListener("keydown", function(e) {
     setInterval(updateAttackSlot, 100);
     requestAnimationFrame(gameLoop);
   </script>
-  <button id="upgradeButton"><i><u><b>Player Menu</b></u></i>
+ <button id="upgradeButton">
+  <i><u><b>Player Menu</b></u></i>
   <div class="button-content">
     <div class="rank-info">
-      <span id="buttonRankIcon">🔰</span>
-      <span id="buttonRankText">Beginner</span>
+      <span id="buttonRankDisplay">🔰 Beginner</span>
     </div>
   </div>
 </button>
