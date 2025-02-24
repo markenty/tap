@@ -498,15 +498,13 @@ let autoStrikeTime = hasReflexAmulet ? baseAutoStrikeTime : 0;
         this.duration = duration;   // Duration in seconds for the effect
         this.elapsed = 0;           // Time elapsed so far
         this.complete = false;      // Flag for completion
-        getCurrentPosition() {
+      }
+      getCurrentPosition() {
     const t = this.elapsed / this.duration;
     const currentX = this.startPos.x + (this.targetPos.x - this.startPos.x) * t;
     const currentY = this.startPos.y + (this.targetPos.y - this.startPos.y) * t;
     return new Vector2(currentX, currentY);
   }
-
-      }
-      
       update(dt) {
         this.elapsed += dt;
         if (this.elapsed >= this.duration) {
