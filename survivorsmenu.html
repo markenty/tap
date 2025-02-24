@@ -498,6 +498,13 @@ let autoStrikeTime = hasReflexAmulet ? baseAutoStrikeTime : 0;
         this.duration = duration;   // Duration in seconds for the effect
         this.elapsed = 0;           // Time elapsed so far
         this.complete = false;      // Flag for completion
+        getCurrentPosition() {
+    const t = this.elapsed / this.duration;
+    const currentX = this.startPos.x + (this.targetPos.x - this.startPos.x) * t;
+    const currentY = this.startPos.y + (this.targetPos.y - this.startPos.y) * t;
+    return new Vector2(currentX, currentY);
+  }
+
       }
       
       update(dt) {
@@ -657,11 +664,31 @@ function updateRankDisplay() {
     }
     
     function updateSwordEffects(dt) {
-      for (let i = swordEffects.length - 1; i >= 0; i--) {
-        swordEffects[i].update(dt);
-        if (swordEffects[i].complete) swordEffects.splice(i, 1);
+  for (let i = swordEffects.length - 1; i >= 0; i--) {
+    const effect = swordEffects[i];
+    effect.update(dt);
+    const effectPos = effect.getCurrentPosition();
+    // Check collision with each enemy
+    enemies.forEach(enemy => {
+      // Compute enemy center position
+      const enemyCenter = new Vector2(
+        enemy.position.x + enemy.width / 2,
+        enemy.position.y + enemy.height / 2
+      );
+      // If within collision radius (e.g., 20 pixels), damage enemy
+      if (effectPos.subtract(enemyCenter).length() < 20) {
+        // Ensure the enemy hasn't already been damaged by this effect
+        if (enemy.deathTimer === undefined) {
+          enemy.deathTimer = 0.5; // Set delay before death/damage effect
+          enemy.damageFlashTimer = 0.3;
+          enemy.damageVibrateTimer = 0.3;
+          // Optionally, add knockback or other effects here
+        }
       }
-    }
+    });
+    if (effect.complete) swordEffects.splice(i, 1);
+  }
+}
     
     function renderSwordEffects(ctx, camera) {
       for (let effect of swordEffects) {
