@@ -2338,11 +2338,23 @@ renderSwordEffects(ctx, camera);
      
 const upgradeButton = document.getElementById("upgradeButton");
 
-// When clicking the upgrade button, open the menu and hide the button
+// Open upgrade menu on mouse click.
 upgradeButton.addEventListener("click", function() {
-  showUpgradeMenu(false); // Not death-triggered
-  upgradeButton.style.display = "none";
+  if (!isUpgradeMenuVisible) {
+    showUpgradeMenu(false);
+    upgradeButton.style.display = "none";
+  }
 });
+
+// Also open upgrade menu when Enter or Return is pressed.
+document.addEventListener("keydown", function(e) {
+  // Check for Enter key (or keyCode 13 for compatibility)
+  if ((e.key === "Enter" || e.keyCode === 13) && !isUpgradeMenuVisible) {
+    showUpgradeMenu(false);
+    upgradeButton.style.display = "none";
+  }
+});
+
 
 
 
