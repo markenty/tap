@@ -141,7 +141,7 @@
     /* Responsive grid for upgrade/shop buttons */
 .menu-buttons {
   display: grid;
-  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  grid-template-columns: repeat(3, minmax(144px, 1fr));
   gap: 1rem;
   width: 100%;
   padding: 1rem;
@@ -374,9 +374,10 @@
     <span>  Increase Shielding (Duration & Reduction) - Cost: 250</span></div></button>
         </div>
       </div>
+
 <div id="shopSection" class="section">
-  <div class="menu-buttons">
-    <button id="buyBomb">
+  <div class="menu-buttons" >
+    <button style="width:135%; align:center;" class="menu-buttons" id="buyBomb">
       <div class="marquee">
         <div class="icon" style="font-size:3.0rem">💣</div>
         <b><i><div class="cost" id="bombCostDisplay"></div></i></b>
@@ -417,8 +418,25 @@
       <div class="tray-slot" id="attackSlot">👊</div>
     </div>
   </div>
-  
-  <script>
+   <button id="upgradeButton">
+  <i><u><b>Player Menu</b></u></i>
+  <div class="button-content">
+    <div class="rank-info">
+      <span id="buttonRankDisplay">🔰 Beginner</span>
+    </div>
+  </div>
+</button>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const buyBombBtn = document.getElementById("buyBomb");
+  if (buyBombBtn) {
+    buyBombBtn.addEventListener("click", function () {
+      // Your click handler code here
+      console.log("Bomb button clicked!");
+    });
+  }
+  // All your other code...
+});
     "use strict";
     let preservedAutoStrikeTime = 0;
 let preservedStrikeMeter = 0;
@@ -2468,13 +2486,6 @@ document.addEventListener("keydown", function(e) {
     }
   });
   </script>
- <button id="upgradeButton">
-  <i><u><b>Player Menu</b></u></i>
-  <div class="button-content">
-    <div class="rank-info">
-      <span id="buttonRankDisplay">🔰 Beginner</span>
-    </div>
-  </div>
-</button>
+
 </body>
 </html>
