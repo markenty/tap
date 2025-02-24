@@ -1613,6 +1613,18 @@ triggerScreenFlash();
   this.direction = direction;
   this.frameTime = 0;
   this.currentFrame = 0;
+  // NEW: Set enemy movement multiplier.
+  const baseMoveDuration = 0.2; // base duration
+  let speedMultiplier;
+  if (targetTile.tileType === 3) { // mountain
+    speedMultiplier = 2;
+  } else if (targetTile.tileType === 1) { // water
+    speedMultiplier = 3;
+  } else if (targetTile.tileType === 2) { // sand – slower for enemy than player
+    speedMultiplier = 1.5;
+  } else {
+    speedMultiplier = 1;
+  }
   
   // Set base movement duration and adjust for mountain tiles
   const baseMoveDuration = 0.2; // or your preferred base duration
