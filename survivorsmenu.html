@@ -2292,7 +2292,7 @@ showUpgradeAlert("Shielding increased!");
         
       if(player.isDead && !isUpgradeMenuVisible){
   slowMotionTimer -= deltaTime;
-  if(slowMotionTimer <= 0){
+  if(slowMotionTimer <= 0){showUpgradeAlert("YOU DIED!");
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
