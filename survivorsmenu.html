@@ -1614,7 +1614,8 @@ triggerScreenFlash();
   this.frameTime = 0;
   this.currentFrame = 0;
   // NEW: Set enemy movement multiplier.
-  const baseMoveDuration = 0.2; // base duration
+  // Set enemy movement duration based on tile type.
+  const baseMoveDuration = 0.2; // Base duration for movement
   let speedMultiplier;
   if (targetTile.tileType === 3) { // mountain
     speedMultiplier = 2;
@@ -1625,10 +1626,6 @@ triggerScreenFlash();
   } else {
     speedMultiplier = 1;
   }
-  
-  // Set base movement duration and adjust for mountain tiles
-  const baseMoveDuration = 0.2; // or your preferred base duration
-  let speedMultiplier = (this.tileMap.tiles[newGridY][newGridX].tileType === 3) ? 2 : 1;
   this.moveDuration = baseMoveDuration * speedMultiplier;
 }
       shoot() {
