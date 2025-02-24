@@ -54,6 +54,30 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
+@keyframes upgradeAlertAnimation {
+  0%   { opacity: 0; transform: scale(0.5) rotate(-15deg); }
+  20%  { opacity: 1; transform: scale(1.2) rotate(10deg); }
+  40%  { opacity: 1; transform: scale(1) rotate(0deg); }
+  80%  { opacity: 1; transform: translateY(-20px) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
+}
+
+.upgrade-alert {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 20px 40px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 5px #000;
+  border: 3px solid #ffebcd;
+  border-radius: 10px;
+  z-index: 11000;
+  pointer-events: none;
+  animation: upgradeAlertAnimation 2s ease-out forwards;
+}
 
     /* Fullscreen overlay for the upgrade menu */
     #upgradeMenu {
@@ -1902,7 +1926,27 @@ if(healingCharmActive){
         }
       }
     }
-    
+    function showUpgradeAlert(message) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = 'upgrade-alert';
+  alertDiv.textContent = message;
+  
+  // Check if the upgrade menu is visible
+  const upgradeMenu = document.getElementById("upgradeMenu");
+  const isMenuVisible = window.getComputedStyle(upgradeMenu).display !== 'none';
+  
+  // Position the alert depending on upgrade menu visibility.
+  // For example, if the menu covers the top half, show alert in the bottom half.
+  alertDiv.style.top = isMenuVisible ? "60%" : "10%";
+  
+  document.body.appendChild(alertDiv);
+  
+  // Remove the alert after 2 seconds (match the animation duration)
+  setTimeout(() => {
+    alertDiv.remove();
+  }, 2000);
+}
+
     function updateMaxStrikeTally() {
       const tallyContainer = document.querySelector('#maxStrikeSlot .tally-container');
   const numTiles = Math.min(strikeRangeTiles, 20);  // cap at 20 tiles
@@ -2021,6 +2065,8 @@ function resumeGame() {
         player.maxHP += 20;
         player.hp += 20;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+ // Show the HP upgrade alert.
+    showUpgradeAlert("HP UP!");
       }
     });
     document.getElementById("increaseAutoRun").addEventListener("click", ()=>{
@@ -2031,6 +2077,8 @@ function resumeGame() {
         autoStrikeTime += 10;
         autoStrikeBonus += 5;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+ // Show the upgrade alert.
+   showUpgradeAlert("Autostrike time increased!");
       }
     });
     document.getElementById("increaseDash").addEventListener("click", ()=>{
@@ -2039,6 +2087,7 @@ function resumeGame() {
         points -= cost;
         strikeRangeTiles++;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+showUpgradeAlert("Strike range increased!");
       }
     });
     document.getElementById("increaseStrikeMeter").addEventListener("click", ()=>{
@@ -2047,6 +2096,7 @@ function resumeGame() {
         points -= cost;
         strikeMeterCapacity += 10;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+showUpgradeAlert("Strike Endurance increased!");
       }
     });
     document.getElementById("increaseHealingCharmTime").addEventListener("click", ()=>{
@@ -2056,6 +2106,7 @@ function resumeGame() {
         baseHealingCharmDuration += 2;
         baseHealingCharmHeal += 0.5;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+showUpgradeAlert("Auto-Heal increased!");
       }
     });
     document.getElementById("increaseShieldingTime").addEventListener("click", ()=>{
@@ -2065,6 +2116,7 @@ function resumeGame() {
         baseDefenseBoostDuration += 2;
         baseShieldDamageReduction = Math.min(baseShieldDamageReduction+0.1,0.9);
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+showUpgradeAlert("Shielding increased!");
       }
     });
     document.getElementById("resumeGame").addEventListener("click", ()=>{ resumeGame(); });
