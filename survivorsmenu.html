@@ -139,14 +139,14 @@
     /* --- Section Containers --- */
     .section { display: none; }
     /* Responsive grid for upgrade/shop buttons */
-    .menu-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));
-      gap: 1rem;
-      width: 100%;
-      padding: 1rem;
-      box-sizing: border-box;
-    }
+.menu-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+}
     /* Enlarged buttons for easier touch interaction */
     .menu-buttons button {
       background: rgba(0,0,0,0.5);
@@ -371,17 +371,18 @@
     <span>  Increase Shielding (Duration & Reduction) - Cost: 250</span></div></button>
         </div>
       </div>
-        <div id="shopSection" class="section">
-      <div class="menu-buttons">
-        <button id="buyBomb"><div class="marquee">
-          <div class="icon" style="font-size:3.8rem">💣</div>
-          <b><i><div class="cost" id="bombCostDisplay"></div></i></b>
-<span><div class="label">Buy a Bomb</div></span>
-          
-</div>
-        </button>
+<div id="shopSection" class="section">
+  <div class="menu-buttons">
+    <button id="buyBomb">
+      <div class="marquee">
+        <div class="icon" style="font-size:3.8rem">💣</div>
+        <b><i><div class="cost" id="bombCostDisplay"></div></i></b>
+        <span><div class="label">Buy a Bomb</div></span>
       </div>
-    </div>
+    </button>
+    <!-- Add additional shop buttons here -->
+  </div>
+</div>
     <div id="inventorySection" class="section">
       <div class="menu-buttons" id="inventoryItems">
         <!-- Inventory items (tiles) will be injected here -->
