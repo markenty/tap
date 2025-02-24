@@ -1601,9 +1601,11 @@ triggerScreenFlash();
   if (newGridX < 0 || newGridX >= this.tileMap.width ||
       newGridY < 0 || newGridY >= this.tileMap.height) return;
   
-  // Only move if the target tile is passable
-  if (!isTilePassable(this.tileMap.tiles[newGridY][newGridX])) return;
+  // Get the target tile
+  let targetTile = this.tileMap.tiles[newGridY][newGridX];
+  if (!isTilePassable(targetTile)) return;
   
+  // Set up movement properties
   this.moving = true;
   this.moveTime = 0;
   this.startPos = this.position;
@@ -1613,19 +1615,21 @@ triggerScreenFlash();
   this.direction = direction;
   this.frameTime = 0;
   this.currentFrame = 0;
-  // NEW: Set enemy movement multiplier.
-  // Set enemy movement duration based on tile type.
-  const baseMoveDuration = 0.2; // Base duration for movement
+  
+  // Define a base move duration (for example, 0.2 seconds) and apply multipliers
+  // Adjust multipliers as needed:
+  const baseMoveDuration = 0.2;
   let speedMultiplier;
-  if (targetTile.tileType === 3) { // mountain
+  if (targetTile.tileType === 3) {       // mountain: very slow
     speedMultiplier = 2;
-  } else if (targetTile.tileType === 1) { // water
+  } else if (targetTile.tileType === 1) {  // water: even slower
     speedMultiplier = 3;
-  } else if (targetTile.tileType === 2) { // sand – slower for enemy than player
+  } else if (targetTile.tileType === 2) {  // sand: slower for enemy than player
     speedMultiplier = 1.5;
-  } else {
+  } else {                               // normal (grass)
     speedMultiplier = 1;
   }
+  
   this.moveDuration = baseMoveDuration * speedMultiplier;
 }
       shoot() {
