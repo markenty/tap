@@ -459,7 +459,14 @@ let autoStrikeTime = hasReflexAmulet ? baseAutoStrikeTime : 0;
     let autoStrikeBonus = 10;
     let strikeRangeTiles = 1;
     let strikeMeterCapacity = 100;
-    
+
+  // This block uses the Page Visibility API and focus/blur events.
+let isPageActive = true;
+document.addEventListener("visibilitychange", () => {
+  isPageActive = !document.hidden;
+});
+window.addEventListener("focus", () => { isPageActive = true; });
+window.addEventListener("blur", () => { isPageActive = false; });
     // Power-up state
     let defenseBoostActive = false, defenseBoostTimer = 0;
     let healingCharmActive = false, healingCharmTimer = 0;
@@ -2268,7 +2275,7 @@ showUpgradeAlert("Shielding increased!");
       let deltaTime = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
       globalTime += deltaTime;
-      
+      if (isPageActive) {
       if(!player.isDead && !isUpgradeMenuVisible){
         player.strikeMeter = Math.max(0, player.strikeMeter - goldDecayRate * deltaTime);
       }
@@ -2403,7 +2410,7 @@ showUpgradeAlert("Shielding increased!");
         
         updateCamera();
       }
-      
+      }
       ctx.fillStyle = "#505050";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       tileMap.render(ctx, camera);
