@@ -2409,6 +2409,34 @@ document.addEventListener("keydown", function(e) {
     }
     setInterval(updateAttackSlot, 100);
     requestAnimationFrame(gameLoop);
+
+    // Define your playlist (replace with your own audio file URLs)
+const playlist = [
+  "Baggy.mp3",
+  "citiphex_untitled.mp3",
+  "frontiers.mp3"
+];
+
+let currentTrackIndex = 0;
+const backgroundAudio = new Audio();
+backgroundAudio.src = playlist[currentTrackIndex];
+backgroundAudio.volume = 0.5; // Adjust volume as needed
+backgroundAudio.loop = false; // We'll handle looping the playlist manually
+
+// When a track ends, move to the next one
+backgroundAudio.addEventListener("ended", () => {
+  currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+  backgroundAudio.src = playlist[currentTrackIndex];
+  backgroundAudio.play();
+});
+
+// Optionally, start playing when the page loads
+window.addEventListener("load", () => {
+  backgroundAudio.play().catch(err => {
+    // Some browsers block auto-play until user interaction.
+    console.log("Auto-play was prevented. Start playback via user interaction.", err);
+  });
+});
   </script>
  <button id="upgradeButton">
   <i><u><b>Player Menu</b></u></i>
