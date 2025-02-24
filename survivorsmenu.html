@@ -525,7 +525,7 @@ let autoStrikeTime = hasReflexAmulet ? baseAutoStrikeTime : 0;
       if(points >= cost) {
         points -= cost;
         bombCount++;
-        updateBombCostDisplay();
+        updateBombCostDisplay();showUpgradeAlert("Bomb purchased!");
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
       }
     });
