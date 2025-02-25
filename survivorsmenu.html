@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -923,7 +923,7 @@ function isTilePassable(tile) {
         let size = Math.random() * 3 + 2;
         let color = Math.random() < 0.5 ? "rgba(255,105,180,ALPHA)" : "rgba(255,0,0,ALPHA)";
         let acceleration = new Vector2(0, 300);
-        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration)); playSFX("enemyDie");
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration)); 
       }
     }
     function updateEffects(deltaTime) {
@@ -1509,10 +1509,14 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
     if (this.deathTimer !== undefined) {
       this.deathTimer -= deltaTime;
       if (this.deathTimer <= 0) { 
-        spawnEnemyExplosionEffect(this.position);
-triggerScreenFlash(); 
-        killCount++;
+         if (this.alive) { // Ensure this runs only once
         this.alive = false;
+        spawnEnemyExplosionEffect(this.position);
+        triggerScreenFlash();
+        addSpriteFlash(this.position);
+        playSFX("enemyDie"); // 🔥 Play sound here, only once
+        killCount++;
+      }
         return; // Skip the rest of the update once dead.
       }  // Decrement flash and vibrate timers
   if (this.damageFlashTimer > 0) {
