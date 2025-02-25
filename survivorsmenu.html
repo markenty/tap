@@ -509,14 +509,16 @@ const sfx = {
   ripple: createAudioPool("sfx/ripple.mp3", 2),
   enemyAttack: createAudioPool("punch3.wav", 3),
 };
-
-// Function to create an audio pool
+window.addEventListener("click", () => {
+  Object.values(sfx).forEach(sound => {
+    sound.play(); // Play once to unlock all sounds
+  });
+});// Function to create an audio pool
 function createAudioPool(src, size = 3) {
   const pool = [];
   for (let i = 0; i < size; i++) {
     const audio = new Audio(src);
     audio.preload = "auto";
-    audio.load();
     pool.push(audio);
   }
   return {
@@ -524,8 +526,13 @@ function createAudioPool(src, size = 3) {
     index: 0,
     play: function () {
       const audio = this.pool[this.index];
-      audio.currentTime = 0; // Reset sound for immediate replay
-      audio.play().catch((err) => console.warn("SFX Play Error:", err));
+      if (audio.paused) {
+        audio.play().catch((err) => console.warn("SFX Play Error:", err));
+      } else {
+        // Create a new instance if already playing
+        const clone = new Audio(audio.src);
+        clone.play().catch((err) => console.warn("SFX Play Error:", err));
+      }
       this.index = (this.index + 1) % this.pool.length;
     },
   };
@@ -534,7 +541,9 @@ function createAudioPool(src, size = 3) {
 // Play sound safely without overlap
 function playSFX(sound) {
   if (sfx[sound]) {
-    sfx[sound].play();
+    const audio = new Audio(sfx[sound].pool[0].src); // Clone new audio instance
+    audio.volume = 1.0;
+    audio.play().catch((err) => console.warn("SFX Play Error:", err));
   }
 }
     // --- Sword Effect for Max Strike ---
