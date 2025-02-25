@@ -1734,7 +1734,7 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
     const bullets = [], enemies = [];
     let enemySpawnTimer = 0;
     
-    function performAutoStrike() {playSFX("attack");
+    function performAutoStrike() {
       let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
       let effectiveRange = (strikeRangeTiles>1 && player.strikeMeter>=10) ? strikeRangeTiles*50 : 50;
       const offsetDistance = 20;
@@ -1742,11 +1742,10 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
         let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
         if(playerCenter.subtract(enemyCenter).length() < effectiveRange) {
   // Set a delay if not already set:
-  if (enemy.deathTimer === undefined) {
-    enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
+  if (enemy.deathTimer === undefined) {playSFX("attack");playSFX("swingSword"); 
+    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
   enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;playSFX("swingSword"); 
-    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+  enemy.damageVibrateTimer = 0.3;
   }
   addSpriteFlash(enemy.position);
   // Optionally, you can also spawn melee effects:
