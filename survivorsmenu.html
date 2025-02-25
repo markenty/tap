@@ -2067,7 +2067,7 @@ if(healingCharmActive){
               let blastForce = blastDir.scale(200);
               enemy.knockback = enemy.knockback.add(blastForce);
               enemy.alive = false;
-            playSFX("enemyDie");
+            
               spawnEnemyExplosionEffect(enemy.position);
               killCount++;
               triggerScreenFlash();
