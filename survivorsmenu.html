@@ -1730,7 +1730,8 @@ triggerScreenFlash();
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
   enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;playSFX("attack");    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+  enemy.damageVibrateTimer = 0.3;
+    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
   }
   addSpriteFlash(enemy.position);
   // Optionally, you can also spawn melee effects:
@@ -1802,7 +1803,8 @@ triggerScreenFlash();
       killCount++;
     }
     
-    function performManualStrikeAt(tapX, tapY) {playSFX("swingSword");      const tileSize = 50;
+    function performManualStrikeAt(tapX, tapY) {
+      const tileSize = 50;
       const currentMeleeRange = strikeRangeTiles*tileSize;
       for(let enemy of enemies){
         let enemyScreenPos = camera.worldToScreen(enemy.position);
@@ -1812,12 +1814,11 @@ triggerScreenFlash();
           let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
           let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
           if(playerCenter.subtract(enemyCenter).length()<=currentMeleeRange){
-           
-         swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+            playSFX("attack");         swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
 let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
 let effectX = playerCenter.x + Math.cos(angle) * 20;
 let effectY = playerCenter.y + Math.sin(angle) * 20;
- playSFX("attack");
+
 addSpriteFlash(enemy.position);
 spawnMeleeEffect(effectX, effectY, angle);
 
@@ -1856,7 +1857,7 @@ return true;
       evt.preventDefault();
       let rect = canvas.getBoundingClientRect();
       let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
-      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; 
+      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; playSFX("attack");}
       let dir = computeDirection(evt.clientX, evt.clientY);
       if(dir && !player.moving && !player.isDashing) { player.move(dir); }
       else {
@@ -2434,10 +2435,10 @@ showUpgradeAlert("Shielding increased!");
           if(autoStrikeTime<0) autoStrikeTime = 0;
         }
         
-      if(player.isDead && !isUpgradeMenuVisible){
-  slowMotionTimer -= deltaTime;
-  if(slowMotionTimer <= 0){showUpgradeAlert("YOU DIED!");
+      if(player.isDead && !isUpgradeMenuVisible){showUpgradeAlert("YOU DIED!");
 playSFX("playerDie");
+  slowMotionTimer -= deltaTime;
+  if(slowMotionTimer <= 0){
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
