@@ -505,7 +505,7 @@ const sfx = {
   enemyDie: createAudio("bloodsuck.wav"),
   playerDie: createAudio("gong.wav"),
   explosion: createAudio("explode7.wav"),
-  swingSword: createAudio("evade2.wav"),
+  word: createAudio("evade2.wav"),
   ripple: createAudio("sfx/ripple.mp3"),
   enemyAttack: createAudio("punch3.wav"),
 };
@@ -712,13 +712,14 @@ function updateRankDisplay() {
         enemy.position.y + enemy.height / 2
       );
       // If within collision radius (e.g., 20 pixels), damage enemy
-      if (effectPos.subtract(enemyCenter).length() < 20) { playSFX("swingSword");
+      if (effectPos.subtract(enemyCenter).length() < 20) { 
         // Ensure the enemy hasn't already been damaged by this effect
         if (enemy.deathTimer === undefined) {
           enemy.deathTimer = 0.5; // Set delay before death/damage effect
           enemy.damageFlashTimer = 0.3;
           enemy.damageVibrateTimer = 0.3;
           // Optionally, add knockback or other effects here
+         playSFX("swingSword");
         }
       }
     });
