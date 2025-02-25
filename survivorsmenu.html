@@ -1798,7 +1798,7 @@ triggerScreenFlash();
       let direction = new Vector2(enemy.position.x-player.position.x, enemy.position.y-player.position.y).normalize();
       let knockbackDistance = Math.max(tileMap.width,tileMap.height)*50;
       let finalPos = enemy.position.add(direction.scale(knockbackDistance));
-      enemy.position = finalPos; playSFX("enemyDie");
+      enemy.position = finalPos; x
       spawnEnemyExplosionEffect(enemy.position);
       killCount++;
     }
@@ -1819,7 +1819,7 @@ triggerScreenFlash();
 let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
 let effectX = playerCenter.x + Math.cos(angle) * 20;
 let effectY = playerCenter.y + Math.sin(angle) * 20;
-
+ playSFX("attack");
 addSpriteFlash(enemy.position);
 spawnMeleeEffect(effectX, effectY, angle);
 
@@ -1858,7 +1858,7 @@ return true;
       evt.preventDefault();
       let rect = canvas.getBoundingClientRect();
       let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
-      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; }
+      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; playSFX("attack");}
       let dir = computeDirection(evt.clientX, evt.clientY);
       if(dir && !player.moving && !player.isDashing) { player.move(dir); }
       else {
