@@ -590,16 +590,17 @@ function playSFX(sound, cooldown = 100) {
     let swordEffects = [];
 
 
- const bgmButton = document.getElementById("toggleBGM");
+const bgmButton = document.getElementById("toggleBGM");
 
 // Function to toggle BGM play/pause
 bgmButton.addEventListener("click", () => {
     if (backgroundAudio.paused) {
-        backgroundAudio.play();
-        bgmButton.textContent = "🔊 BGM On";
+        backgroundAudio.play().then(() => {
+            bgmButton.textContent = "🔊 BGM On"; // Update text on successful play
+        }).catch(err => console.log("Error playing BGM:", err));
     } else {
         backgroundAudio.pause();
-        bgmButton.textContent = "🔇 BGM Off";
+        bgmButton.textContent = "🔇 BGM Off"; // Update immediately on pause
     }
 });
 
