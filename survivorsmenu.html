@@ -588,37 +588,13 @@ function playSFX(sound, cooldown = 100) {
     // Global array to hold active sword effects
     let swordEffects = [];
      // -------------------------
-const bgmButton = document.getElementById("toggleBGM");
-
-// Function to toggle BGM play/pause
-bgmButton.addEventListener("click", () => {
-    if (backgroundAudio.paused) {
-        backgroundAudio.play();
-        bgmButton.textContent = "🔊 BGM On";
-    } else {
-        backgroundAudio.pause();
-        bgmButton.textContent = "🔇 BGM Off";
-    }
-});
-
-// Ensure the button reflects the correct state on load
-window.addEventListener("load", () => {
-    bgmButton.textContent = backgroundAudio.paused ? "🔇 BGM Off" : "🔊 BGM On";
-});
-
-// Auto-update button text when the audio state changes
-backgroundAudio.addEventListener("play", () => {
-    isBgmPlaying = true;
-    updateBgmButton();
-});
-backgroundAudio.addEventListener("pause", () => {
-    isBgmPlaying = false;
-    updateBgmButton();
-});
-
-// Set initial state on page load
-window.addEventListener("load", updateBgmButton);
- 
+document.getElementById("toggleBGM").addEventListener("click", function() {
+  if (backgroundAudio.paused) {
+    backgroundAudio.play().catch(err => console.log("Error resuming music:", err));
+  } else {
+    backgroundAudio.pause();
+  }
+}); 
     // Shop & Upgrade Menu Logic
     // -------------------------
     function getBombCost() {
