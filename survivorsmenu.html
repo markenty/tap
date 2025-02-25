@@ -521,9 +521,16 @@ function createAudio(src) {
 // ✅ Fast, overlap-allowed sound playback
 function playSFX(sound) {
   if (sfx[sound]) {
-    const audio = sfx[sound].cloneNode(); // Clone allows multiple overlapping plays
-    audio.volume = 1.0; // Adjust if needed
-    audio.play().catch(err => console.warn("SFX Play Error:", err));
+    const source = audioContext.createBufferSource();
+    source.buffer = sfx[sound];
+
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 1.0; // Adjust volume here
+
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    source.start(0);
   } else {
     console.warn(`SFX "${sound}" not found.`);
   }
