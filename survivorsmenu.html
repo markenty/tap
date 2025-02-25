@@ -495,7 +495,28 @@ window.addEventListener("blur", () => { isPageActive = false; });
         ctx.restore();
       }
     }
-    
+     // Sound effects
+const sfx = {
+  attack: new Audio("evade2.wav"),
+  dash: new Audio("sfx/dash.mp3"),
+  bombDeploy: new Audio("sfx/bomb.mp3"),
+  pickup: new Audio("choice2.wav"),
+  enemyDie: new Audio("bloodsuck.wav"),
+  playerDie: new Audio("gong.wav"),
+ explosion: new Audio("explode7.wav"),
+
+  ripple: new Audio("sfx/ripple.mp3"),
+enemyAttack: new Audio("punch3.wav")
+
+};
+
+// Play sound function
+function playSFX(sound) {
+  if (sfx[sound]) {
+    sfx[sound].currentTime = 0; // Reset sound to start if it's already playing
+    sfx[sound].play().catch(err => console.log("SFX Play Error:", err));
+  }
+}
     // --- Sword Effect for Max Strike ---
     // This effect draws a spinning sword emoji from the player to each struck enemy.
     class SwordEffect {
@@ -1466,7 +1487,7 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
        // If the enemy has been struck, decrement the death timer.
     if (this.deathTimer !== undefined) {
       this.deathTimer -= deltaTime;
-      if (this.deathTimer <= 0) {
+      if (this.deathTimer <= 0) { playSFX("enemyDie");
         spawnEnemyExplosionEffect(this.position);
 triggerScreenFlash(); 
         killCount++;
@@ -1777,7 +1798,7 @@ triggerScreenFlash();
       let direction = new Vector2(enemy.position.x-player.position.x, enemy.position.y-player.position.y).normalize();
       let knockbackDistance = Math.max(tileMap.width,tileMap.height)*50;
       let finalPos = enemy.position.add(direction.scale(knockbackDistance));
-      enemy.position = finalPos;
+      enemy.position = finalPos; playSFX("enemyDie");
       spawnEnemyExplosionEffect(enemy.position);
       killCount++;
     }
@@ -2017,7 +2038,7 @@ if(healingCharmActive){
         baitBombs[i].update(deltaTime);
         if(baitBombs[i].timer<=0){
           screenShakeTime = 0.5; screenShakeMagnitude = 20;
-          spawnExplosionEffect(baitBombs[i].position);
+          spawnExplosionEffect(baitBombs[i].position);playSFX("explosion");
           let bx = baitBombs[i].tileX, by = baitBombs[i].tileY;
           enemies.forEach(enemy=>{
             if(enemy.gridX>=bx-1 && enemy.gridX<=bx+1 &&
@@ -2026,6 +2047,7 @@ if(healingCharmActive){
               let blastForce = blastDir.scale(200);
               enemy.knockback = enemy.knockback.add(blastForce);
               enemy.alive = false;
+            playSFX("enemyDie");
               spawnEnemyExplosionEffect(enemy.position);
               killCount++;
               triggerScreenFlash();
@@ -2417,6 +2439,7 @@ showUpgradeAlert("Shielding increased!");
       if(player.isDead && !isUpgradeMenuVisible){
   slowMotionTimer -= deltaTime;
   if(slowMotionTimer <= 0){showUpgradeAlert("YOU DIED!");
+playSFX("playerDie");
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
