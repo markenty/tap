@@ -507,8 +507,7 @@ const sfx = {
   explosion: createAudio("explode7.wav"),
   swingSword: createAudio("evade2.wav"),
   ripple: createAudio("sfx/ripple.mp3"),
-   enemyAttack: createAudio("punch3.wav"),    // Enemy hits player
-  enemyDamage: createAudio("punch5.wav"),    // Enemy takes damage
+  enemyAttack: createAudio("punch3.wav"),
 };
 
 // ✅ Function to create an audio instance (ensures instant play)
@@ -1439,7 +1438,8 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
         enemies.forEach(enemy => {
           let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
        if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
-         playSFX("attack");playSFX("enemyDamage");  // Set a death timer if not already set
+         playSFX("attack");
+  // Set a death timer if not already set
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
       enemy.damageFlashTimer = 0.3;
@@ -2392,10 +2392,8 @@ showUpgradeAlert("Shielding increased!");
               player.flashDamage();
               screenShakeTime = 0.2;
               screenShakeMagnitude = 5;
-playerDamage: createAudio("punch3.wav"), 
-
               if(player.hp<=0 && !player.isDead){updateInventoryDisplay();
-playSFX("playerDie");                player.isDead = true;
+                player.isDead = true;
                 spawnBloodEffect(player.position);
                 slowMotionTimer = 1.0;
                 timeScale = 0.2;
@@ -2466,7 +2464,7 @@ playSFX("playerDie");                player.isDead = true;
       if(player.isDead && !isUpgradeMenuVisible){
 
   slowMotionTimer -= deltaTime;
-  if(slowMotionTimer <= 0){showUpgradeAlert("YOU DIED!");
+  if(slowMotionTimer <= 0){playSFX("playerDie");showUpgradeAlert("YOU DIED!");
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
