@@ -903,7 +903,7 @@ function isTilePassable(tile) {
         let size = Math.random() * 3 + 2;
         let color = Math.random() < 0.5 ? "rgba(255,105,180,ALPHA)" : "rgba(255,0,0,ALPHA)";
         let acceleration = new Vector2(0, 300);
-        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration));
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration)); playSFX("enemyDie");
       }
     }
     function updateEffects(deltaTime) {
@@ -1487,7 +1487,7 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
        // If the enemy has been struck, decrement the death timer.
     if (this.deathTimer !== undefined) {
       this.deathTimer -= deltaTime;
-      if (this.deathTimer <= 0) { playSFX("enemyDie");
+      if (this.deathTimer <= 0) { 
         spawnEnemyExplosionEffect(this.position);
 triggerScreenFlash(); 
         killCount++;
