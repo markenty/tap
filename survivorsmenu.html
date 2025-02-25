@@ -1423,15 +1423,16 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
         }
         let playerCenter = new Vector2(this.position.x + this.width/2, this.position.y + this.height/2);
         let strikeCenter = playerCenter.add(offset);
-        triggerHeadbutt();
+        triggerHeadbutt();playSFX("swingSword");
         enemies.forEach(enemy => {
           let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
        if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
+         playSFX("attack");
   // Set a death timer if not already set
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
       enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;playSFX("attack");
+  enemy.damageVibrateTimer = 0.3;
     swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
   }
   addSpriteFlash(enemy.position);
@@ -2436,9 +2437,9 @@ showUpgradeAlert("Shielding increased!");
         }
         
       if(player.isDead && !isUpgradeMenuVisible){
-playSFX("playerDie");
+
   slowMotionTimer -= deltaTime;
-  if(slowMotionTimer <= 0){showUpgradeAlert("YOU DIED!");
+  if(slowMotionTimer <= 0){playSFX("playerDie");showUpgradeAlert("YOU DIED!");
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
