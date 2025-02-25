@@ -393,6 +393,7 @@
         <!-- Inventory items (tiles) will be injected here -->
       </div>
     </div>
+   <button id="toggleBGM">🎵 Toggle BGM</button>
     <button id="resumeGame">▶️ Resume Game</button>
   </div>
 </div>
@@ -587,6 +588,37 @@ function playSFX(sound, cooldown = 100) {
     // Global array to hold active sword effects
     let swordEffects = [];
      // -------------------------
+const bgmButton = document.getElementById("toggleBGM");
+let isBgmPlaying = false; // Track BGM state manually
+
+bgmButton.addEventListener("click", () => {
+    if (isBgmPlaying) {
+        backgroundAudio.pause();
+    } else {
+        backgroundAudio.play().catch(err => console.log("Error playing BGM:", err));
+    }
+    isBgmPlaying = !isBgmPlaying; // Toggle state manually
+    updateBgmButton(); // Ensure label updates
+});
+
+// Ensure the button always reflects the current BGM state
+function updateBgmButton() {
+    bgmButton.textContent = isBgmPlaying ? "🔊 BGM On" : "🔇 BGM Off";
+}
+
+// Auto-update button text when the audio state changes
+backgroundAudio.addEventListener("play", () => {
+    isBgmPlaying = true;
+    updateBgmButton();
+});
+backgroundAudio.addEventListener("pause", () => {
+    isBgmPlaying = false;
+    updateBgmButton();
+});
+
+// Set initial state on page load
+window.addEventListener("load", updateBgmButton);
+ 
     // Shop & Upgrade Menu Logic
     // -------------------------
     function getBombCost() {
