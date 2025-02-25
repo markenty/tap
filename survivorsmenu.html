@@ -589,22 +589,22 @@ function playSFX(sound, cooldown = 100) {
     let swordEffects = [];
      // -------------------------
 const bgmButton = document.getElementById("toggleBGM");
-let isBgmPlaying = false; // Track BGM state manually
 
+// Function to toggle BGM play/pause
 bgmButton.addEventListener("click", () => {
-    if (isBgmPlaying) {
-        backgroundAudio.pause();
+    if (backgroundAudio.paused) {
+        backgroundAudio.play();
+        bgmButton.textContent = "🔊 BGM On";
     } else {
-        backgroundAudio.play().catch(err => console.log("Error playing BGM:", err));
+        backgroundAudio.pause();
+        bgmButton.textContent = "🔇 BGM Off";
     }
-    isBgmPlaying = !isBgmPlaying; // Toggle state manually
-    updateBgmButton(); // Ensure label updates
 });
 
-// Ensure the button always reflects the current BGM state
-function updateBgmButton() {
-    bgmButton.textContent = isBgmPlaying ? "🔊 BGM On" : "🔇 BGM Off";
-}
+// Ensure the button reflects the correct state on load
+window.addEventListener("load", () => {
+    bgmButton.textContent = backgroundAudio.paused ? "🔇 BGM Off" : "🔊 BGM On";
+});
 
 // Auto-update button text when the audio state changes
 backgroundAudio.addEventListener("play", () => {
