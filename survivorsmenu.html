@@ -1730,8 +1730,7 @@ triggerScreenFlash();
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
   enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;
-    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+  enemy.damageVibrateTimer = 0.3;playSFX("attack");    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
   }
   addSpriteFlash(enemy.position);
   // Optionally, you can also spawn melee effects:
@@ -1803,8 +1802,7 @@ triggerScreenFlash();
       killCount++;
     }
     
-    function performManualStrikeAt(tapX, tapY) {
-      const tileSize = 50;
+    function performManualStrikeAt(tapX, tapY) {playSFX("swingSword");      const tileSize = 50;
       const currentMeleeRange = strikeRangeTiles*tileSize;
       for(let enemy of enemies){
         let enemyScreenPos = camera.worldToScreen(enemy.position);
@@ -1858,7 +1856,7 @@ return true;
       evt.preventDefault();
       let rect = canvas.getBoundingClientRect();
       let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
-      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; playSFX("attack");}
+      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; 
       let dir = computeDirection(evt.clientX, evt.clientY);
       if(dir && !player.moving && !player.isDashing) { player.move(dir); }
       else {
@@ -1889,7 +1887,7 @@ return true;
              a.y < b.y+b.height && a.y+a.height > b.y;
     }
     
-    function triggerHeadbutt() {playSFX("swingSword");
+    function triggerHeadbutt() {
       let playerScreenPos = camera.worldToScreen(player.position);
       let headbuttDiv = document.getElementById("headbuttEffect");
       headbuttDiv.style.left = (playerScreenPos.x+player.width/2-32)+"px";
