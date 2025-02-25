@@ -1939,7 +1939,7 @@ return true;
     function deployBomb() {
       if(bombCount>0){
         bombCount--;
-        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));showUpgradeAlert("Bomb deployed!");
+        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));playSFX("bombDeploy");showUpgradeAlert("Bomb deployed!");
         
       }updateInventoryDisplay();
     }
