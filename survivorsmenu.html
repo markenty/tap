@@ -511,19 +511,6 @@ const sfx = {
   playerDamage: createAudio("punch3.wav"),   // Player takes damage
 };
 
- // Ensure the AudioContext is started on first user interaction
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-function unlockAudioContext() {
-  if (audioContext.state === "suspended") {
-    audioContext.resume().then(() => console.log("Audio Context Resumed"));
-  }
-}
-
-// Listen for user interaction to unlock audio context
-window.addEventListener("click", unlockAudioContext);
-window.addEventListener("keydown", unlockAudioContext);
-window.addEventListener("touchstart", unlockAudioContext);
 // ✅ Function to create an audio instance (ensures instant play)
 function createAudio(src) {
   const audio = new Audio(src);
