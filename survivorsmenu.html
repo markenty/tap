@@ -912,6 +912,9 @@ function isTilePassable(tile) {
         let size = Math.random() * 2 + 2;
         effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(255,165,0,ALPHA)", size));
       }
+playSFX("explosion");
+  triggerWhiteFlash();
+
     }
     function spawnEnemyExplosionEffect(position) {
       const count = 50;
@@ -1943,11 +1946,30 @@ return true;
         }
       });
     }
-    
+    function triggerWhiteFlash() {
+  const flashDiv = document.createElement("div");
+  flashDiv.style.position = "fixed";
+  flashDiv.style.top = "0";
+  flashDiv.style.left = "0";
+  flashDiv.style.width = "100vw";
+  flashDiv.style.height = "100vh";
+  flashDiv.style.background = "white";
+  flashDiv.style.opacity = "0.8"; // Adjust brightness
+  flashDiv.style.pointerEvents = "none";
+  flashDiv.style.transition = "opacity 0.2s ease-out";
+
+  document.body.appendChild(flashDiv);
+
+  setTimeout(() => {
+    flashDiv.style.opacity = "0";
+    setTimeout(() => flashDiv.remove(), 200);
+  }, 50);
+}
     function deployBomb() {
+     playSFX("bombDeploy");
       if(bombCount>0){
         bombCount--;
-        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));playSFX("bombDeploy");showUpgradeAlert("Bomb deployed!");
+        baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));showUpgradeAlert("Bomb deployed!");
         
       }updateInventoryDisplay();
     }
@@ -2072,7 +2094,7 @@ if(healingCharmActive){
         baitBombs[i].update(deltaTime);
         if(baitBombs[i].timer<=0){
           screenShakeTime = 0.5; screenShakeMagnitude = 20;
-          spawnExplosionEffect(baitBombs[i].position);playSFX("explosion");
+          spawnExplosionEffect(baitBombs[i].position);
           let bx = baitBombs[i].tileX, by = baitBombs[i].tileY;
           enemies.forEach(enemy=>{
             if(enemy.gridX>=bx-1 && enemy.gridX<=bx+1 &&
