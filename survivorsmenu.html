@@ -510,10 +510,12 @@ enemyAttack: new Audio("punch3.wav")
 
 };
 
-// Play sound function
+// Function to play sound without overlapping
 function playSFX(sound) {
   if (sfx[sound]) {
-    sfx[sound].currentTime = 0; // Reset sound to start if it's already playing
+    if (!sfx[sound].paused) {
+      sfx[sound].currentTime = 0; // Reset sound to prevent overlap
+    }
     sfx[sound].play().catch(err => console.log("SFX Play Error:", err));
   }
 }
