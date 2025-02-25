@@ -703,7 +703,7 @@ function updateRankDisplay() {
   for (let i = swordEffects.length - 1; i >= 0; i--) {
     const effect = swordEffects[i];
     effect.update(dt);
-    const effectPos = effect.getCurrentPosition();playSFX("swingSword");
+    const effectPos = effect.getCurrentPosition();
    // Check collision with each enemy
     enemies.forEach(enemy => {
       // Compute enemy center position
@@ -712,7 +712,7 @@ function updateRankDisplay() {
         enemy.position.y + enemy.height / 2
       );
       // If within collision radius (e.g., 20 pixels), damage enemy
-      if (effectPos.subtract(enemyCenter).length() < 20) {
+      if (effectPos.subtract(enemyCenter).length() < 20) { playSFX("swingSword");
         // Ensure the enemy hasn't already been damaged by this effect
         if (enemy.deathTimer === undefined) {
           enemy.deathTimer = 0.5; // Set delay before death/damage effect
