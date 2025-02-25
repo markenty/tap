@@ -1744,7 +1744,7 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
     const bullets = [], enemies = [];
     let enemySpawnTimer = 0;
     
-    function performAutoStrike() {
+    function performAutoStrike() {playSFX("attack");
       let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
       let effectiveRange = (strikeRangeTiles>1 && player.strikeMeter>=10) ? strikeRangeTiles*50 : 50;
       const offsetDistance = 20;
