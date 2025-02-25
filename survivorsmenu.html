@@ -519,13 +519,21 @@ function createAudio(src) {
 }
 
 // ✅ Fast, overlap-allowed sound playback
-function playSFX(sound) {
+const soundCooldowns = {};
+
+function playSFX(sound, cooldown = 100) {
+  const now = performance.now();
+
+  if (soundCooldowns[sound] && now - soundCooldowns[sound] < cooldown) {
+    return; // Prevents spam
+  }
+
+  soundCooldowns[sound] = now;
+  
   if (sfx[sound]) {
-    const audio = sfx[sound].cloneNode(); // Clone allows multiple overlapping plays
-    audio.volume = 1.0; // Adjust if needed
-    audio.play().catch(err => console.warn("SFX Play Error:", err));
-  } else {
-    console.warn(`SFX "${sound}" not found.`);
+    const audio = sfx[sound].cloneNode();
+    audio.volume = 1.0;
+    audio.play().catch(err => console.warn(`SFX Error: ${err}`));
   }
 }
     // --- Sword Effect for Max Strike ---
