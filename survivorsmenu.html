@@ -500,14 +500,15 @@ window.addEventListener("blur", () => { isPageActive = false; });
 const sfx = {
   attack: createAudio("sword3.wav"),
   dash: createAudio("sfx/dash.mp3"),
-  bombDeploy: createAudio("sfx/bomb.mp3"),
+  bombDeploy: createAudio("key.wav"),
   pickup: createAudio("choice2.wav"),
   enemyDie: createAudio("bloodsuck.wav"),
   playerDie: createAudio("gong.wav"),
   explosion: createAudio("explode7.wav"),
   swingSword: createAudio("evade2.wav"),
   ripple: createAudio("sfx/ripple.mp3"),
-  enemyAttack: createAudio("punch3.wav"),
+   enemyDamage: createAudio("punch5.wav"),    // Enemy takes damage
+  playerDamage: createAudio("punch3.wav"),   // Player takes damage
 };
 
 // ✅ Function to create an audio instance (ensures instant play)
@@ -1438,7 +1439,7 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
         enemies.forEach(enemy => {
           let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
        if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
-         playSFX("attack");
+        playSFX("enemyDamage");  playSFX("attack");
   // Set a death timer if not already set
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
@@ -2392,7 +2393,11 @@ showUpgradeAlert("Shielding increased!");
               player.flashDamage();
               screenShakeTime = 0.2;
               screenShakeMagnitude = 5;
+ playSFX("playerDamage");
+
               if(player.hp<=0 && !player.isDead){updateInventoryDisplay();
+playSFX("playerDie");
+
                 player.isDead = true;
                 spawnBloodEffect(player.position);
                 slowMotionTimer = 1.0;
@@ -2464,7 +2469,8 @@ showUpgradeAlert("Shielding increased!");
       if(player.isDead && !isUpgradeMenuVisible){
 
   slowMotionTimer -= deltaTime;
-  if(slowMotionTimer <= 0){playSFX("playerDie");showUpgradeAlert("YOU DIED!");
+  if(slowMotionTimer <= 0){
+showUpgradeAlert("YOU DIED!");
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
