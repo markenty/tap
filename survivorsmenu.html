@@ -1431,7 +1431,7 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
       enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;
+  enemy.damageVibrateTimer = 0.3;playSFX("attack");
     swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
   }
   addSpriteFlash(enemy.position);
@@ -1889,7 +1889,7 @@ return true;
              a.y < b.y+b.height && a.y+a.height > b.y;
     }
     
-    function triggerHeadbutt() {
+    function triggerHeadbutt() {playSFX("swingSword");
       let playerScreenPos = camera.worldToScreen(player.position);
       let headbuttDiv = document.getElementById("headbuttEffect");
       headbuttDiv.style.left = (playerScreenPos.x+player.width/2-32)+"px";
@@ -1901,7 +1901,7 @@ return true;
       enemies.forEach(enemy=>{    let enemyScreenPos = camera.worldToScreen(enemy.position);
         let enemyBox = { x: enemyScreenPos.x, y: enemyScreenPos.y, width: enemy.width, height: enemy.height };
         if(rectIntersect(playerBox, enemyBox)){
-          addSpriteFlash(enemy.position);playSFX("swingSword");
+          addSpriteFlash(enemy.position);
           let playerCenter = new Vector2(playerBox.x+playerBox.width/2, playerBox.y+playerBox.height/2);
           let enemyCenter = new Vector2(enemyBox.x+enemyBox.width/2, enemyBox.y+enemyBox.height/2);
           let knockVec = enemyCenter.subtract(playerCenter).normalize().scale(40);
