@@ -703,8 +703,8 @@ function updateRankDisplay() {
   for (let i = swordEffects.length - 1; i >= 0; i--) {
     const effect = swordEffects[i];
     effect.update(dt);
-    const effectPos = effect.getCurrentPosition();
-    // Check collision with each enemy
+    const effectPos = effect.getCurrentPosition();playSFX("swingSword");
+   // Check collision with each enemy
     enemies.forEach(enemy => {
       // Compute enemy center position
       const enemyCenter = new Vector2(
