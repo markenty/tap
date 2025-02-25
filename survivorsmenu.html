@@ -1736,29 +1736,40 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
     let enemySpawnTimer = 0;
     
     function performAutoStrike() {
-      let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
-      let effectiveRange = (strikeRangeTiles>1 && player.strikeMeter>=10) ? strikeRangeTiles*50 : 50;
-      const offsetDistance = 20;
-      enemies.forEach(enemy=>{
-        let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
-        if(playerCenter.subtract(enemyCenter).length() < effectiveRange) {
-  // Set a delay if not already set:
-  if (enemy.deathTimer === undefined) {playSFX("attack");playSFX("swingSword"); 
-    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
-  enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;
-  }
-  addSpriteFlash(enemy.position);
-  // Optionally, you can also spawn melee effects:
-  let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
-  let effectX = playerCenter.x + Math.cos(angle)*offsetDistance;
-  let effectY = playerCenter.y + Math.sin(angle)*offsetDistance;   
-  spawnMeleeEffect(effectX, effectY, angle);
-  // Do not immediately kill the enemy here.
-}
+  let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+  let effectiveRange = (strikeRangeTiles > 1 && player.strikeMeter >= 10) ? strikeRangeTiles * 50 : 50;
+  const offsetDistance = 20;
 
-      });
+  let swordThrown = false; // ✅ Track if at least one sword is thrown
+
+  enemies.forEach(enemy => {
+    let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+
+    if (playerCenter.subtract(enemyCenter).length() < effectiveRange) {
+      if (enemy.deathTimer === undefined) {
+        enemy.deathTimer = 0.5;
+        enemy.damageFlashTimer = 0.3;
+        enemy.damageVibrateTimer = 0.3;
+
+        // ✅ Add a new sword effect (this is when the sword is thrown)
+        swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+
+        swordThrown = true; // ✅ Mark that at least one sword was thrown
+      }
+
+      addSpriteFlash(enemy.position);
+
+      let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+      let effectX = playerCenter.x + Math.cos(angle) * offsetDistance;
+      let effectY = playerCenter.y + Math.sin(angle) * offsetDistance;
+      spawnMeleeEffect(effectX, effectY, angle);
     }
+  });
+
+  if (swordThrown) {
+    playSFX("swingSword"); // ✅ Play sound only if a sword was actually thrown
+  }
+}
     
     const attackSlot = document.getElementById("attackSlot");
     attackSlot.classList.add("dimmed");
