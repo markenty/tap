@@ -498,48 +498,23 @@ window.addEventListener("blur", () => { isPageActive = false; });
    
 // Updated Sound Effects Handling
 const sfx = {
-  attack: createAudioPool("sword3.wav", 3),
-  dash: createAudioPool("sfx/dash.mp3", 2),
-  bombDeploy: createAudioPool("sfx/bomb.mp3", 2),
-  pickup: createAudioPool("choice2.wav", 3),
-  enemyDie: createAudioPool("bloodsuck.wav", 3),
-  playerDie: createAudioPool("gong.wav", 1),
-  explosion: createAudioPool("explode7.wav", 3),
-  swingSword: createAudioPool("evade2.wav", 3),
-  ripple: createAudioPool("sfx/ripple.mp3", 2),
-  enemyAttack: createAudioPool("punch3.wav", 3),
+  attack: new Audio("sword3.wav"),
+  dash: new Audio("sfx/dash.mp3"),
+  bombDeploy: new Audio("sfx/bomb.mp3"),
+  pickup: new Audio("choice2.wav"),
+  enemyDie: new Audio("bloodsuck.wav"),
+  playerDie: new Audio("gong.wav"),
+  explosion: new Audio("explode7.wav"),
+  swingSword: new Audio("evade2.wav"),
+  ripple: new Audio("sfx/ripple.mp3"),
+  enemyAttack: new Audio("punch3.wav"),
 };
-window.addEventListener("click", () => {
-  Object.values(sfx).forEach(sound => {
-    sound.play(); // Play once to unlock all sounds
-  });
-});
 
- // Function to create an audio pool
-function createAudioPool(src, size = 3) {
-  const pool = [];
-  for (let i = 0; i < size; i++) {
-    const audio = new Audio(src);
-    audio.preload = "auto";
-    audio.load();
-    pool.push(audio);
-  }
-  return {
-    pool,
-    index: 0,
-    play: function () {
-      const audio = this.pool[this.index];
-      audio.currentTime = 0; // Reset sound for immediate replay
-      audio.play().catch((err) => console.warn("SFX Play Error:", err));
-      this.index = (this.index + 1) % this.pool.length;
-    },
-  };
-}
-
-// Play sound safely without overlap
+// Play sound function
 function playSFX(sound) {
   if (sfx[sound]) {
-    sfx[sound].play();
+    sfx[sound].currentTime = 0; // Reset sound to start if it's already playing
+    sfx[sound].play().catch(err => console.log("SFX Play Error:", err));
   }
 }
     // --- Sword Effect for Max Strike ---
