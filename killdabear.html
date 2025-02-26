@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -317,7 +317,30 @@
 #shopSection .menu-buttons {
   justify-items: center;
 }
+#toggleBGM {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.02);
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  transition: background 0.2s, transform 0.1s;
+}
 
+#toggleBGM:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 </head>
@@ -331,6 +354,8 @@
 <div id="upgradeMenu">
   <div class="menu-content">
     <h1>Player Menu</h1>
+ <button id="toggleBGM">🎵</button>
+
     <p>You have <span id="pointsDisplay">0</span> points.</p>
     <p>Your Rank: <span id="menuRankDisplay">🔰 Beginner</span></p>
     <div class="tabs">
@@ -393,6 +418,7 @@
         <!-- Inventory items (tiles) will be injected here -->
       </div>
     </div>
+  
     <button id="resumeGame">▶️ Resume Game</button>
   </div>
 </div>
@@ -495,7 +521,49 @@ window.addEventListener("blur", () => { isPageActive = false; });
         ctx.restore();
       }
     }
-    
+   
+// ✅ Preload and create sound instances
+const sfx = {
+   collect: createAudio("item1.wav"), 
+ increase: createAudio("increase.wav"), 
+ attack: createAudio("sword3.wav"),
+  dash: createAudio("sfx/dash.mp3"),
+  bombDeploy: createAudio("key.wav"),
+  pickup: createAudio("choice2.wav"),
+  enemyDie: createAudio("bloodsuck.wav"),
+  playerDie: createAudio("gong.wav"),
+  explosion: createAudio("explode7.wav"),
+  swingSword: createAudio("evade2.wav"),
+  ripple: createAudio("sfx/ripple.mp3"),
+   enemyDamage: createAudio("punch5.wav"),    // Enemy takes damage
+  playerDamage: createAudio("punch3.wav"),   // Player takes damage
+};
+
+// ✅ Function to create an audio instance (ensures instant play)
+function createAudio(src) {
+  const audio = new Audio(src);
+  audio.preload = "auto";
+  return audio;
+}
+
+// ✅ Fast, overlap-allowed sound playback
+const soundCooldowns = {};
+
+function playSFX(sound, cooldown = 100) {
+  const now = performance.now();
+
+  if (soundCooldowns[sound] && now - soundCooldowns[sound] < cooldown) {
+    return; // Prevents spam
+  }
+
+  soundCooldowns[sound] = now;
+  
+  if (sfx[sound]) {
+    const audio = sfx[sound].cloneNode();
+    audio.volume = 1.0;
+    audio.play().catch(err => console.warn(`SFX Error: ${err}`));
+  }
+}
     // --- Sword Effect for Max Strike ---
     // This effect draws a spinning sword emoji from the player to each struck enemy.
     class SwordEffect {
@@ -545,6 +613,17 @@ window.addEventListener("blur", () => { isPageActive = false; });
     // Global array to hold active sword effects
     let swordEffects = [];
      // -------------------------
+let isMusicPlaying = false; // Track play state
+
+document.getElementById("toggleBGM").addEventListener("click", function() {
+  if (isMusicPlaying) {
+    backgroundAudio.pause();
+    isMusicPlaying = false;
+  } else {
+    backgroundAudio.play().catch(err => console.log("Error resuming music:", err));
+    isMusicPlaying = true;
+  }
+});
     // Shop & Upgrade Menu Logic
     // -------------------------
     function getBombCost() {
@@ -673,7 +752,7 @@ function updateRankDisplay() {
     const effect = swordEffects[i];
     effect.update(dt);
     const effectPos = effect.getCurrentPosition();
-    // Check collision with each enemy
+   // Check collision with each enemy
     enemies.forEach(enemy => {
       // Compute enemy center position
       const enemyCenter = new Vector2(
@@ -681,13 +760,14 @@ function updateRankDisplay() {
         enemy.position.y + enemy.height / 2
       );
       // If within collision radius (e.g., 20 pixels), damage enemy
-      if (effectPos.subtract(enemyCenter).length() < 20) {
+      if (effectPos.subtract(enemyCenter).length() < 20) { 
         // Ensure the enemy hasn't already been damaged by this effect
         if (enemy.deathTimer === undefined) {
           enemy.deathTimer = 0.5; // Set delay before death/damage effect
           enemy.damageFlashTimer = 0.3;
           enemy.damageVibrateTimer = 0.3;
           // Optionally, add knockback or other effects here
+         playSFX("swingSword");
         }
       }
     });
@@ -871,6 +951,9 @@ function isTilePassable(tile) {
         let size = Math.random() * 2 + 2;
         effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, "rgba(255,165,0,ALPHA)", size));
       }
+playSFX("explosion");
+  triggerWhiteFlash();
+
     }
     function spawnEnemyExplosionEffect(position) {
       const count = 50;
@@ -882,7 +965,7 @@ function isTilePassable(tile) {
         let size = Math.random() * 3 + 2;
         let color = Math.random() < 0.5 ? "rgba(255,105,180,ALPHA)" : "rgba(255,0,0,ALPHA)";
         let acceleration = new Vector2(0, 300);
-        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration));
+        effects.push(new Particle(new Vector2(position.x, position.y), velocity, life, color, size, acceleration)); 
       }
     }
     function updateEffects(deltaTime) {
@@ -1402,10 +1485,11 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
         }
         let playerCenter = new Vector2(this.position.x + this.width/2, this.position.y + this.height/2);
         let strikeCenter = playerCenter.add(offset);
-        triggerHeadbutt();
+        triggerHeadbutt();playSFX("swingSword");
         enemies.forEach(enemy => {
           let enemyCenter = new Vector2(enemy.position.x + enemy.width/2, enemy.position.y + enemy.height/2);
        if (enemyCenter.subtract(strikeCenter).length() <= strikeRange) {
+        playSFX("enemyDamage");  playSFX("attack");
   // Set a death timer if not already set
   if (enemy.deathTimer === undefined) {
     enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
@@ -1466,11 +1550,15 @@ this.moveDuration = baseMoveDuration * speedMultiplier;
        // If the enemy has been struck, decrement the death timer.
     if (this.deathTimer !== undefined) {
       this.deathTimer -= deltaTime;
-      if (this.deathTimer <= 0) {
-        spawnEnemyExplosionEffect(this.position);
-triggerScreenFlash(); 
-        killCount++;
+      if (this.deathTimer <= 0) { 
+         if (this.alive) { // Ensure this runs only once
         this.alive = false;
+        spawnEnemyExplosionEffect(this.position);
+        triggerScreenFlash();
+        addSpriteFlash(this.position);
+        playSFX("enemyDie"); // 🔥 Play sound here, only once
+        killCount++;
+      }
         return; // Skip the rest of the update once dead.
       }  // Decrement flash and vibrate timers
   if (this.damageFlashTimer > 0) {
@@ -1699,30 +1787,40 @@ triggerScreenFlash();
     let enemySpawnTimer = 0;
     
     function performAutoStrike() {
-      let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
-      let effectiveRange = (strikeRangeTiles>1 && player.strikeMeter>=10) ? strikeRangeTiles*50 : 50;
-      const offsetDistance = 20;
-      enemies.forEach(enemy=>{
-        let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
-        if(playerCenter.subtract(enemyCenter).length() < effectiveRange) {
-  // Set a delay if not already set:
-  if (enemy.deathTimer === undefined) {
-    enemy.deathTimer = 0.5; // Delay in seconds (adjust as needed)
-  enemy.damageFlashTimer = 0.3;
-  enemy.damageVibrateTimer = 0.3;
-    swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
-  }
-  addSpriteFlash(enemy.position);
-  // Optionally, you can also spawn melee effects:
-  let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
-  let effectX = playerCenter.x + Math.cos(angle)*offsetDistance;
-  let effectY = playerCenter.y + Math.sin(angle)*offsetDistance;   
-  spawnMeleeEffect(effectX, effectY, angle);
-  // Do not immediately kill the enemy here.
-}
+  let playerCenter = new Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2);
+  let effectiveRange = (strikeRangeTiles > 1 && player.strikeMeter >= 10) ? strikeRangeTiles * 50 : 50;
+  const offsetDistance = 20;
 
-      });
+  let swordThrown = false; // ✅ Track if at least one sword is thrown
+
+  enemies.forEach(enemy => {
+    let enemyCenter = new Vector2(enemy.position.x + enemy.width / 2, enemy.position.y + enemy.height / 2);
+
+    if (playerCenter.subtract(enemyCenter).length() < effectiveRange) {
+      if (enemy.deathTimer === undefined) {
+        enemy.deathTimer = 0.5;
+        enemy.damageFlashTimer = 0.3;
+        enemy.damageVibrateTimer = 0.3;
+
+        // ✅ Add a new sword effect (this is when the sword is thrown)
+        swordEffects.push(new SwordEffect(playerCenter, enemyCenter, 0.5));
+
+        swordThrown = true; // ✅ Mark that at least one sword was thrown
+      }
+
+      addSpriteFlash(enemy.position);
+
+      let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+      let effectX = playerCenter.x + Math.cos(angle) * offsetDistance;
+      let effectY = playerCenter.y + Math.sin(angle) * offsetDistance;
+      spawnMeleeEffect(effectX, effectY, angle);
     }
+  });
+
+  if (swordThrown) {
+    playSFX("swingSword"); // ✅ Play sound only if a sword was actually thrown
+  }
+}
     
     const attackSlot = document.getElementById("attackSlot");
     attackSlot.classList.add("dimmed");
@@ -1777,7 +1875,7 @@ triggerScreenFlash();
       let direction = new Vector2(enemy.position.x-player.position.x, enemy.position.y-player.position.y).normalize();
       let knockbackDistance = Math.max(tileMap.width,tileMap.height)*50;
       let finalPos = enemy.position.add(direction.scale(knockbackDistance));
-      enemy.position = finalPos;
+      enemy.position = finalPos; x
       spawnEnemyExplosionEffect(enemy.position);
       killCount++;
     }
@@ -1793,8 +1891,7 @@ triggerScreenFlash();
           let playerCenter = new Vector2(player.position.x+player.width/2, player.position.y+player.height/2);
           let enemyCenter = new Vector2(enemy.position.x+enemy.width/2, enemy.position.y+enemy.height/2);
           if(playerCenter.subtract(enemyCenter).length()<=currentMeleeRange){
-           
-         swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
+            playSFX("attack");         swordEffects.push(new SwordEffect(playerCenter, enemyCenter));
 let angle = Math.atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
 let effectX = playerCenter.x + Math.cos(angle) * 20;
 let effectY = playerCenter.y + Math.sin(angle) * 20;
@@ -1837,7 +1934,7 @@ return true;
       evt.preventDefault();
       let rect = canvas.getBoundingClientRect();
       let tapX = evt.clientX - rect.left, tapY = evt.clientY - rect.top;
-      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; }
+      if(performManualStrikeAt(tapX, tapY)) { triggerHeadbutt(); return; playSFX("attack");}
       let dir = computeDirection(evt.clientX, evt.clientY);
       if(dir && !player.moving && !player.isDashing) { player.move(dir); }
       else {
@@ -1888,8 +1985,27 @@ return true;
         }
       });
     }
-    
+    function triggerWhiteFlash() {
+  const flashDiv = document.createElement("div");
+  flashDiv.style.position = "fixed";
+  flashDiv.style.top = "0";
+  flashDiv.style.left = "0";
+  flashDiv.style.width = "100vw";
+  flashDiv.style.height = "100vh";
+  flashDiv.style.background = "white";
+  flashDiv.style.opacity = "0.8"; // Adjust brightness
+  flashDiv.style.pointerEvents = "none";
+  flashDiv.style.transition = "opacity 0.2s ease-out";
+
+  document.body.appendChild(flashDiv);
+
+  setTimeout(() => {
+    flashDiv.style.opacity = "0";
+    setTimeout(() => flashDiv.remove(), 200);
+  }, 50);
+}
     function deployBomb() {
+     playSFX("bombDeploy");
       if(bombCount>0){
         bombCount--;
         baitBombs.push(new BaitBomb(player.gridX, player.gridY, tileMap));showUpgradeAlert("Bomb deployed!");
@@ -1987,6 +2103,7 @@ if(healingCharmActive){
            player.position.x+player.width > pickup.position.x &&
            player.position.y < pickup.position.y+pickup.size &&
            player.position.y+player.height > pickup.position.y){
+         playSFX("collect"); 
           if(pickup instanceof BombPickup){showUpgradeAlert("Bomb collected!");
             bombCount++; spawnPickupEffect(pickup.position);
           } else if(pickup instanceof SwordPickup){showUpgradeAlert("Max-Strike collected!");
@@ -2026,6 +2143,7 @@ if(healingCharmActive){
               let blastForce = blastDir.scale(200);
               enemy.knockback = enemy.knockback.add(blastForce);
               enemy.alive = false;
+            
               spawnEnemyExplosionEffect(enemy.position);
               killCount++;
               triggerScreenFlash();
@@ -2192,6 +2310,7 @@ function resumeGame() {
         player.hp += 20;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
  // Show the HP upgrade alert.
+       playSFX("increase"); 
     showUpgradeAlert("HP UP!");
       }
     });
@@ -2204,6 +2323,7 @@ function resumeGame() {
         autoStrikeBonus += 5;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
  // Show the upgrade alert.
+        playSFX("increase"); 
    showUpgradeAlert("Autostrike time increased!");
       }
     });
@@ -2213,8 +2333,9 @@ function resumeGame() {
         points -= cost;
         strikeRangeTiles++;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
-showUpgradeAlert("Strike range increased!");
-      }
+
+       showUpgradeAlert("Strike range increased!");
+      } playSFX("increase"); 
     });
     document.getElementById("increaseStrikeMeter").addEventListener("click", ()=>{
       const cost = 150;
@@ -2222,6 +2343,7 @@ showUpgradeAlert("Strike range increased!");
         points -= cost;
         strikeMeterCapacity += 10;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
+ playSFX("increase"); 
 showUpgradeAlert("Strike Endurance increased!");
       }
     });
@@ -2232,7 +2354,8 @@ showUpgradeAlert("Strike Endurance increased!");
         baseHealingCharmDuration += 2;
         baseHealingCharmHeal += 0.5;
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
-showUpgradeAlert("Auto-Heal increased!");
+
+ playSFX("increase"); showUpgradeAlert("Auto-Heal increased!");
       }
     });
     document.getElementById("increaseShieldingTime").addEventListener("click", ()=>{
@@ -2242,7 +2365,9 @@ showUpgradeAlert("Auto-Heal increased!");
         baseDefenseBoostDuration += 2;
         baseShieldDamageReduction = Math.min(baseShieldDamageReduction+0.1,0.9);
         document.getElementById("pointsDisplay").textContent = Math.floor(points);
-showUpgradeAlert("Shielding increased!");
+
+ playSFX("increase"); 
+       showUpgradeAlert("Shielding increased!");
       }
     });
     document.getElementById("resumeGame").addEventListener("click", ()=>{ resumeGame(); });
@@ -2345,7 +2470,11 @@ showUpgradeAlert("Shielding increased!");
               player.flashDamage();
               screenShakeTime = 0.2;
               screenShakeMagnitude = 5;
+ playSFX("playerDamage");
+
               if(player.hp<=0 && !player.isDead){updateInventoryDisplay();
+playSFX("playerDie");
+
                 player.isDead = true;
                 spawnBloodEffect(player.position);
                 slowMotionTimer = 1.0;
@@ -2415,8 +2544,10 @@ showUpgradeAlert("Shielding increased!");
         }
         
       if(player.isDead && !isUpgradeMenuVisible){
+
   slowMotionTimer -= deltaTime;
-  if(slowMotionTimer <= 0){showUpgradeAlert("YOU DIED!");
+  if(slowMotionTimer <= 0){
+showUpgradeAlert("YOU DIED!");
     showUpgradeMenu(true); // Menu triggered by death.
   }
 }
@@ -2436,12 +2567,12 @@ renderSwordEffects(ctx, camera);
       renderMeleeEffects(ctx, camera);
       player.render(ctx, camera);
       
-      if(screenFlashAlpha>0){
-        ctx.fillStyle = "rgba(255,0,0,"+screenFlashAlpha+")";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        screenFlashAlpha -= deltaTime*2;
-        if(screenFlashAlpha<0) screenFlashAlpha = 0;
-      }
+      if(screenFlashAlpha > 0) {
+  ctx.fillStyle = "rgba(255,0,0," + screenFlashAlpha + ")";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  screenFlashAlpha -= deltaTime * 2;
+  if (screenFlashAlpha < 0) screenFlashAlpha = 0;
+}
       
       for(let i = spriteFlashes.length - 1; i>=0; i--){
         let flash = spriteFlashes[i];
@@ -2495,42 +2626,69 @@ document.addEventListener("keydown", function(e) {
     requestAnimationFrame(gameLoop);
 
     
- // Define your playlist
-  const playlist = [
-    "Baggy.mp3",
-    "citiphex_untitled.mp3",
-    "frontiers.mp3"
-  ];
+document.addEventListener("DOMContentLoaded", () => {
+    const bgmButton = document.getElementById("toggleBGM");
+    const backgroundAudio = new Audio();
+    let isBGMPlaying = true; // Change this to false if you want it to start OFF
 
-  let currentTrackIndex = 0;
-  const backgroundAudio = new Audio();
-  backgroundAudio.src = playlist[currentTrackIndex];
-  backgroundAudio.volume = 0.5;
-  backgroundAudio.loop = false; // We'll handle looping manually
+    // Playlist Setup
+    const playlist = [
+        "Baggy.mp3",
+        "citiphex_untitled.mp3",
+        "frontiers.mp3"
+    ];
+    let currentTrackIndex = 0;
 
-  backgroundAudio.addEventListener("ended", () => {
-    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
     backgroundAudio.src = playlist[currentTrackIndex];
-    backgroundAudio.play().catch(err => console.log("Play error:", err));
-  });
+    backgroundAudio.volume = 0.5;
+    backgroundAudio.loop = false;
 
-  // Attempt to start playing on window load (may be blocked by autoplay policies)
-  window.addEventListener("load", () => {
-    backgroundAudio.play().catch(err => {
-      console.log("Auto-play was prevented. Awaiting user interaction...", err);
+    // Auto-play next track
+    backgroundAudio.addEventListener("ended", () => {
+        currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+        backgroundAudio.src = playlist[currentTrackIndex];
+        if (isBGMPlaying) {
+            backgroundAudio.play().catch(err => console.log("Play error:", err));
+        }
     });
-  });
 
-  // Ensure music starts when the user clicks anywhere
-  window.addEventListener("click", () => {
-    if (backgroundAudio.paused) {
-      backgroundAudio.play().then(() => {
-        console.log("Music started on user click.");
-      }).catch(err => {
-        console.log("Error starting music on click:", err);
-      });
+    // ✅ Set the initial state of the button & audio
+    function initializeBGM() {
+        if (isBGMPlaying) {
+            backgroundAudio.play().then(() => {
+                bgmButton.innerHTML = "🔊 Stop BGM"; // If auto-playing
+            }).catch(err => console.log("Autoplay blocked, awaiting user action."));
+        } else {
+            bgmButton.innerHTML = "🔇 Play BGM"; // If starting off
+        }
     }
-  });
+
+    // Call initialization function
+    initializeBGM();
+
+    // Toggle BGM Button Click
+    bgmButton.addEventListener("click", function () {
+        if (!isBGMPlaying) {
+            backgroundAudio.play().then(() => {
+                isBGMPlaying = true;
+                bgmButton.innerHTML = "🔊"; // Update Text
+            }).catch(err => console.log("Error playing music:", err));
+        } else {
+            backgroundAudio.pause();
+            isBGMPlaying = false;
+            bgmButton.innerHTML = "🔇"; // Update Text
+        }
+    });
+});
+ document.addEventListener("touchstart", function startMusic() {
+    if (!isBGMPlaying) {
+        backgroundAudio.play().then(() => {
+            isBGMPlaying = true;
+            bgmButton.innerHTML = "🔊";
+        }).catch(err => console.log("Error playing music:", err));
+    }
+    document.removeEventListener("touchstart", startMusic); // Remove listener after first tap
+});
   </script>
 
 </body>
