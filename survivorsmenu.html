@@ -2567,12 +2567,12 @@ renderSwordEffects(ctx, camera);
       renderMeleeEffects(ctx, camera);
       player.render(ctx, camera);
       
-      if(screenFlashAlpha>0){
-        ctx.fillStyle = "rgba(255,0,0,"+screenFlashAlpha+")";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        screenFlashAlpha -= deltaTime*2;
-        if(screenFlashAlpha<0) screenFlashAlpha = 0;
-      }
+      if(screenFlashAlpha > 0) {
+  ctx.fillStyle = "rgba(255,0,0," + screenFlashAlpha + ")";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  screenFlashAlpha -= deltaTime * 2;
+  if (screenFlashAlpha < 0) screenFlashAlpha = 0;
+}
       
       for(let i = spriteFlashes.length - 1; i>=0; i--){
         let flash = spriteFlashes[i];
