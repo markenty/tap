@@ -2601,42 +2601,44 @@ document.addEventListener("keydown", function(e) {
     requestAnimationFrame(gameLoop);
 
     
- // Define your playlist
-  const playlist = [
+const bgmButton = document.getElementById("toggleBGM");
+const backgroundAudio = new Audio();
+let isBGMPlaying = false; // Track the play state
+
+// Playlist Setup
+const playlist = [
     "Baggy.mp3",
     "citiphex_untitled.mp3",
     "frontiers.mp3"
-  ];
+];
+let currentTrackIndex = 0;
 
-  let currentTrackIndex = 0;
-  const backgroundAudio = new Audio();
-  backgroundAudio.src = playlist[currentTrackIndex];
-  backgroundAudio.volume = 0.5;
-  backgroundAudio.loop = false; // We'll handle looping manually
+backgroundAudio.src = playlist[currentTrackIndex];
+backgroundAudio.volume = 0.5;
+backgroundAudio.loop = false;
 
-  backgroundAudio.addEventListener("ended", () => {
+// Event listener for when a track ends
+backgroundAudio.addEventListener("ended", () => {
     currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
     backgroundAudio.src = playlist[currentTrackIndex];
-    backgroundAudio.play().catch(err => console.log("Play error:", err));
-  });
-
-  // Attempt to start playing on window load (may be blocked by autoplay policies)
-  window.addEventListener("load", () => {
-    backgroundAudio.play().catch(err => {
-      console.log("Auto-play was prevented. Awaiting user interaction...", err);
-    });
-  });
-
-  // Ensure music starts when the user clicks anywhere
-  window.addEventListener("click", () => {
-    if (backgroundAudio.paused) {
-      backgroundAudio.play().then(() => {
-        console.log("Music started on user click.");
-      }).catch(err => {
-        console.log("Error starting music on click:", err);
-      });
+    if (isBGMPlaying) { 
+        backgroundAudio.play().catch(err => console.log("Play error:", err)); 
     }
-  });
+});
+
+// Persistent Play/Pause Toggle
+bgmButton.addEventListener("click", function() {
+    if (!isBGMPlaying) {
+        backgroundAudio.play().then(() => {
+            isBGMPlaying = true;
+            bgmButton.textContent = "⏸ Pause BGM";
+        }).catch(err => console.log("Error resuming music:", err));
+    } else {
+        backgroundAudio.pause();
+        isBGMPlaying = false;
+        bgmButton.textContent = "▶️ Play BGM";
+    }
+});
   </script>
 
 </body>
