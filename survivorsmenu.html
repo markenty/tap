@@ -322,7 +322,7 @@
   top: 10px;
   left: 10px;
   z-index: 2000;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.02);
   border: 2px solid white;
   border-radius: 50%;
   width: 50px;
@@ -2626,43 +2626,59 @@ document.addEventListener("keydown", function(e) {
     requestAnimationFrame(gameLoop);
 
     
-const bgmButton = document.getElementById("toggleBGM");
-const backgroundAudio = new Audio();
-let isBGMPlaying = false; // Track the play state
+document.addEventListener("DOMContentLoaded", () => {
+    const bgmButton = document.getElementById("toggleBGM");
+    const backgroundAudio = new Audio();
+    let isBGMPlaying = true; // Change this to false if you want it to start OFF
 
-// Playlist Setup
-const playlist = [
-    "Baggy.mp3",
-    "citiphex_untitled.mp3",
-    "frontiers.mp3"
-];
-let currentTrackIndex = 0;
+    // Playlist Setup
+    const playlist = [
+        "Baggy.mp3",
+        "citiphex_untitled.mp3",
+        "frontiers.mp3"
+    ];
+    let currentTrackIndex = 0;
 
-backgroundAudio.src = playlist[currentTrackIndex];
-backgroundAudio.volume = 0.5;
-backgroundAudio.loop = false;
-
-// Event listener for when a track ends
-backgroundAudio.addEventListener("ended", () => {
-    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
     backgroundAudio.src = playlist[currentTrackIndex];
-    if (isBGMPlaying) { 
-        backgroundAudio.play().catch(err => console.log("Play error:", err)); 
-    }
-});
+    backgroundAudio.volume = 0.5;
+    backgroundAudio.loop = false;
 
-// Persistent Play/Pause Toggle
-bgmButton.addEventListener("click", function() {
-    if (!isBGMPlaying) {
-        backgroundAudio.play().then(() => {
-            isBGMPlaying = true;
-            bgmButton.textContent = "🔇 Pause BGM";
-        }).catch(err => console.log("Error resuming music:", err));
-    } else {
-        backgroundAudio.pause();
-        isBGMPlaying = false;
-        bgmButton.textContent = "🔊 Play BGM";
+    // Auto-play next track
+    backgroundAudio.addEventListener("ended", () => {
+        currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+        backgroundAudio.src = playlist[currentTrackIndex];
+        if (isBGMPlaying) {
+            backgroundAudio.play().catch(err => console.log("Play error:", err));
+        }
+    });
+
+    // ✅ Set the initial state of the button & audio
+    function initializeBGM() {
+        if (isBGMPlaying) {
+            backgroundAudio.play().then(() => {
+                bgmButton.innerHTML = "🔊 Stop BGM"; // If auto-playing
+            }).catch(err => console.log("Autoplay blocked, awaiting user action."));
+        } else {
+            bgmButton.innerHTML = "🔇 Play BGM"; // If starting off
+        }
     }
+
+    // Call initialization function
+    initializeBGM();
+
+    // Toggle BGM Button Click
+    bgmButton.addEventListener("click", function () {
+        if (!isBGMPlaying) {
+            backgroundAudio.play().then(() => {
+                isBGMPlaying = true;
+                bgmButton.innerHTML = "🔊"; // Update Text
+            }).catch(err => console.log("Error playing music:", err));
+        } else {
+            backgroundAudio.pause();
+            isBGMPlaying = false;
+            bgmButton.innerHTML = "🔇"; // Update Text
+        }
+    });
 });
   </script>
 
