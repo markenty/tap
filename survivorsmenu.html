@@ -588,13 +588,17 @@ function playSFX(sound, cooldown = 100) {
     // Global array to hold active sword effects
     let swordEffects = [];
      // -------------------------
+let isMusicPlaying = false; // Track play state
+
 document.getElementById("toggleBGM").addEventListener("click", function() {
-  if (backgroundAudio.paused) {
-    backgroundAudio.play().catch(err => console.log("Error resuming music:", err));
-  } else {
+  if (isMusicPlaying) {
     backgroundAudio.pause();
+    isMusicPlaying = false;
+  } else {
+    backgroundAudio.play().catch(err => console.log("Error resuming music:", err));
+    isMusicPlaying = true;
   }
-}); 
+});
     // Shop & Upgrade Menu Logic
     // -------------------------
     function getBombCost() {
