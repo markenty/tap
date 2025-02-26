@@ -317,7 +317,30 @@
 #shopSection .menu-buttons {
   justify-items: center;
 }
+#toggleBGM {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  transition: background 0.2s, transform 0.1s;
+}
 
+#toggleBGM:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 </head>
@@ -331,6 +354,8 @@
 <div id="upgradeMenu">
   <div class="menu-content">
     <h1>Player Menu</h1>
+ <button id="toggleBGM">🎵</button>
+
     <p>You have <span id="pointsDisplay">0</span> points.</p>
     <p>Your Rank: <span id="menuRankDisplay">🔰 Beginner</span></p>
     <div class="tabs">
@@ -393,7 +418,7 @@
         <!-- Inventory items (tiles) will be injected here -->
       </div>
     </div>
-   <button id="toggleBGM">🎵 Toggle BGM</button>
+  
     <button id="resumeGame">▶️ Resume Game</button>
   </div>
 </div>
@@ -2631,12 +2656,12 @@ bgmButton.addEventListener("click", function() {
     if (!isBGMPlaying) {
         backgroundAudio.play().then(() => {
             isBGMPlaying = true;
-            bgmButton.textContent = "⏸ Pause BGM";
+            bgmButton.textContent = "🔇 Pause BGM";
         }).catch(err => console.log("Error resuming music:", err));
     } else {
         backgroundAudio.pause();
         isBGMPlaying = false;
-        bgmButton.textContent = "▶️ Play BGM";
+        bgmButton.textContent = "🔊 Play BGM";
     }
 });
   </script>
