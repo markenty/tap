@@ -116,7 +116,7 @@
       0% { transform: translateY(-100px); opacity: 0; }
       100% { transform: translateY(0); opacity: 1; }
     }
-    /* Modal Styles */
+    /* Modal Styles (shared for all modals) */
     .modal {
       position: fixed;
       top: 0;
@@ -150,15 +150,16 @@
       color: #fff;
       cursor: pointer;
     }
-    .modal h2 {
-      margin-top: 0;
-    }
+    /* Form Styles for Payment & Autopay */
     .modal form {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      margin-top: 10px;
     }
-    .modal input[type="file"],
+    .modal input[type="text"],
+    .modal input[type="number"],
+    .modal select,
     .modal textarea {
       padding: 8px;
       border-radius: 5px;
@@ -177,17 +178,6 @@
     }
     .modal input[type="submit"]:hover {
       background: #0099cc;
-    }
-    /* Ledger List (unchanged) */
-    .ledger-list {
-      max-height: 300px;
-      overflow-y: auto;
-      margin-top: 20px;
-    }
-    .ledger-list li {
-      margin-bottom: 10px;
-      border-bottom: 1px solid #444;
-      padding-bottom: 5px;
     }
   </style>
 </head>
@@ -217,10 +207,11 @@
     </div>
     <button class="btn" onclick="openLedgerModal()">View Ledger</button>
     <button class="btn" onclick="openUploadModal()">Verify Expenses</button>
+    <button class="btn" onclick="openPaymentModal()">Make Payment</button>
   </div>
   
   <!-- Temporary Alert -->
-  <div class="alert" id="alert">Ledger Coming Soon!</div>
+  <div class="alert" id="alert">Action Successful!</div>
   
   <!-- Ledger Modal -->
   <div class="modal" id="ledgerModal" role="dialog" aria-modal="true">
@@ -236,18 +227,51 @@
     </div>
   </div>
   
-  <!-- Upload Verification Modal -->
+  <!-- Expense Verification Modal -->
   <div class="modal" id="uploadModal" role="dialog" aria-modal="true">
     <div class="modal-content">
       <button class="close-btn" onclick="closeUploadModal()">×</button>
       <h2>Expense Verification</h2>
-      <p>Please upload documents that show your essential expenses (e.g., mortgage, rent, utilities).</p>
+      <p>Please upload documents that show your essential expenses (e.g., mortgage, rent, utilities) and a description of the expense source.</p>
       <form id="uploadForm">
         <input type="file" id="uploadFile" accept=".pdf, .jpg, .png" required />
-        <textarea id="uploadDescription" placeholder="Enter a description (e.g., 'Mortgage paid from custodial parent's account')" required></textarea>
+        <textarea id="uploadDescription" placeholder="Describe the expense (e.g., 'Mortgage paid from custodial parent's account')" required></textarea>
         <input type="submit" value="Submit Verification" />
       </form>
       <div id="uploadResult" style="margin-top: 10px; font-size: 14px;"></div>
+    </div>
+  </div>
+  
+  <!-- Payment Modal -->
+  <div class="modal" id="paymentModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closePaymentModal()">×</button>
+      <h2>Make Payment & Manage Autopay</h2>
+      <form id="paymentForm">
+        <label for="orderNumber">Support Order Number:</label>
+        <input type="text" id="orderNumber" placeholder="Enter Order Number" required />
+        
+        <label for="numKids">Number of Children:</label>
+        <select id="numKids" required>
+          <option value="" disabled selected>Select number</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+        
+        <label for="monthlyAmount">Monthly Support Amount:</label>
+        <input type="number" id="monthlyAmount" placeholder="Enter Amount" required />
+        
+        <label for="autopayCheck">
+          <input type="checkbox" id="autopayCheck" />
+          Enable Autopay
+        </label>
+        
+        <input type="submit" value="Pay Now" />
+      </form>
+      <div id="paymentResult" style="margin-top: 10px; font-size: 14px;"></div>
     </div>
   </div>
   
@@ -264,26 +288,15 @@
         requestAnimationFrame(updateDashboard);
       }
     }
-    window.onload = () => {
-      requestAnimationFrame(updateDashboard);
-      loadLedger();
-    };
-
-    // Temporary alert (if needed)
-    function showAlert() {
-      const alert = document.getElementById('alert');
-      alert.style.display = 'block';
-      setTimeout(() => { alert.style.display = 'none'; }, 2000);
-    }
-
-    // Modal functionality for Ledger details
+    
+    // Modal functionality for Ledger
     function openLedgerModal() {
       document.getElementById('ledgerModal').style.display = 'flex';
     }
     function closeLedgerModal() {
       document.getElementById('ledgerModal').style.display = 'none';
     }
-
+    
     // Modal functionality for Expense Verification
     function openUploadModal() {
       document.getElementById('uploadModal').style.display = 'flex';
@@ -294,10 +307,19 @@
       document.getElementById('uploadForm').reset();
     }
     
+    // Modal functionality for Payment & Autopay
+    function openPaymentModal() {
+      document.getElementById('paymentModal').style.display = 'flex';
+    }
+    function closePaymentModal() {
+      document.getElementById('paymentModal').style.display = 'none';
+      document.getElementById('paymentResult').textContent = '';
+      document.getElementById('paymentForm').reset();
+    }
+    
     // Handle Expense Verification Form Submission
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      // In a real application, you would send this data to a server securely.
       const fileInput = document.getElementById('uploadFile');
       const description = document.getElementById('uploadDescription').value;
       if (fileInput.files.length === 0) {
@@ -306,11 +328,27 @@
       }
       // Simulate file upload processing
       document.getElementById('uploadResult').textContent = 'Verification submitted for review.';
-      setTimeout(() => {
-        closeUploadModal();
-      }, 2000);
+      setTimeout(closeUploadModal, 2000);
     });
-
+    
+    // Handle Payment Form Submission
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const orderNumber = document.getElementById('orderNumber').value;
+      const numKids = document.getElementById('numKids').value;
+      const monthlyAmount = document.getElementById('monthlyAmount').value;
+      const autopayEnabled = document.getElementById('autopayCheck').checked;
+      
+      // Simulate payment processing
+      let message = `Payment of $${monthlyAmount} for Order #${orderNumber} submitted. `;
+      message += `Number of Kids: ${numKids}. `;
+      message += autopayEnabled ? "Autopay Enabled." : "Autopay Disabled.";
+      document.getElementById('paymentResult').textContent = message;
+      // Here, add API integration for payment processing
+      
+      setTimeout(closePaymentModal, 3000);
+    });
+    
     // Ledger data handling (using localStorage as an example)
     function loadLedger() {
       let ledgerData = localStorage.getItem('ledgerData');
@@ -324,14 +362,11 @@
       });
     }
     
-    // Example function to add a ledger entry (could be triggered by an admin panel or user input)
-    function addLedgerEntry(entry) {
-      let ledgerData = localStorage.getItem('ledgerData');
-      ledgerData = ledgerData ? JSON.parse(ledgerData) : [];
-      ledgerData.push(entry);
-      localStorage.setItem('ledgerData', JSON.stringify(ledgerData));
+    // Initialize on page load
+    window.onload = function() {
+      updateDashboard();
       loadLedger();
-    }
+    };
   </script>
 </body>
 </html>
