@@ -1,0 +1,200 @@
+​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​You’re right—I didn’t catch any unclosed tags in my last review, but I’ll double-check and ensure everything’s properly closed and functional. The code I provided should work as-is, but let’s refine it to make sure there are no loose ends (e.g., unclosed `<div>` tags or syntax errors). Below is a cleaned-up version with explicit closure verification and a few enhancements for clarity and stability. I’ll also explain what might have seemed off.
+
+---
+
+### Updated SupportSync Payer Dashboard Animation
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SupportSync Payer Dashboard</title>
+    <style>
+        /* Base Styles */
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .dashboard {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin: 0 0 20px;
+            text-align: center;
+            color: #00ccff;
+        }
+
+        /* Stats Section */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat span {
+            display: block;
+            font-size: 18px;
+            color: #ccc;
+        }
+
+        .stat .number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            transition: all 1s ease;
+        }
+
+        /* Pie Chart */
+        .pie-chart {
+            width: 150px;
+            height: 150px;
+            background: conic-gradient(
+                #4caf50 0% 50%, /* Food */
+                #2196f3 50% 75%, /* School */
+                #ff9800 75% 90%, /* Health */
+                #f44336 90% 100% /* Flagged */
+            );
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 2s ease-in-out forwards;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); opacity: 0; }
+            100% { transform: rotate(360deg); opacity: 1; }
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .legend-item span {
+            width: 10px;
+            height: 10px;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* Button */
+        .ledger-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #00ccff;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .ledger-btn:hover {
+            background: #0099cc;
+        }
+
+        /* Alert */
+        .alert {
+            position: fixed;
+            top: 20px;
+            background: #ff9800;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            animation: slideIn 0.5s ease forwards;
+        }
+
+        @keyframes slideIn {
+            0% { transform: translateY(-100px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>SupportSync | Parent A</h1>
+        <div class="stats">
+            <div class="stat">
+                <span>Sent</span>
+                <span class="number" id="sent">$500</span>
+            </div>
+            <div class="stat">
+                <span>Spent</span>
+                <span class="number" id="spent">$0</span>
+            </div>
+            <div class="stat">
+                <span>Remaining</span>
+                <span class="number" id="remaining">$500</span>
+            </div>
+        </div>
+        <div class="pie-chart"></div>
+        <div class="legend">
+            <div class="legend-item"><span style="background: #4caf50;"></span>Food: 50%</div>
+            <div class="legend-item"><span style="background: #2196f3;"></span>School: 25%</div>
+            <div class="legend-item"><span style="background: #ff9800;"></span>Health: 15%</div>
+            <div class="legend-item"><span style="background: #f44336;"></span>Flagged: 10%</div>
+        </div>
+        <button class="ledger-btn" onclick="showAlert()">View Ledger</button>
+    </div>
+    <div class="alert" id="alert">Ledger Coming Soon!</div>
+
+    <script>
+        // Simulate spending animation
+        let spent = 0;
+        const totalSent = 500;
+        const spentTarget = 320;
+
+        function updateDashboard() {
+            if (spent < spentTarget) {
+                spent += 10;
+                document.getElementById('spent').textContent = `$${spent}`;
+                document.getElementById('remaining').textContent = `$${totalSent - spent}`;
+                requestAnimationFrame(updateDashboard); // Smoother animation
+            }
+        }
+
+        // Start animation on load
+        window.onload = () => {
+            requestAnimationFrame(updateDashboard);
+        };
+
+        // Alert for Ledger button
+        function showAlert() {
+            const alert = document.getElementById('alert');
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
