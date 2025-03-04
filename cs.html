@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SupportSync Payer Dashboard</title>
+  <title>SupportSync WA - Parent Dashboard</title>
   <style>
     /* Base Styles */
     body {
@@ -85,8 +85,8 @@
       display: inline-block;
       margin-right: 5px;
     }
-    /* Button */
-    .ledger-btn {
+    /* Buttons */
+    .btn {
       display: block;
       width: 100%;
       padding: 10px;
@@ -97,8 +97,9 @@
       font-size: 16px;
       cursor: pointer;
       transition: background 0.3s ease;
+      margin-bottom: 10px;
     }
-    .ledger-btn:hover {
+    .btn:hover {
       background: #0099cc;
     }
     /* Alert (temporary) */
@@ -149,6 +150,35 @@
       color: #fff;
       cursor: pointer;
     }
+    .modal h2 {
+      margin-top: 0;
+    }
+    .modal form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .modal input[type="file"],
+    .modal textarea {
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      font-size: 14px;
+    }
+    .modal input[type="submit"] {
+      padding: 10px;
+      background: #00ccff;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .modal input[type="submit"]:hover {
+      background: #0099cc;
+    }
+    /* Ledger List (unchanged) */
     .ledger-list {
       max-height: 300px;
       overflow-y: auto;
@@ -163,7 +193,7 @@
 </head>
 <body>
   <div class="dashboard">
-    <h1>SupportSync | Parent A</h1>
+    <h1>SupportSync WA | Parent A</h1>
     <div class="stats">
       <div class="stat">
         <span>Sent</span>
@@ -185,7 +215,8 @@
       <div class="legend-item"><span style="background: #ff9800;"></span>Health: 15%</div>
       <div class="legend-item"><span style="background: #f44336;"></span>Flagged: 10%</div>
     </div>
-    <button class="ledger-btn" onclick="openModal()">View Ledger</button>
+    <button class="btn" onclick="openLedgerModal()">View Ledger</button>
+    <button class="btn" onclick="openUploadModal()">Verify Expenses</button>
   </div>
   
   <!-- Temporary Alert -->
@@ -194,7 +225,7 @@
   <!-- Ledger Modal -->
   <div class="modal" id="ledgerModal" role="dialog" aria-modal="true">
     <div class="modal-content">
-      <button class="close-btn" onclick="closeModal()">×</button>
+      <button class="close-btn" onclick="closeLedgerModal()">×</button>
       <h2>Ledger Details</h2>
       <ul class="ledger-list" id="ledgerList">
         <!-- Example ledger items -->
@@ -205,8 +236,23 @@
     </div>
   </div>
   
+  <!-- Upload Verification Modal -->
+  <div class="modal" id="uploadModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeUploadModal()">×</button>
+      <h2>Expense Verification</h2>
+      <p>Please upload documents that show your essential expenses (e.g., mortgage, rent, utilities).</p>
+      <form id="uploadForm">
+        <input type="file" id="uploadFile" accept=".pdf, .jpg, .png" required />
+        <textarea id="uploadDescription" placeholder="Enter a description (e.g., 'Mortgage paid from custodial parent's account')" required></textarea>
+        <input type="submit" value="Submit Verification" />
+      </form>
+      <div id="uploadResult" style="margin-top: 10px; font-size: 14px;"></div>
+    </div>
+  </div>
+  
   <script>
-    // Spending animation simulation
+    // Simulate spending animation
     let spent = 0;
     const totalSent = 500;
     const spentTarget = 320;
@@ -220,46 +266,65 @@
     }
     window.onload = () => {
       requestAnimationFrame(updateDashboard);
+      loadLedger();
     };
 
-    // Temporary alert for Ledger button (if needed)
+    // Temporary alert (if needed)
     function showAlert() {
       const alert = document.getElementById('alert');
       alert.style.display = 'block';
-      setTimeout(() => {
-        alert.style.display = 'none';
-      }, 2000);
+      setTimeout(() => { alert.style.display = 'none'; }, 2000);
     }
 
     // Modal functionality for Ledger details
-    function openModal() {
+    function openLedgerModal() {
       document.getElementById('ledgerModal').style.display = 'flex';
     }
-    function closeModal() {
+    function closeLedgerModal() {
       document.getElementById('ledgerModal').style.display = 'none';
     }
-    
-    // Example: Save and load ledger data from localStorage
-    function loadLedger() {
-      const ledgerData = localStorage.getItem('ledgerData');
-      if (ledgerData) {
-        const items = JSON.parse(ledgerData);
-        const ledgerList = document.getElementById('ledgerList');
-        ledgerList.innerHTML = '';
-        items.forEach(item => {
-          const li = document.createElement('li');
-          li.textContent = item;
-          ledgerList.appendChild(li);
-        });
-      }
+
+    // Modal functionality for Expense Verification
+    function openUploadModal() {
+      document.getElementById('uploadModal').style.display = 'flex';
     }
-    // On load, initialize ledger data
-    window.onload = () => {
-      updateDashboard();
-      loadLedger();
-    };
+    function closeUploadModal() {
+      document.getElementById('uploadModal').style.display = 'none';
+      document.getElementById('uploadResult').textContent = '';
+      document.getElementById('uploadForm').reset();
+    }
     
-    // Function to add a new ledger entry (could be linked to a form in future enhancements)
+    // Handle Expense Verification Form Submission
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      // In a real application, you would send this data to a server securely.
+      const fileInput = document.getElementById('uploadFile');
+      const description = document.getElementById('uploadDescription').value;
+      if (fileInput.files.length === 0) {
+        document.getElementById('uploadResult').textContent = 'Please select a file.';
+        return;
+      }
+      // Simulate file upload processing
+      document.getElementById('uploadResult').textContent = 'Verification submitted for review.';
+      setTimeout(() => {
+        closeUploadModal();
+      }, 2000);
+    });
+
+    // Ledger data handling (using localStorage as an example)
+    function loadLedger() {
+      let ledgerData = localStorage.getItem('ledgerData');
+      ledgerData = ledgerData ? JSON.parse(ledgerData) : ["Transaction 1: -$100 (Food)", "Transaction 2: -$50 (School)", "Transaction 3: -$70 (Health)"];
+      const ledgerList = document.getElementById('ledgerList');
+      ledgerList.innerHTML = '';
+      ledgerData.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        ledgerList.appendChild(li);
+      });
+    }
+    
+    // Example function to add a ledger entry (could be triggered by an admin panel or user input)
     function addLedgerEntry(entry) {
       let ledgerData = localStorage.getItem('ledgerData');
       ledgerData = ledgerData ? JSON.parse(ledgerData) : [];
@@ -267,9 +332,6 @@
       localStorage.setItem('ledgerData', JSON.stringify(ledgerData));
       loadLedger();
     }
-    
-    // Example: Uncomment to add a sample entry
-    // addLedgerEntry("Transaction 4: -$50 (Misc)");
   </script>
 </body>
 </html>
